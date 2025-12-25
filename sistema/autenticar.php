@@ -117,7 +117,13 @@ $_SESSION['id'] = $user['id'];
 $_SESSION['nome'] = $user['nome'];
 
 $id = $user['id'];
-echo "<script>localStorage.setItem('id_usu', '$id')</script>";
+$nivel = $user['nivel'];
+echo "<script>
+localStorage.setItem('id_usu', '$id');
+localStorage.setItem('active_user_id', '$id');
+localStorage.setItem('active_user_level', '$nivel');
+localStorage.setItem('active_user_at', String(Date.now()));
+</script>";
 
 if ($_SESSION['nivel'] == 'Administrador') {
 	echo "<script>window.location='painel-admin'</script>";

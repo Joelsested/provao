@@ -18,6 +18,12 @@ $res = $query->fetchAll(PDO::FETCH_ASSOC);
 $total_reg = @count($res);
 if($total_reg > 0){
 
+$itens_pag = $itens_pag > 0 ? $itens_pag : 1;
+$query2 = $pdo->prepare("SELECT COUNT(*) FROM pacotes where nome LIKE :busca or desc_rapida LIKE :busca");
+$query2->execute([':busca' => $busca]);
+$total_reg2 = (int) $query2->fetchColumn();
+$num_paginas = $total_reg2 > 0 ? ceil($total_reg2 / $itens_pag) : 1;
+
 echo <<<HTML
 <section id="portfolio">
  <div class="row" style="margin-left:5px; margin-right:5px; margin-top:-80px;">
@@ -46,16 +52,6 @@ for($i=0; $i < $total_reg; $i++){
          $ativo2 = '';
     } 
 
-
-   
-
-    $query2 = $pdo->prepare("SELECT * FROM pacotes where nome LIKE :busca or desc_rapida LIKE :busca ORDER BY id desc "\);
-$query2->execute([':busca' => $busca]);
-    $res2 = $query2->fetchAll(PDO::FETCH_ASSOC);
-    $total_reg2 = @count($res2);
-
-     $num_paginas = ceil($total_reg2/$itens_pag);
-    
 
 echo <<<HTML
    <a href="cursos-do-{$url}" title="Detalhes do Pacote">

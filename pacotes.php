@@ -3,21 +3,11 @@
 require_once("cabecalho.php");
 
 
-
 ?>
 
 
 
-
-
-
-
-<br>
-
 <hr>
-
-
-
 
 
 <?php 
@@ -31,10 +21,6 @@ $total_reg = @count($res);
 if($total_reg > 0){
 
    ?>
-
-
-
-
 
     <div class="row" style="margin-left: 10px; margin-right: 10px">
 
@@ -84,25 +70,6 @@ if($total_reg > 0){
 
       </div>
 
-
-
-
-
-
-
-   
-
-
-
-
-
-
-
-       
-
-
-
-          
 
 
 

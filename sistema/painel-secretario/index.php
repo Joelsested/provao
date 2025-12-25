@@ -62,8 +62,8 @@ $cartao_aluno = $res[0]['cartao'];
  
 <!-- js-->
 <script src="js/jquery-1.11.1.min.js"></script>
-<script>
-  window.CSRF_TOKEN = "<?php echo htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8'); ?>";
+  <script>
+    window.CSRF_TOKEN = "<?php echo htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8'); ?>";
   (function () {
     function getToken() {
       return window.CSRF_TOKEN || '';
@@ -103,8 +103,30 @@ $cartao_aluno = $res[0]['cartao'];
       input.value = getToken();
       form.appendChild(input);
     }, true);
-  })();
-</script>
+    })();
+  </script>
+  <script>
+    (function () {
+      var sessionUserId = "<?php echo (int) $id_usuario; ?>";
+      var key = 'active_user_id';
+      try {
+        var activeId = localStorage.getItem(key);
+        if (!activeId) {
+          localStorage.setItem(key, sessionUserId);
+        } else if (activeId !== sessionUserId) {
+          window.location.reload();
+          return;
+        }
+        window.addEventListener('storage', function (e) {
+          if (e.key === key && e.newValue && e.newValue !== sessionUserId) {
+            window.location.reload();
+          }
+        });
+      } catch (err) {
+        // localStorage blocked or unavailable
+      }
+    })();
+  </script>
 <script src="js/modernizr.custom.js"></script>
 
 <!--webfonts-->

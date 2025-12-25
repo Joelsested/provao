@@ -226,7 +226,7 @@ $response['valor'] = $valor;
                                     </div>
                                     <div class="flex-1">
                                         <div class="font-medium text-gray-900">Pagamento Recorrente</div>
-                                        <div class="text-sm text-gray-500">Pagamento recorrente • Aprovação imediata
+                                        <div class="text-sm text-gray-500">Pagamento recorrente em ate 6x - Aprovacao imediata
                                         </div>
 
                                     </div>
@@ -718,6 +718,14 @@ $response['valor'] = $valor;
 
         let cardBrand = null;
 
+        function getMaxInstallments() {
+            const selected = document.querySelector('input[name="payment_method"]:checked');
+            if (selected && selected.value === 'debit_card') {
+                return 6;
+            }
+            return 12;
+        }
+
         // Função para identificar a bandeira
         async function identifyBrand(cardNumber) {
             const brandIcon = document.getElementById('cardIcon');
@@ -795,7 +803,11 @@ $response['valor'] = $valor;
                 const select = document.getElementById('installments');
                 select.innerHTML = '';
 
+                const maxInstallments = getMaxInstallments();
                 installmentsResponse.installments.forEach(installment => {
+                    if (installment.installment > maxInstallments) {
+                        return;
+                    }
                     const valorReais = (installment.value / 100).toFixed(2).replace('.', ',');
                     const option = document.createElement('option');
                     option.value = installment.installment;
@@ -1092,7 +1104,7 @@ $response['valor'] = $valor;
 
                 const methods = {
                     'credit_card': { text: 'Cartão de Crédito', detail: 'À vista ou parcelado em até 12x' },
-                    'debit_card': { text: 'Pagamento Recorrente', detail: ' Pagamento recorrente' },
+                    'debit_card': { text: 'Pagamento Recorrente', detail: 'Pagamento recorrente em ate 6x' },
                 };
 
                 const method = methods[formData.payment_method];
@@ -1282,6 +1294,7 @@ $response['valor'] = $valor;
                 method.addEventListener('change', function () {
                     formData.payment_method = this.value;
                     updatePaymentSummary();
+                    getInstallments();
 
                     // Adicionar efeito visual
                     document.querySelectorAll('.payment-method-option').forEach(option => {

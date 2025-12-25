@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once("../../../conexao.php");
 $tabela = 'matriculas';
 
@@ -18,16 +18,16 @@ $matriculas = [];
 foreach ($res as $matricula) {
     $id_matricula = $matricula['id'];
 
-    // Agora busca os pagamentos referentes a essa matrícula
+    // Agora busca os pagamentos referentes a essa matrÃ­cula
     $stmt = $pdo->prepare("SELECT * FROM pagamentos_pix WHERE id_matricula = :id_matricula");
     $stmt->bindParam(':id_matricula', $id_matricula);
     $stmt->execute();
     $pagamentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Exemplo: incluir os pagamentos dentro do array da matrícula
+    // Exemplo: incluir os pagamentos dentro do array da matrÃ­cula
     $matricula['pagamentos'] = $pagamentos;
 
-    // Faça o que precisar com os dados aqui
+    // FaÃ§a o que precisar com os dados aqui
     array_push($matriculas, $matricula);
 
 
@@ -236,7 +236,7 @@ HTML;
 		<ul class="dropdown-menu" style="margin-left:-230px;">
 		<li>
 		<div class="notification_desc2">
-		<p>Confirmar Exclusão? <a href="#" onclick="excluir('{$id}')"><span class="text-danger">Sim</span></a></p>
+		<p>Confirmar Exclusão? <a href="#" onclick="excluir(this)" data-id="{$id}"><span class="text-danger">Sim</span></a></p>
 		</div>
 		</li>										
 		</ul>
@@ -295,7 +295,7 @@ HTML;
 
 
 <style>
-    /* Customização do SweetAlert2 */
+    /* CustomizaÃ§Ã£o do SweetAlert2 */
     .financial-modal .swal2-popup {
         background: linear-gradient(135deg, #1a2035 0%, #121625 100%);
         border-radius: 16px;
@@ -344,7 +344,7 @@ HTML;
         margin: 1.5rem auto 0.5rem;
     }
 
-    /* Conteúdo do Modal */
+    /* ConteÃºdo do Modal */
     .matricula-card {
         background-color: transparent;
         color: #fff;
@@ -519,7 +519,7 @@ HTML;
         margin-bottom: 0.5rem;
     }
 
-    /* Animações */
+    /* AnimaÃ§Ãµes */
     @keyframes fadeInUp {
         from {
             opacity: 0;
@@ -582,7 +582,7 @@ HTML;
             width: '600px'
         });
 
-        // Capturar envio do formulário dentro do Swal
+        // Capturar envio do formulÃ¡rio dentro do Swal
         document.getElementById('cupom-desconto').addEventListener('submit', function (e) {
             e.preventDefault();
 
@@ -658,7 +658,7 @@ HTML;
 
         const showInstallmentsModal = () => {
             let options = '';
-            for (let i = 1; i <= 12; i++) {
+            for (let i = 1; i <= 6; i++) {
                 options += `<option value="${i}">${i}x</option>`;
             }
 
@@ -749,3 +749,5 @@ HTML;
 
     }
 </script>
+
+

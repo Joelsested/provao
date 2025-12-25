@@ -10,6 +10,6 @@ if ($id > 0) {
 	$stmt->execute([$id]);
 }
 
-echo 'Exclu?do com Sucesso';
+echo 'Excluído com Sucesso';
 
 ?>

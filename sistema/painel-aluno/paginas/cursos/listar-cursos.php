@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once("../../../conexao.php");
 $tabela = 'matriculas';
 
@@ -27,7 +27,7 @@ foreach ($res as $matricula) {
     } elseif ($forma_pgto == 'BOLETO') {
         $stmt = $pdo->prepare("SELECT * FROM pagamentos_boleto WHERE id_matricula = :id_matricula");
     } else {
-        // Se não houver forma de pagamento definida, tenta PIX primeiro
+        // Se nÃ£o houver forma de pagamento definida, tenta PIX primeiro
         $stmt = $pdo->prepare("SELECT * FROM pagamentos_pix WHERE id_matricula = :id_matricula");
     }
 
@@ -35,7 +35,7 @@ foreach ($res as $matricula) {
     $stmt->execute();
     $pagamentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Se não encontrou em PIX e não era especificamente PIX, tenta BOLETO
+    // Se nÃ£o encontrou em PIX e nÃ£o era especificamente PIX, tenta BOLETO
     if (empty($pagamentos) && $forma_pgto != 'PIX') {
         $stmt = $pdo->prepare("SELECT * FROM pagamentos_boleto WHERE id_matricula = :id_matricula");
         $stmt->bindParam(':id_matricula', $id_matricula);
@@ -64,7 +64,7 @@ if ($total_reg > 0) {
     <th class="esc">Cupom</th> 	
 	<th class="esc">Data</th>
 	<th class="esc">Status</th> 	
-	<th>Ações</th>
+	<th>AÃ§Ãµes</th>
 	</tr> 
 	</thead> 
 	<tbody>
@@ -85,7 +85,7 @@ HTML;
         $boleto = $res[$i]['boleto'];
         $nota = $res[$i]['nota'];
 
-        // Verificar se existem pagamentos e definir variáveis com valores padrão
+        // Verificar se existem pagamentos e definir variÃ¡veis com valores padrÃ£o
         $qrcode = '';
         $texto_copia_cola = '';
         $valorC = '';
@@ -158,7 +158,7 @@ HTML;
         $res2 = $query2->fetchAll(PDO::FETCH_ASSOC);
         $aulas = @count($res2);
 
-        //verificar se o curso já foi avaliado
+        //verificar se o curso jÃ¡ foi avaliado
         $query2 = $pdo->prepare("SELECT * FROM avaliacoes WHERE curso = :curso AND aluno = :aluno");
         $query2->execute(['curso' => $curso, 'aluno' => $id_usuario]);
         $res2 = $query2->fetchAll(PDO::FETCH_ASSOC);
@@ -355,11 +355,11 @@ HTML;
 
 	<big>
 	
-		<!-- <a class='{$ocul}' href="https://{$url_sistema}/sistema/rel/avaliacoes_class2.php?id={$id_usuario}&id_curso={$curso}" target="_blank" title="Avaliações do aluno">
+		<!-- <a class='{$ocul}' href="https://{$url_sistema}/sistema/rel/avaliacoes_class2.php?id={$id_usuario}&id_curso={$curso}" target="_blank" title="AvaliaÃ§Ãµes do aluno">
 		<small><span class="fa fa-file-pdf-o text-danger" ></span></small>
 		</a> -->
 
-		<a class='{$ocul}' href="javascript:void(0);" onclick="modalAvaliacao('{$url_sistema}/sistema/rel/avaliacoes_class2.php?id={$id_usuario}&id_curso={$curso}')" title="Avaliações do aluno">
+		<a class='{$ocul}' href="javascript:void(0);" onclick="modalAvaliacao('{$url_sistema}/sistema/rel/avaliacoes_class2.php?id={$id_usuario}&id_curso={$curso}')" title="AvaliaÃ§Ãµes do aluno">
     	<small><span class="fa fa-file-pdf-o text-danger"></span></small>
 		</a>
 	
@@ -373,7 +373,7 @@ HTML;
 		</form>
 
 		
-		<big><a class="{$classe_quest}" href="#" onclick="questionario('{$curso}', '{$nome_curso}', '{$id}')" title="Iniciar Questionário"><i class="fa fa-question-circle-o verde"></i></a></big>
+		<big><a class="{$classe_quest}" href="#" onclick="questionario('{$curso}', '{$nome_curso}', '{$id}')" title="Iniciar QuestionÃ¡rio"><i class="fa fa-question-circle-o verde"></i></a></big>
 
 		<small><span class="text-danger {$classe_nota}">Nota: {$nota}%</span></small>
 
@@ -384,7 +384,7 @@ HTML;
 		<ul class="dropdown-menu" style="margin-left:-230px;">
 		<li>
 		<div class="notification_desc2">
-		<p>Confirmar Exclusão? <a href="#" onclick="excluir('{$id}')"><span class="text-danger">Sim</span></a></p>
+		<p>Confirmar Exclusão? <a href="#" onclick="excluir(this)" data-id="{$id}"><span class="text-danger">Sim</span></a></p>
 		</div>
 		</li>										
 		</ul>
@@ -413,7 +413,7 @@ HTML;
 
 ?>
 <style>
-    /* Customização do SweetAlert2 */
+    /* CustomizaÃ§Ã£o do SweetAlert2 */
     .financial-modal .swal2-popup {
         background: linear-gradient(135deg, #1a2035 0%, #121625 100%);
         border-radius: 16px;
@@ -462,7 +462,7 @@ HTML;
         margin: 1.5rem auto 0.5rem;
     }
 
-    /* Conteúdo do Modal */
+    /* ConteÃºdo do Modal */
     .matricula-card {
         background-color: transparent;
         color: #fff;
@@ -637,7 +637,7 @@ HTML;
         margin-bottom: 0.5rem;
     }
 
-    /* Animações */
+    /* AnimaÃ§Ãµes */
     @keyframes fadeInUp {
         from {
             opacity: 0;
@@ -682,7 +682,7 @@ HTML;
                     <div class="col-sm-9 esquerda-mobile-input-botao">
                         <div class="form-group">
                             <input type="text" name="cupom" id="cupom" class="form-control" required
-                                placeholder="Código do Cupom">
+                                placeholder="CÃ³digo do Cupom">
                         </div>
                     </div>
                     <div class="col-sm-3 direita-mobile-input-botao" style="margin-left:-20px">
@@ -698,7 +698,7 @@ HTML;
             width: '600px'
         });
 
-        // Capturar envio do formulário dentro do Swal
+        // Capturar envio do formulÃ¡rio dentro do Swal
         document.getElementById('cupom-desconto').addEventListener('submit', function (e) {
             e.preventDefault();
 
@@ -718,7 +718,7 @@ HTML;
                             icon: 'success',
                             title: 'Cupom aplicado!',
                             text: mensagem[0] + ' - Desconto ativado!',
-                            confirmButtonText: 'Atualizar página'
+                            confirmButtonText: 'Atualizar pÃ¡gina'
                         }).then(() => {
                             location.reload();
                         });
@@ -756,11 +756,11 @@ HTML;
         const showPaymentModal = () => {
             Swal.fire({
                 title: 'Escolha a forma de pagamento',
-                showDenyButton: true, // terceiro botão
+                showDenyButton: true, // terceiro botÃ£o
                 showCancelButton: true,
                 confirmButtonText: 'Boleto',
                 denyButtonText: 'Boleto Parcelado',
-                cancelButtonText: 'Cartão de Crédito',
+                cancelButtonText: 'CartÃ£o de CrÃ©dito',
                 allowOutsideClick: true,
                 allowEscapeKey: true
             }).then((result) => {
@@ -776,7 +776,7 @@ HTML;
 
         const showInstallmentsModal = () => {
             let options = '';
-            for (let i = 1; i <= 12; i++) {
+            for (let i = 1; i <= 6; i++) {
                 options += `<option value="${i}">${i}x</option>`;
             }
 
@@ -815,7 +815,7 @@ HTML;
                     id: id, 
                     nome_do_curso: nome_curso, 
                     quantidadeParcelas: parcelas,
-                    pacote: 'Não'
+                    pacote: 'NÃ£o'
                 },
                 dataType: "json"
             }).done(function (response) {
@@ -842,7 +842,7 @@ HTML;
                 Swal.fire({
                     icon: 'error',
                     title: 'Erro!',
-                    text: 'Falha na comunicação com o servidor.'
+                    text: 'Falha na comunicaÃ§Ã£o com o servidor.'
                 });
             });
         };
@@ -884,7 +884,7 @@ HTML;
         codigoInput.select();
         codigoInput.setSelectionRange(0, 99999);
         document.execCommand("copy");
-        alert("Código PIX copiado para a área de transferência!");
+        alert("CÃ³digo PIX copiado para a Ã¡rea de transferÃªncia!");
     }
 
 </script>
@@ -903,3 +903,5 @@ HTML;
 
     }
 </script>
+
+

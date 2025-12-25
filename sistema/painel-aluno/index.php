@@ -245,6 +245,28 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 			}, true);
 		})();
 	</script>
+	<script>
+		(function () {
+			var sessionUserId = "<?php echo (int) $id_usuario; ?>";
+			var key = 'active_user_id';
+			try {
+				var activeId = localStorage.getItem(key);
+				if (!activeId) {
+					localStorage.setItem(key, sessionUserId);
+				} else if (activeId !== sessionUserId) {
+					window.location.reload();
+					return;
+				}
+				window.addEventListener('storage', function (e) {
+					if (e.key === key && e.newValue && e.newValue !== sessionUserId) {
+						window.location.reload();
+					}
+				});
+			} catch (err) {
+				// localStorage blocked or unavailable
+			}
+		})();
+	</script>
 
 	<script src="js/modernizr.custom.js"></script>
 

@@ -23,6 +23,13 @@ try {
     if ($quantidadeParcelas < 1) {
         $quantidadeParcelas = 1;
     }
+    if ($forma_pgto === 'BOLETO_PARCELADO') {
+        if ($quantidadeParcelas > 6) {
+            $quantidadeParcelas = 6;
+        }
+    } else {
+        $quantidadeParcelas = 1;
+    }
 
     if (!$id_usuario || !$id_curso || !$forma_pgto) {
         throw new Exception("Dados incompletos");

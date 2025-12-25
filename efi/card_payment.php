@@ -14,9 +14,21 @@ $data = json_decode($json, true);
 
 
 // Parâmetros recebidos via GET
-$forma_de_pagamento = $data['payment_method'];
-$billingType = strtoupper($forma_de_pagamento);
-$quantidadeParcelas = $data['installments'] ?? 1;
+$forma_de_pagamento = $data['payment_method'] ?? '';
+$billingType = strtoupper((string) $forma_de_pagamento);
+$quantidadeParcelas = isset($data['installments']) ? (int) $data['installments'] : 1;
+if ($quantidadeParcelas < 1) {
+    $quantidadeParcelas = 1;
+}
+$maxParcelas = 1;
+if ($billingType === 'DEBIT_CARD') {
+    $maxParcelas = 6;
+} elseif ($billingType === 'CREDIT_CARD') {
+    $maxParcelas = 12;
+}
+if ($quantidadeParcelas > $maxParcelas) {
+    $quantidadeParcelas = $maxParcelas;
+}
 
 //Busca dados para atualização da situação da matricula
 $id_do_aluno = @$_SESSION['id'];
@@ -272,7 +284,7 @@ try {
         'cpf' => $res2[0]['cpf'] ?? '',
         'telefone' => $res2[0]['telefone'] ?? '',
         'credit_card_token' => $data['payment_token'], // token gerado pelo SDK JS da Gerencianet
-        'installments' => $data['installments'] ?? 1,
+        'installments' => $quantidadeParcelas,
         'street' => $data['street'] ?? null,
         'number' => $data['number'] ?? null,
         'neighborhood' => $data['neighborhood'] ?? null,

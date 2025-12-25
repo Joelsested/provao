@@ -28,9 +28,19 @@ function normalizarUnicode($texto)
 }
 
 // Parâmetros recebidos via GET
-$forma_de_pagamento = $_GET['formaDePagamento'];
-$billingType = strtoupper($forma_de_pagamento);
-$quantidadeParcelas = $_GET['quantidadeParcelas'];
+$forma_de_pagamento = $_GET['formaDePagamento'] ?? '';
+$billingType = strtoupper((string) $forma_de_pagamento);
+$quantidadeParcelas = isset($_GET['quantidadeParcelas']) ? (int) $_GET['quantidadeParcelas'] : 1;
+if ($quantidadeParcelas < 1) {
+    $quantidadeParcelas = 1;
+}
+if ($billingType === 'BOLETO_PARCELADO') {
+    if ($quantidadeParcelas > 6) {
+        $quantidadeParcelas = 6;
+    }
+} else {
+    $quantidadeParcelas = 1;
+}
 
 //Busca dados para atualização da situação da matricula
 $id_do_aluno = @$_SESSION['id'];

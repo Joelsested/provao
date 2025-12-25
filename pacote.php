@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 @session_start();
 require_once('pgtos/cartao/ApiConfig.php');
 // include('active_gateway.php');
@@ -372,7 +372,7 @@ require_once("cabecalho.php");
 			<a title="Comprar o Pacote - Liberação Imediata" href="#"
 				onclick="pagamento('<?php echo $id ?>', '<?php echo $nome ?>', '<?php echo $valor_cursoF ?>', '<?php echo $modal ?>')">
 
-				<small><span class="neutra">DÍVIDA EM ATÉ 12 VEZES</span></small><br>
+				<small><span class="neutra">EM ATÉ 12 VEZES</span></small><br>
 
 				<img src="img/01mercado.png" width="100%">
 
@@ -1943,51 +1943,36 @@ async function escolherResponsavel() {
 	}
 }
 
-function enviarMatricula(curso, pacote, responsavel) {
-	$.ajax({
-		url: "ajax/cursos/matricula.php",
-		method: 'POST',
-		data: {
-			curso,
-			pacote,
-			responsavel
-		},
-		dataType: "text",
-		success: function (mensagem) {
+  function enviarMatricula(curso, pacote, responsavel) {
+  	$.ajax({
+ 		url: "ajax/cursos/matricula.php",
+  		method: 'POST',
+  		data: {
+  			curso,
+  			pacote,
+			responsavel,
+			csrf_token: (window.CSRF_TOKEN || '')
+  		},
+  		dataType: "text",
+  		success: function (mensagem) {
 			if (mensagem.trim() == "Matriculado com Sucesso") {
-				Swal.fire({
-					title: 'Matrícula realizada com sucesso!',
-					text: 'Acesse o seu painel do aluno para realizar o pagamento!',
-					icon: 'success',
-					showConfirmButton: true,
-					confirmButtonText: 'Ir para o Painel do Aluno',
-					confirmButtonColor: '#3085d6',
-				}).then((result) => {
-					if (result.isConfirmed) {
-						window.open('<?= $url_sistema ?>sistema/painel-aluno/index.php?pagina=cursos', '_blank');
-					}
-				});
+				window.location.href = '<?= $url_sistema ?>sistema/painel-aluno/index.php?pagina=pacotes';
 			} else {
 				Swal.fire({
 					title: 'Ops!',
 					icon: 'error',
 					text: mensagem,
 					showConfirmButton: true,
-					confirmButtonText: 'Acessar o Painel do Aluno',
+					confirmButtonText: 'Fechar',
 					confirmButtonColor: '#3085d6',
 					showCloseButton: true,
 					closeButtonColor: '#3085d6',
 					closeButtonAriaLabel: 'Fechar',
-				}).then((result) => {
-					if (result.isConfirmed) {
-						window.open('<?= $url_sistema ?>sistema/painel-aluno/index.php?pagina=cursos', '_blank');
-					}
 				});
 			}
 		},
 	});
 }
-
 async function obterResponsaveis() {
 	const response = await fetch(endpointResponsaveis, {
 		method: 'POST'
@@ -2553,23 +2538,24 @@ $('.toggle-password').on('click', function () {
 
 <script type="text/javascript">
 
-	$("#form-matricula").submit(function () {
+ 	$("#form-matricula").submit(function () {
 
 
 
-		event.preventDefault();
+ 		event.preventDefault();
+ 
+ 		var formData = new FormData(this);
+		formData.append('csrf_token', (window.CSRF_TOKEN || ''));
 
-		var formData = new FormData(this);
 
 
-
-		$.ajax({
-
-			url: "ajax/cursos/matricula.php",
-
-			type: 'POST',
-
-			data: formData,
+ 			$.ajax({
+ 
+ 				url: "ajax/cursos/matricula.php",
+ 
+ 				type: 'POST',
+ 
+ 				data: formData,
 
 
 
@@ -2582,22 +2568,20 @@ $('.toggle-password').on('click', function () {
 				$('#msg-matricula').removeClass()
 
 				if (mensagem.trim() == "Matriculado com Sucesso") {
-
-
-
-					$('#msg-matricula').text(mensagem)
-
-
-
-				} else {
-
-
-
-					$('#msg-matricula').addClass('text-danger')
-
-					$('#msg-matricula').text(mensagem)
-
-				}
+	window.location.href = '<?= $url_sistema ?>sistema/painel-aluno/index.php?pagina=pacotes';
+} else {
+	Swal.fire({
+		title: 'Ops!',
+		icon: 'error',
+		text: mensagem,
+		showConfirmButton: true,
+		confirmButtonText: 'Fechar',
+		confirmButtonColor: '#3085d6',
+		showCloseButton: true,
+		closeButtonColor: '#3085d6',
+		closeButtonAriaLabel: 'Fechar',
+	});
+}
 
 
 
@@ -2641,15 +2625,15 @@ $('.toggle-password').on('click', function () {
 
 
 
-		$.ajax({
-
-			url: "ajax/cursos/matricula.php",
-
-			method: 'POST',
-
-			data: { curso, pacote },
-
-			dataType: "text",
+ 			$.ajax({
+ 
+ 				url: "ajax/cursos/matricula.php",
+ 
+ 				method: 'POST',
+ 
+				data: { curso, pacote, csrf_token: (window.CSRF_TOKEN || '') },
+ 
+ 				dataType: "text",
 
 
 
@@ -2991,3 +2975,6 @@ if (@$_POST['painel_aluno'] == 'sim') {
 	// Eventos
 	document.getElementById('quantidadeDeParcelas').addEventListener('change', atualizarValorParcelado);
 </script>
+
+
+

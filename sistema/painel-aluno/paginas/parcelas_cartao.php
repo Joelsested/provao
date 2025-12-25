@@ -945,7 +945,7 @@ $resAcrescimoCartao = $queryAcrescimoCartao->fetchColumn();
 
         Swal.fire({
             title: 'Realizar Pagamento',
-            html: `<iframe src="/efi/credit_card.php?id=${id}&id_aluno=${id_aluno}&nome_curso=${nome_curso}" width="100%" height="600px" style="border: none; background: #fff;"></iframe>`,
+            html: `<iframe src="<?php echo $url_sistema ?>efi/credit_card.php?id=${id}&id_aluno=${id_aluno}&nome_curso=${nome_curso}" width="100%" height="600px" style="border: none; background: #fff;"></iframe>`,
             width: '80%',
             showCloseButton: true,
             showConfirmButton: false

@@ -1,4 +1,4 @@
-$(document).ready(function() {
+﻿$(document).ready(function() {
     listar();
 } );
 
@@ -29,23 +29,23 @@ $("#form").submit(function () {
 	event.preventDefault();
 	var formData = new FormData(this);
 
-	$.ajax({
-		url: 'paginas/' + pag + "/inserir.php",
-		type: 'POST',
-		data: formData,
+		$.ajax({
+			url: 'paginas/' + pag + "/inserir.php",
+			type: 'POST',
+			data: formData,
 
-		success: function (mensagem) {
-            $('#mensagem').text('');
-            $('#mensagem').removeClass()
-            if (mensagem.trim() == "Salvo com Sucesso") {                    
-                    $('#btn-fechar').click();
-                    listar();
-                } else {
-                	$('#mensagem').addClass('text-danger')
-                    $('#mensagem').text(mensagem)
-                }
+			success: function (mensagem) {
+				$('#mensagem').text('');
+				$('#mensagem').removeClass()
+				if (mensagem.trim() == "Salvo com Sucesso") {
+					$('#btn-fechar').click();
+					listar();
+				} else {
+					$('#mensagem').addClass('text-danger')
+					$('#mensagem').text(mensagem)
+				}
 
-            },
+			},
 
             cache: false,
             contentType: false,
@@ -60,21 +60,25 @@ $("#form").submit(function () {
 
 
 function excluir(id){
+    var idNum = parseInt(id, 10);
+    if (!idNum) {
+        idNum = id;
+    }
     $.ajax({
-        url: 'paginas/' + pag + "/excluir.php",
+        url: 'paginas/' + pag + "/excluir.php?id=" + encodeURIComponent(idNum),
         method: 'POST',
-        data: {id},
+        data: { id: idNum, id_matricula: idNum, csrf_token: (window.CSRF_TOKEN || '') },
         dataType: "text",
 
-        success: function (mensagem) {            
-            if (mensagem.trim() == "Excluído com Sucesso") {                
-                listar();                
+        success: function (mensagem) {
+            var texto = (mensagem || '').toLowerCase();
+            if (texto.indexOf('sucesso') !== -1) {
+                listar();
             } else {
-                    $('#mensagem-excluir').addClass('text-danger')
-                    $('#mensagem-excluir').text(mensagem)
-                }
-
-        },      
+                $('#mensagem-excluir').addClass('text-danger')
+                $('#mensagem-excluir').text(mensagem)
+            }
+        },
 
     });
 }
@@ -95,8 +99,8 @@ function ativar(id, acao){
                  listar();
             }else{
                 $('#mensagem-excluir').addClass('text-danger')
-                $('#mensagem-excluir').text(mensagem) 
-            }               
+                $('#mensagem-excluir').text(mensagem)
+            }
         },
 
     });

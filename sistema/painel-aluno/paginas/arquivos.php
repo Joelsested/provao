@@ -256,7 +256,8 @@ $resposta_consulta = $consulta_arquivos->fetchAll(PDO::FETCH_ASSOC);
 
 </script>
 
-<script src="js/ajax.js"></script>
+<?php $ajax_js_ver = @filemtime(__DIR__ . '/../js/ajax.js'); ?>
+<script src="js/ajax.js?v=<?php echo $ajax_js_ver; ?>"></script>
 
 
 

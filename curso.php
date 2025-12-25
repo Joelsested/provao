@@ -1999,30 +1999,20 @@ async function escolherResponsavel() {
     }
 }
 
-function enviarMatricula(curso, pacote, responsavel) {
-    $.ajax({
-        url: "ajax/cursos/matricula.php",
-        method: 'POST',
-        data: {
-            curso,
-            pacote,
-            responsavel
-        },
-        dataType: "text",
-        success: function (mensagem) {
+  function enviarMatricula(curso, pacote, responsavel) {
+      $.ajax({
+          url: "ajax/cursos/matricula.php",
+          method: 'POST',
+          data: {
+              curso,
+              pacote,
+              responsavel,
+              csrf_token: (window.CSRF_TOKEN || '')
+          },
+          dataType: "text",
+          success: function (mensagem) {
             if (mensagem.trim() == "Matriculado com Sucesso") {
-                Swal.fire({
-                    title: 'Matr?cula realizada com sucesso!',
-                    text: 'Acesse o seu painel do aluno para finalizar o pagamento.',
-                    icon: 'success',
-                    showConfirmButton: true,
-                    confirmButtonText: 'Ir para o Painel do Aluno',
-                    confirmButtonColor: '#3085d6',
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.open('<?= $url_sistema ?>sistema/painel-aluno/index.php?pagina=cursos', '_blank');
-                    }
-                });
+                window.location.href = '<?= $url_sistema ?>sistema/painel-aluno/index.php?pagina=cursos';
             } else {
                 Swal.fire({
                     title: 'Ops!',
@@ -2034,10 +2024,6 @@ function enviarMatricula(curso, pacote, responsavel) {
                     showCloseButton: true,
                     closeButtonColor: '#3085d6',
                     closeButtonAriaLabel: 'Fechar',
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.open('<?= $url_sistema ?>sistema/painel-aluno/index.php?pagina=cursos', '_blank');
-                    }
                 });
             }
         },
@@ -2383,13 +2369,14 @@ $("#form-cadastro").submit(function (event) {
 
 <script type="text/javascript">
 
-	$("#form-matricula").submit(function () {
+ 	$("#form-matricula").submit(function () {
 
 
 
-		event.preventDefault();
-
-		var formData = new FormData(this);
+ 		event.preventDefault();
+ 
+ 		var formData = new FormData(this);
+		formData.append('csrf_token', (window.CSRF_TOKEN || ''));
 
 
 
@@ -2454,29 +2441,30 @@ $("#form-cadastro").submit(function (event) {
 
 <script type="text/javascript">
 
-	function matriculaAluno(paymentType) {
+ 	function matriculaAluno(paymentType) {
+ 
+ 		var curso = '<?= $id_do_curso_pag ?>';
+ 
+ 		var pacote = 'Nao';
 
-		var curso = '<?= $id_do_curso_pag ?>';
-
-		var pacote = 'Nao';
 
 
-
-		$.ajax({
-
-			url: "ajax/cursos/matricula.php",
-
-			method: 'POST',
-
-			data: {
-
-				curso,
-
-				pacote,
-
-				paymentType
-
-			},
+ 		$.ajax({
+ 
+ 			url: "ajax/cursos/matricula.php",
+ 
+ 			method: 'POST',
+ 
+ 			data: {
+ 
+ 				curso,
+ 
+ 				pacote,
+ 
+				paymentType,
+				csrf_token: (window.CSRF_TOKEN || '')
+ 
+ 			},
 
 			dataType: "text",
 
@@ -2488,18 +2476,7 @@ $("#form-cadastro").submit(function (event) {
 
 				if (mensagem.trim() == "Matriculado com Sucesso") {
 
-					Swal.fire({
-						title: 'Matricula Realizada com Sucesso!',
-						text: 'Acesse o seu painel do aluno para realizar o pagamento!',
-						icon: 'success',
-						showConfirmButton: true,
-						confirmButtonText: 'Ir para o Painel do Aluno',
-						confirmButtonColor: '#3085d6',
-					}).then((result) => {
-						if (result.isConfirmed) {
-							window.location.href = '<?= $url_sistema ?>sistema/painel-aluno/index.php?pagina=cursos', target = '_blank';
-						}
-					})
+					window.location.href = '<?= $url_sistema ?>sistema/painel-aluno/index.php?pagina=cursos';
 
 				} else {
 
@@ -2508,15 +2485,11 @@ $("#form-cadastro").submit(function (event) {
 						icon: 'error',
 						text: mensagem,
 						showConfirmButton: true,
-						confirmButtonText: 'Acessar o Painel do Aluno',
+						confirmButtonText: 'Fechar',
 						confirmButtonColor: '#3085d6',
 						showCloseButton: true,
 						closeButtonColor: '#3085d6',
 						closeButtonAriaLabel: 'Fechar',
-					}).then((result) => {
-						if (result.isConfirmed) {
-							window.location.href = '<?= $url_sistema ?>sistema/painel-aluno/index.php?pagina=cursos', target = '_blank';
-						}
 					})
 
 				}
