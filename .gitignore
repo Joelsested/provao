@@ -1,0 +1,37 @@
+/.env
+/.env.*
+!/.env.example
+
+# Certificados/segredos
+/efi/*.pem
+/efi/*.p12
+/efi/*.pfx
+/efi/*.crt
+/efi/*.key
+
+# Logs
+*.log
+error_log
+/webhook_logs/
+
+# Backups/Dumps
+/sistema/painel-admin/backup/
+*.sql
+
+# Arquivos gerados
+/historicos/
+/gitARI/historicos/
+/gitARI/
+/pdfs/
+
+# Uploads
+/sistema/painel-admin/img/arquivos/
+/sistema/painel-admin/img/contas/
+/sistema/painel-aluno/img/arquivos/
+/sistema/painel-secretario/img/arquivos/
+
+# IDE/OS
+/.idea/
+/.vscode/
+.DS_Store
+Thumbs.db

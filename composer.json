@@ -1,0 +1,11 @@
+{
+    "name": "user/sestedprof",
+    "autoload": {
+        "psr-4": {
+            "User\\Sestedprof\\": "src/"
+        }
+    },
+    "require": {
+        "guzzlehttp/guzzle": "^7.9"
+    }
+}

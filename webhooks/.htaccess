@@ -1,0 +1,7 @@
+<Directory "/home2/sested59/sestedsaas/webhooks">
+    SSLEngine on
+    SSLVerifyClient require
+    SSLVerifyDepth 1
+    SSLCACertificateFile /home2/sested59/sestedsaas/webhooks/certificate-chain-homolog.crt
+</Directory>
+

@@ -1,0 +1,41 @@
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+
+RewriteRule ^contatos(.*)$ contatos.php [L]
+RewriteRule ^index(.*)$ index.php [L]
+RewriteRule ^index.php(.*)$ index.php [L]
+
+RewriteRule ^sobre(.*)$ sobre.php [L]
+RewriteRule ^parcerias(.*)$ parcerias.php [L]
+RewriteRule ^planos(.*)$ planos.php [L]
+RewriteRule ^perguntas(.*)$ perguntas.php [L]
+RewriteRule ^politica(.*)$ politica.php [L]
+RewriteRule ^termos(.*)$ termos.php [L]
+RewriteRule ^pacotes(.*)$ pacotes.php [L]
+RewriteRule ^lista-cursos(.*)$ lista-cursos.php [L]
+RewriteRule ^formacoes(.*)$ formacoes.php [L]
+RewriteRule ^sistemas(.*)$ sistemas.php [L]
+RewriteRule ^cursos-2021(.*)$ cursos-2021.php [L]
+RewriteRule ^cursos-2022(.*)$ cursos-2022.php [L]
+RewriteRule ^linguagens(.*)$ linguagens.php [L]
+
+
+RewriteRule ^curso-de-(.*)$ curso.php?url=$1 [L]
+RewriteRule ^cursos-do-(.*)$ pacote.php?url=$1 [L]
+RewriteRule ^categoria-(.*)$ categoria.php?url=$1 [L]
+RewriteRule ^linguagem-(.*)$ linguagem.php?url=$1 [L]
+
+RewriteRule ^cursos(.*)$ cursos.php [L]
+RewriteRule ^categorias(.*)$ categorias.php [L]
+
+RewriteRule ^consultar-certificados(.*)$ consultar-certificados.php [L]
+RewriteRule ^certificado/(.*)$ sistema/rel/rel_certificado.php?url=$1 [L]
+
+# php -- BEGIN cPanel-generated handler, do not edit
+# Set the “ea-php82” package as the default “PHP” programming language.
+<IfModule mime_module>
+  AddHandler application/x-httpd-ea-php82___lsphp .php .php8 .phtml
+</IfModule>
+# php -- END cPanel-generated handler, do not edit
