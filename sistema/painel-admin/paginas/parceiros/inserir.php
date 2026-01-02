@@ -1,18 +1,28 @@
 <?php
 require_once("../../../conexao.php");
-require_once(__DIR__ . "/../../../config/upload.php");
+require_once(__DIR__ . "/../../../../config/upload.php");
+require_once(__DIR__ . "/../../../../helpers.php");
 $tabela = 'parceiros';
 
 $nome = $_POST['nome'];
 $email = $_POST['email'];
 $telefone = $_POST['telefone'];
 $cpf = $_POST['cpf'];
+$nascimento = $_POST['nascimento'] ?? '';
 $id = $_POST['id'];
 $comissao = $_POST['comissao'] ?? null;
 
 $wallet_id = $_POST['wallet_id'];
 
-$senha = '123456';
+$senha = birthDigits($nascimento);
+if (trim($cpf) === '' || trim($nascimento) === '') {
+    echo 'CPF e data de nascimento são obrigatórios!';
+    exit();
+}
+if ($senha === '') {
+    echo 'Data de nascimento inválida!';
+    exit();
+}
 $senha_crip = md5($senha);
 
 //validar email duplicado
@@ -82,12 +92,13 @@ if ($id == "") {
         }
     }
 
-    $query = $pdo->prepare("INSERT INTO $tabela SET  nome = :nome, email = :email, cpf = :cpf, telefone = :telefone, comissao = :comissao, foto = :foto, ativo = 'Sim', data = curDate()");
+    $query = $pdo->prepare("INSERT INTO $tabela SET  nome = :nome, email = :email, cpf = :cpf, nascimento = :nascimento, telefone = :telefone, comissao = :comissao, foto = :foto, ativo = 'Sim', data = curDate()");
     $query->bindValue(":nome", "$nome");
     $query->bindValue(":email", "$email");
     $query->bindValue(":telefone", "$telefone");
     $query->bindValue(":comissao", $comissao);
     $query->bindValue(":cpf", "$cpf");
+    $query->bindValue(":nascimento", "$nascimento");
     $query->bindValue(":foto", "$foto");
     $query->execute();
     $ult_id = $pdo->lastInsertId();
@@ -119,12 +130,13 @@ if ($id == "") {
         }
     }
 
-    $query = $pdo->prepare("UPDATE $tabela SET nome = :nome, email = :email, cpf = :cpf, telefone = :telefone, comissao = :comissao, foto = :foto WHERE id = :id");
+    $query = $pdo->prepare("UPDATE $tabela SET nome = :nome, email = :email, cpf = :cpf, nascimento = :nascimento, telefone = :telefone, comissao = :comissao, foto = :foto WHERE id = :id");
     $query->bindValue(":nome", "$nome");
     $query->bindValue(":email", "$email");
     $query->bindValue(":telefone", "$telefone");
     $query->bindValue(":comissao", "$comissao");
     $query->bindValue(":cpf", "$cpf");
+    $query->bindValue(":nascimento", "$nascimento");
     $query->bindValue(":foto", "$foto");
     $query->bindValue(":id", $id, PDO::PARAM_INT);
     $query->execute();
@@ -143,3 +155,4 @@ if ($id == "") {
 
 
 echo 'Salvo com Sucesso';
+

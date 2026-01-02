@@ -7,6 +7,9 @@ if (@$_SESSION['nivel'] != 'Administrador' and @$_SESSION['nivel'] != 'Secretari
     echo "<script>window.location='../index.php'</script>";
     exit();
 }
+
+$consulta_tutores = $pdo->query("SELECT id, nome FROM tutores WHERE ativo = 'Sim' ORDER BY nome");
+$tutores = $consulta_tutores ? $consulta_tutores->fetchAll(PDO::FETCH_ASSOC) : [];
 ?>
 
 <style>
@@ -58,21 +61,30 @@ if (@$_SESSION['nivel'] != 'Administrador' and @$_SESSION['nivel'] != 'Secretari
                     </div>
 
 
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>CPF</label>
-                                <input type="text" class="form-control" name="cpf" id="cpf">
-                            </div>
-                        </div>
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>CPF</label>
+								<input type="text" class="form-control" name="cpf" id="cpf">
+							</div>
+						</div>
 
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Email</label>
-                                <input type="email" class="form-control" name="email" id="email" required>
-                            </div>
-                        </div>
-                    </div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>Email</label>
+								<input type="email" class="form-control" name="email" id="email" required>
+							</div>
+						</div>
+					</div>
+
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>Data de Nascimento</label>
+								<input type="text" class="form-control" name="nascimento" id="nascimento" required>
+							</div>
+						</div>
+					</div>
 
                     <div class="col-md-12">
                         <div class="form-group">
@@ -89,10 +101,27 @@ if (@$_SESSION['nivel'] != 'Administrador' and @$_SESSION['nivel'] != 'Secretari
                     </div>
                   
 
-                    <div class="col-md-6 d-flex align-items-center" style="margin-top: 30px;">
-                        <div class="form-group">
-                            <input type="checkbox" name="professor" id="professor" class="mr-2">
-                            <label for="professor">Professor</label>
+                    <div class="row">
+                        <div class="col-md-6 d-flex align-items-center" style="margin-top: 30px;">
+                            <div class="form-group">
+                                <input type="checkbox" name="professor" id="professor" class="mr-2">
+                                <label for="professor">Professor</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6" id="tutor-atendente-wrapper" style="display:none;">
+                            <div class="form-group">
+                                <label>Tutor atendente padrao</label>
+                                <select class="form-control" name="tutor_id" id="tutor_id">
+                                    <option value="">Selecione</option>
+                                    <?php if (!empty($tutores)) : ?>
+                                        <?php foreach ($tutores as $tutor) : ?>
+                                            <option value="<?= htmlspecialchars($tutor['id']) ?>"><?= htmlspecialchars($tutor['nome']) ?></option>
+                                        <?php endforeach; ?>
+                                    <?php else : ?>
+                                        <option value="" disabled>Nenhum tutor cadastrado</option>
+                                    <?php endif; ?>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -224,12 +253,7 @@ if (@$_SESSION['nivel'] != 'Administrador' and @$_SESSION['nivel'] != 'Secretari
 <script type="text/javascript">
     $(document).ready(function() {
         $('#modalForm').on('shown.bs.modal', function() {
-            let isProfessorValue = document.getElementById('professor').textContent;
-            if (isProfessorValue === "true") {
-                $('#professor').prop('checked', true);
-            } else {
-                $('#professor').prop('checked', false);
-            }
+            toggleTutorAtendente();
         });
      
     });
@@ -286,14 +310,33 @@ function verificarCampos() {
     const email = document.getElementById('email').value.trim();
     const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     const cpfValido = validarCPF(cpf);
+    const professorMarcado = document.getElementById('professor').checked;
+    const tutorSelect = document.getElementById('tutor_id');
+    const tutorValido = !professorMarcado || (tutorSelect && tutorSelect.value.trim() !== '');
 
     // Habilita o botão somente se tudo estiver válido
-    if (todosPreenchidos && cpfValido && emailValido) {
+    if (todosPreenchidos && cpfValido && emailValido && tutorValido) {
         botao.removeAttribute('disabled');
         mensagem.innerHTML = '';
     } else {
         botao.setAttribute('disabled', true);
     }
+}
+
+function toggleTutorAtendente() {
+    const wrapper = document.getElementById('tutor-atendente-wrapper');
+    const professorMarcado = document.getElementById('professor').checked;
+    if (!wrapper) {
+        return;
+    }
+    wrapper.style.display = professorMarcado ? 'block' : 'none';
+    if (!professorMarcado) {
+        const tutorSelect = document.getElementById('tutor_id');
+        if (tutorSelect) {
+            tutorSelect.value = '';
+        }
+    }
+    verificarCampos();
 }
 
 // --- Eventos para atualizar o botão em tempo real ---
@@ -305,6 +348,16 @@ camposObrigatorios.forEach(id => {
         campo.addEventListener('blur', verificarCampos);
     }
 });
+
+const checkboxProfessor = document.getElementById('professor');
+if (checkboxProfessor) {
+    checkboxProfessor.addEventListener('change', toggleTutorAtendente);
+}
+
+const tutorSelect = document.getElementById('tutor_id');
+if (tutorSelect) {
+    tutorSelect.addEventListener('change', verificarCampos);
+}
 
 // --- Máscara e validação de CPF em tempo real ---
 const inputCPF = document.getElementById('cpf');

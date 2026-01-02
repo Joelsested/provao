@@ -382,7 +382,7 @@ HTML;
 
 
 
-		<big><a href="#"  onclick="editar ('{$id}', '{$nome}','{$cpf}','{$email}','{$rg}','{$orgao_expedidor}','{$expedicao}','{$telefone}','{$cep}','{$endereco}','{$cidade}','{$estado}','{$sexo}','{$nascimento}','{$mae}','{$pai}','{$naturalidade}','{$foto}','{$arquivo}')" title="Editar Dados"><i class="fa fa-edit text-primary"></i></a></big>
+		<big><a href="#"  onclick="editar ('{$id}', '{$nome}','{$cpf}','{$email}','{$rg}','{$orgao_expedidor}','{$expedicao}','{$telefone}','{$cep}','{$endereco}','{$cidade}','{$estado}','{$sexo}','{$nascimento}','{$mae}','{$pai}','{$naturalidade}','{$professor4}','{$foto}','{$arquivo}')" title="Editar Dados"><i class="fa fa-edit text-primary"></i></a></big>
 
 
 
@@ -512,7 +512,7 @@ HTML;
 
 
 
-	function editar(id, nome, cpf, email, rg, orgao_expedidor, expedicao, telefone, cep, endereco, cidade, estado, sexo, nascimento, mae, pai, naturalidade, foto,) {
+	function editar(id, nome, cpf, email, rg, orgao_expedidor, expedicao, telefone, cep, endereco, cidade, estado, sexo, nascimento, mae, pai, naturalidade, responsavel_id, foto,) {
 
 
 
@@ -548,6 +548,7 @@ HTML;
 		$('#pai').val(pai);
 
 		$('#naturalidade').val(naturalidade);
+		$('#responsavel_id').val(responsavel_id);
 
 		$('#foto').val('');
 
@@ -660,6 +661,7 @@ HTML;
 		$('#pai').val('');
 
 		$('#naturalidade').val('');
+		$('#responsavel_id').val('');
 
 		$('#foto').val('');
 

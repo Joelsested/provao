@@ -41,7 +41,7 @@ if ($aluno && !empty($aluno['usuario'])) {
     $responsavelAtual = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 }
 
-$allowedLevels = ['Vendedor', 'Tutor', 'Secretario', 'Tesoureiro', 'Professor'];
+$allowedLevels = ['Vendedor', 'Tutor', 'Secretario', 'Tesoureiro'];
 $placeholders = implode(', ', array_fill(0, count($allowedLevels), '?'));
 $stmt = $pdo->prepare("SELECT id, nome, nivel FROM usuarios WHERE nivel IN ($placeholders) AND ativo = 'Sim' AND nome <> 'Professor_padrao' ORDER BY nome");
 $stmt->execute($allowedLevels);

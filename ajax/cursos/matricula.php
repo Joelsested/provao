@@ -1,13 +1,32 @@
 ﻿<?php 
 require_once('../../sistema/conexao.php');
 
-function responsavelAtivo($id, array $allowedLevels, string $placeholders)
+function buscarResponsavel(PDO $pdo, int $id, array $allowedLevels, string $placeholders): ?array
 {
-	global $pdo;
-	$stmt = $pdo->prepare("SELECT id FROM usuarios WHERE id = ? AND nivel IN ($placeholders) AND ativo = 'Sim' LIMIT 1");
+	$stmt = $pdo->prepare("SELECT id, nivel, id_pessoa FROM usuarios WHERE id = ? AND nivel IN ($placeholders) AND ativo = 'Sim' LIMIT 1");
 	$params = array_merge([$id], $allowedLevels);
 	$stmt->execute($params);
-	return (bool) $stmt->fetchColumn();
+	$row = $stmt->fetch(PDO::FETCH_ASSOC);
+	return $row ?: null;
+}
+
+function validarResponsavel(PDO $pdo, int $id, array $allowedLevels, string $placeholders): ?int
+{
+	$responsavel = buscarResponsavel($pdo, $id, $allowedLevels, $placeholders);
+	if (!$responsavel) {
+		return null;
+	}
+
+	if ($responsavel['nivel'] === 'Vendedor') {
+		$stmtVend = $pdo->prepare("SELECT professor, tutor_id FROM vendedores WHERE id = :id");
+		$stmtVend->execute([':id' => $responsavel['id_pessoa']]);
+		$vend = $stmtVend->fetch(PDO::FETCH_ASSOC);
+		if ($vend && (int) $vend['professor'] === 1 && empty($vend['tutor_id'])) {
+			return null;
+		}
+	}
+
+	return (int) $responsavel['id'];
 }
 
 @session_start();
@@ -18,7 +37,7 @@ if (!$id_aluno) {
 	exit();
 }
 
-$allowedLevels = ['Vendedor', 'Tutor', 'Secretario', 'Tesoureiro', 'Professor'];
+$allowedLevels = ['Vendedor', 'Tutor', 'Secretario', 'Tesoureiro'];
 $levelPlaceholders = implode(',', array_fill(0, count($allowedLevels), '?'));
 
 $stmt = $pdo->prepare("SELECT id_pessoa FROM usuarios WHERE id = :id AND nivel = 'Aluno' LIMIT 1");
@@ -28,8 +47,8 @@ $alunoPessoaId = $row['id_pessoa'] ?? null;
 
 $responsavelId = filter_input(INPUT_POST, 'responsavel', FILTER_VALIDATE_INT);
 $responsavelValido = null;
-if ($responsavelId && responsavelAtivo($responsavelId, $allowedLevels, $levelPlaceholders)) {
-	$responsavelValido = $responsavelId;
+if ($responsavelId) {
+	$responsavelValido = validarResponsavel($pdo, $responsavelId, $allowedLevels, $levelPlaceholders);
 }
 
 $currentResponsavel = null;
@@ -38,9 +57,14 @@ if ($alunoPessoaId) {
 	$stmt->execute(['id' => $alunoPessoaId]);
 	$aluno = $stmt->fetch(PDO::FETCH_ASSOC);
 	$currentResponsavel = $aluno['usuario'] ?? null;
-	if (!$responsavelValido && $currentResponsavel && responsavelAtivo($currentResponsavel, $allowedLevels, $levelPlaceholders)) {
-		$responsavelValido = $currentResponsavel;
+	if (!$responsavelValido && $currentResponsavel) {
+		$responsavelValido = validarResponsavel($pdo, (int) $currentResponsavel, $allowedLevels, $levelPlaceholders);
 	}
+}
+
+if (!$responsavelValido && $alunoPessoaId) {
+	echo 'Selecione um responsavel valido!';
+	exit();
 }
 
 if ($responsavelValido && $alunoPessoaId) {

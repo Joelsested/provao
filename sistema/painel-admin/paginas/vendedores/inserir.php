@@ -1,24 +1,42 @@
 <?php
 require_once("../../../conexao.php");
-require_once(__DIR__ . "/../../../config/upload.php");
+require_once(__DIR__ . "/../../../../config/upload.php");
+require_once(__DIR__ . "/../../../../helpers.php");
 $tabela = 'vendedores';
 
 $nome = $_POST['nome'];
 $email = $_POST['email'];
 $telefone = $_POST['telefone'];
 $cpf = $_POST['cpf'];
+$nascimento = $_POST['nascimento'] ?? '';
 $id = $_POST['id'];
 $comissao = $_POST['comissao'] ?? null;
 // $professor = $_POST['professor'] ?? 0;
 $wallet_id = $_POST['wallet_id'];
+$tutor_id = isset($_POST['tutor_id']) && $_POST['tutor_id'] !== '' ? (int) $_POST['tutor_id'] : null;
 
-$senha = '123456';
+$senha = birthDigits($nascimento);
+if (trim($cpf) === '' || trim($nascimento) === '') {
+    echo 'CPF e data de nascimento são obrigatórios!';
+    exit();
+}
+if ($senha === '') {
+    echo 'Data de nascimento inválida!';
+    exit();
+}
 $senha_crip = md5($senha);
 
 if (isset($_POST['professor'])) {
     $professor = 1;
 } else {
     $professor = 0;
+}
+if ($professor && empty($tutor_id)) {
+    echo 'Selecione o tutor atendente.';
+    exit();
+}
+if (!$professor) {
+    $tutor_id = null;
 }
 
 //validar email duplicado
@@ -88,18 +106,32 @@ if ($id == "") {
         }
     }
 
-    $query = $pdo->prepare("INSERT INTO $tabela SET nome = :nome, email = :email, cpf = :cpf, telefone = :telefone, comissao = :comissao, professor = :professor, foto = :foto, ativo = 'Sim', data = curDate()");
+    $vendedor_id = nextTableId($pdo, $tabela);
+    if ($vendedor_id) {
+        $query = $pdo->prepare("INSERT INTO $tabela SET id = :id, nome = :nome, email = :email, cpf = :cpf, nascimento = :nascimento, telefone = :telefone, comissao = :comissao, professor = :professor, tutor_id = :tutor_id, foto = :foto, ativo = 'Sim', data = curDate()");
+        $query->bindValue(":id", $vendedor_id, PDO::PARAM_INT);
+    } else {
+        $query = $pdo->prepare("INSERT INTO $tabela SET nome = :nome, email = :email, cpf = :cpf, nascimento = :nascimento, telefone = :telefone, comissao = :comissao, professor = :professor, tutor_id = :tutor_id, foto = :foto, ativo = 'Sim', data = curDate()");
+    }
     $query->bindValue(":nome", "$nome");
     $query->bindValue(":email", "$email");
     $query->bindValue(":telefone", "$telefone");
     $query->bindValue(":comissao", $comissao);
     $query->bindValue(":professor", $professor);
+    $query->bindValue(":tutor_id", $tutor_id, $tutor_id === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
     $query->bindValue(":cpf", "$cpf");
+    $query->bindValue(":nascimento", "$nascimento");
     $query->bindValue(":foto", "$foto");
     $query->execute();
-    $ult_id = $pdo->lastInsertId();
+    $ult_id = $vendedor_id ?: $pdo->lastInsertId();
 
-    $query = $pdo->prepare("INSERT INTO usuarios SET wallet_id = :wallet_id, nome = :nome, usuario = :email, senha = '', cpf = :cpf, senha_crip = :senha_crip, nivel = 'Vendedor', foto = :foto, id_pessoa = :id_pessoa, ativo = 'Sim', data = curDate()");
+    $usuario_id = nextTableId($pdo, 'usuarios');
+    if ($usuario_id) {
+        $query = $pdo->prepare("INSERT INTO usuarios SET id = :id, wallet_id = :wallet_id, nome = :nome, usuario = :email, senha = '', cpf = :cpf, senha_crip = :senha_crip, nivel = 'Vendedor', foto = :foto, id_pessoa = :id_pessoa, ativo = 'Sim', data = curDate()");
+        $query->bindValue(":id", $usuario_id, PDO::PARAM_INT);
+    } else {
+        $query = $pdo->prepare("INSERT INTO usuarios SET wallet_id = :wallet_id, nome = :nome, usuario = :email, senha = '', cpf = :cpf, senha_crip = :senha_crip, nivel = 'Vendedor', foto = :foto, id_pessoa = :id_pessoa, ativo = 'Sim', data = curDate()");
+    }
 
     $query->bindValue(":nome", "$nome");
     $query->bindValue(":email", "$email");
@@ -123,13 +155,15 @@ if ($id == "") {
             $comissao = 0; // Definir um valor padrão caso nada seja encontrado
         }
     }
-    $query = $pdo->prepare("UPDATE $tabela SET nome = :nome, email = :email, cpf = :cpf, telefone = :telefone, comissao = :comissao, professor = :professor, foto = :foto WHERE id = :id");
+    $query = $pdo->prepare("UPDATE $tabela SET nome = :nome, email = :email, cpf = :cpf, nascimento = :nascimento, telefone = :telefone, comissao = :comissao, professor = :professor, tutor_id = :tutor_id, foto = :foto WHERE id = :id");
     $query->bindValue(":nome", "$nome");
     $query->bindValue(":email", "$email");
     $query->bindValue(":telefone", "$telefone");
     $query->bindValue(":comissao", $comissao);
     $query->bindValue(":professor", $professor);
+    $query->bindValue(":tutor_id", $tutor_id, $tutor_id === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
     $query->bindValue(":cpf", "$cpf");
+    $query->bindValue(":nascimento", "$nascimento");
     $query->bindValue(":foto", "$foto");
     $query->bindValue(":id", "$id");
     $query->execute();
@@ -148,3 +182,4 @@ if ($id == "") {
 
 
 echo 'Salvo com Sucesso';
+

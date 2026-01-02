@@ -71,6 +71,17 @@ $data_inicio_mes = $ano_atual."-".$mes_atual."-01";
 		</div>
 	</div>
 
+
+<div class="col-md-3" style="margin-top:5px;" align="right">
+	<form method="post" action="../rel/comissoes_usuario_class.php" target="_blank" id="form-relatorio-comissoes">
+		<input type="hidden" name="dataInicial" id="rel-data-inicial">
+		<input type="hidden" name="dataFinal" id="rel-data-final">
+		<input type="hidden" name="pago" id="rel-pago">
+		<input type="hidden" name="usuario_id" id="rel-usuario-id" value="<?php echo (int) $_SESSION['id'] ?>">
+		<button type="button" class="btn btn-primary btn-sm" onclick="imprimirRelatorioComissoes()">Imprimir PDF</button>
+	</form>
+</div>
+
 </div>
 
 <hr>
@@ -201,4 +212,13 @@ $data_inicio_mes = $ano_atual."-".$mes_atual."-01";
 				
 		});
 });
+</script>
+
+<script type="text/javascript">
+	function imprimirRelatorioComissoes() {
+		$('#rel-data-inicial').val($('#data-inicial-caixa').val());
+		$('#rel-data-final').val($('#data-final-caixa').val());
+		$('#rel-pago').val($('#pago').val());
+		document.getElementById('form-relatorio-comissoes').submit();
+	}
 </script>

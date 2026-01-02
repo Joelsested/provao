@@ -10,7 +10,7 @@ $query = $pdo->prepare("SELECT * FROM $tabela ORDER BY id desc");
 $query->execute();
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 
-$query = $pdo->query("SELECT v.*, u.wallet_id 
+$query = $pdo->query("SELECT v.*, u.wallet_id, u.id AS usuario_id 
       FROM $tabela v 
       LEFT JOIN usuarios u ON v.id = u.id_pessoa 
       WHERE u.nivel = 'Tutor'
@@ -39,6 +39,7 @@ HTML;
 		$id = $res[$i]['id'];
 		$nome = $res[$i]['nome'];
 		$cpf = $res[$i]['cpf'];
+		$nascimento = $res[$i]['nascimento'];
 		$email = $res[$i]['email'];
 		$telefone = $res[$i]['telefone'];
 		$comissao = $res[$i]['comissao'];
@@ -46,6 +47,9 @@ HTML;
 		$data = $res[$i]['data'];
 		$ativo = $res[$i]['ativo'];
 		$wallet_id = $res[$i]['wallet_id'] ?? 'Não disponível';
+		$usuario_id = $res[$i]['usuario_id'] ?? '';
+		$link_comissoes = $usuario_id ? "index.php?pagina=comissoes_usuario&usuario_id={$usuario_id}" : '#';
+		$classe_comissoes = $usuario_id ? '' : 'disabled';
 
 		$dataF = implode('/', array_reverse(explode('-', $data)));
 
@@ -83,9 +87,11 @@ HTML;
 		<td class="esc">{$dataF}</td>
 		
 		<td>
-		<big><a href="#" onclick="editar('{$id}', '{$nome}', '{$cpf}','{$email}','{$telefone}', '{$wallet_id}', '{$comissao}', '{$foto}')" title="Editar Dados"><i class="fa fa-edit text-primary"></i></a></big>
+		<big><a href="#" onclick="editar('{$id}', '{$nome}', '{$cpf}', '{$nascimento}', '{$email}','{$telefone}', '{$wallet_id}', '{$comissao}', '{$foto}')" title="Editar Dados"><i class="fa fa-edit text-primary"></i></a></big>
 
-		<big><a href="#" onclick="mostrar('{$nome}', '{$cpf}','{$email}','{$telefone}', '{$wallet_id}', '{$comissao}', '{$foto}', '{$dataF}', '{$ativo}')" title="Ver Dados"><i class="fa fa-info-circle text-secondary"></i></a></big>
+		<big><a href="#" onclick="mostrar('{$nome}', '{$cpf}', '{$nascimento}', '{$email}','{$telefone}', '{$wallet_id}', '{$comissao}', '{$foto}', '{$dataF}', '{$ativo}')" title="Ver Dados"><i class="fa fa-info-circle text-secondary"></i></a></big>
+
+		<big><a href="{$link_comissoes}" title="Comissoes" class="{$classe_comissoes}"><i class="fa fa-dollar-sign text-success"></i></a></big>
 
 
 
@@ -139,13 +145,14 @@ HTML;
 		$('#tabela_filter label input').focus();
 	});
 
-	function editar(id, nome, cpf, email, telefone, wallet_id, comissao, foto) {
+	function editar(id, nome, cpf, nascimento, email, telefone, wallet_id, comissao, foto) {
 		$('#wallet_id').val(wallet_id);
 		$('#comissao').val(comissao);
 		$('#id').val(id);
 		$('#nome').val(nome);
 		$('#telefone').val(telefone);
 		$('#cpf').val(cpf);
+		$('#nascimento').val(nascimento);
 		$('#email').val(email);
 
 		$('#foto').val('');
@@ -157,12 +164,13 @@ HTML;
 	}
 
 
-	function mostrar(nome, cpf, email, telefone, wallet_id, comissao, foto, data, cartao, ativo) {
+	function mostrar(nome, cpf, nascimento, email, telefone, wallet_id, comissao, foto, data, cartao, ativo) {
 		$('#walletId').val(wallet_id);
 		$('#comissao_mostrar').text(comissao);
 		$('#nome_mostrar').text(nome);
 		$('#telefone_mostrar').text(telefone);
 		$('#cpf_mostrar').text(cpf);
+		$('#nascimento_mostrar').text(nascimento);
 		$('#email_mostrar').text(email);
 		$('#data_mostrar').text(data);
 		$('#ativo_mostrar').text(ativo);
@@ -180,6 +188,7 @@ HTML;
 		$('#nome').val('');
 		$('#telefone').val('');
 		$('#cpf').val('');
+		$('#nascimento').val('');
 		$('#email').val('');
 		$('#foto').val('');
 		$('#target').attr('src', 'img/perfil/sem-perfil.jpg');

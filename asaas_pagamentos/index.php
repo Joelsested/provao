@@ -408,91 +408,35 @@ if ($tabela_comissao) {
 
 //OBTER COMISSAO DO TUTOR
 
-$consulta_comissao_tutor = $pdo->query("SELECT * FROM tutores");
-
-$resposta_consulta_comissao_tutor = $consulta_comissao_tutor->fetchAll(PDO::FETCH_ASSOC);
-
-
-
-
-
-
-
-$consulta_vendedor_e_professor = $pdo->prepare("SELECT professor FROM vendedores where id = :id");
-$consulta_vendedor_e_professor->execute([':id' => $vendedor_id]);
-
-$resposta_consulta_vendedor_e_professor = $consulta_vendedor_e_professor->fetchAll(PDO::FETCH_ASSOC);
-
-
-
-$valor_comissao_vendedor = $resposta_comissao_nivel_vendedor[0]['comissao'];
-
-$valor_comissao_vendedor = (int) $resposta_comissao_nivel_vendedor[0]['comissao'];
-
-
-
-// $consulta_vendedor_professor = $pdo->query("SELECT comissao_professor FROM config");
-
 $consulta_vendedor_professor = $pdo->query("SELECT comissao_tutor FROM config");
-
 $resposta_consulta_vendedor_professor = $consulta_vendedor_professor->fetch(PDO::FETCH_ASSOC)['comissao_tutor'];
 
-
-
-
-
-
-
-$vendedor_e_professor = $resposta_consulta_vendedor_e_professor[0]['professor'];
-
-
-
-
-
-$tutor_usuario = $resposta_consulta_comissao_tutor[0]['email'];
-
-$comissao_tutor = $resposta_consulta_comissao_tutor[0]['comissao'];
-
-
-
-$consulta_tutor = $pdo->prepare("SELECT * FROM usuarios where usuario = :usuario");
-$consulta_tutor->execute([':usuario' => $tutor_usuario]);
-
-$resposta_consulta_tutor = $consulta_tutor->fetchAll(PDO::FETCH_ASSOC);
-
-
-
-$wallet_id_tutor = $resposta_consulta_tutor[0]['wallet_id'];
-
-
-
-
-
-if($nivel_responsavel == 'Tutor') {
-
-    // $valor_comissao_vendedor = $valor_comissao_vendedor + $resposta_consulta_vendedor_professor;
-
-    array_push($fixos_wallet_ids, ['walletId' => $wallet_id_tutor, 'percentualValue' => $comissao_vendedor]);
-
+$vendedor_e_professor = 0;
+$tutor_atendente_id = null;
+if ($nivel_responsavel == 'Vendedor' && !empty($vendedor_id)) {
+    $consulta_vendedor_e_professor = $pdo->prepare("SELECT professor, tutor_id FROM vendedores where id = :id");
+    $consulta_vendedor_e_professor->execute([':id' => $vendedor_id]);
+    $resposta_consulta_vendedor_e_professor = $consulta_vendedor_e_professor->fetch(PDO::FETCH_ASSOC) ?: [];
+    $vendedor_e_professor = $resposta_consulta_vendedor_e_professor['professor'] ?? 0;
+    $tutor_atendente_id = $resposta_consulta_vendedor_e_professor['tutor_id'] ?? null;
 }
 
-
-
-if($vendedor_e_professor) {
-
-    // $valor_comissao_vendedor = $valor_comissao_vendedor + $resposta_consulta_vendedor_professor;
-
-    array_push($fixos_wallet_ids, ['walletId' => $wallet_id_tutor, 'percentualValue' => $resposta_consulta_vendedor_professor]);
-
+$tutor_wallet_id = null;
+if (!empty($tutor_atendente_id)) {
+    $consulta_tutor = $pdo->prepare("SELECT wallet_id FROM usuarios WHERE id_pessoa = :id_pessoa AND nivel = 'Tutor' LIMIT 1");
+    $consulta_tutor->execute([':id_pessoa' => $tutor_atendente_id]);
+    $tutor_wallet_id = $consulta_tutor->fetchColumn();
 }
 
+if ($nivel_responsavel == 'Tutor') {
+    if (!empty($wallet_id_nivel_responsavel_pelo_cadastro)) {
+        array_push($fixos_wallet_ids, ['walletId' => $wallet_id_nivel_responsavel_pelo_cadastro, 'percentualValue' => $comissao_vendedor]);
+    }
+}
 
-
-
-
-
-
-
+if ($vendedor_e_professor && $tutor_wallet_id) {
+    array_push($fixos_wallet_ids, ['walletId' => $tutor_wallet_id, 'percentualValue' => $resposta_consulta_vendedor_professor]);
+}
 
 //VERIFICA A PORCENTAGEM DE COMISSAO DO NIVEL RESPONSAVEL PELO CADASTRO DO ALUNO
 

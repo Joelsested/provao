@@ -10,7 +10,7 @@ $query = $pdo->prepare("SELECT * FROM $tabela ORDER BY id desc");
 $query->execute();
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 
-$query = $pdo->query("SELECT v.*, u.wallet_id 
+$query = $pdo->query("SELECT v.*, u.wallet_id, u.id AS usuario_id 
       FROM $tabela v 
       LEFT JOIN usuarios u ON v.id = u.id_pessoa 
       WHERE u.nivel = 'Vendedor'
@@ -43,14 +43,19 @@ HTML;
         $id = $res[$i]['id'];
         $nome = $res[$i]['nome'];
         $cpf = $res[$i]['cpf'];
+        $nascimento = $res[$i]['nascimento'];
         $email = $res[$i]['email'];
         $telefone = $res[$i]['telefone'];
         $comissao = $res[$i]['comissao'];
         $professor = $res[$i]['professor'];
+        $tutor_id = $res[$i]['tutor_id'] ?? '';
         $foto = $res[$i]['foto'];
         $data = $res[$i]['data'];
         $ativo = $res[$i]['ativo'];
         $wallet_id = $res[$i]['wallet_id'] ?? 'Não disponível';
+        $usuario_id = $res[$i]['usuario_id'] ?? '';
+        $link_comissoes = $usuario_id ? "index.php?pagina=comissoes_usuario&usuario_id={$usuario_id}" : '#';
+        $classe_comissoes = $usuario_id ? '' : 'disabled';
 
         $resProfessor = $professor ? 'Sim' : 'Não';
 
@@ -108,7 +113,7 @@ HTML;
 
 		   <!-- View Data -->
 		   <div class="col-md-4 text-center mb-3">
-              <a href="#" onclick="mostrar('{$nome}', '{$cpf}','{$email}','{$telefone}', '{$wallet_id}', '{$comissao}', '{$professor}', '{$foto}', '{$dataF}', '{$ativo}')" class="btn btn-default btn-block" data-dismiss="modal">
+              <a href="#" onclick="mostrar('{$nome}', '{$cpf}', '{$nascimento}', '{$email}','{$telefone}', '{$wallet_id}', '{$comissao}', '{$professor}', '{$foto}', '{$dataF}', '{$ativo}')" class="btn btn-default btn-block" data-dismiss="modal">
                 <i class="fa fa-info-circle text-secondary"></i><br>
                 Visualizar
               </a>
@@ -116,7 +121,7 @@ HTML;
 
 		   <!-- Edit Data -->
 		   <div class="col-md-4 text-center mb-3">
-              <a href="#" onclick="editar('{$id}', '{$nome}', '{$cpf}','{$email}','{$telefone}', '{$wallet_id}', '{$comissao}', '{$professor}', '{$foto}')" class="btn btn-default btn-block" data-dismiss="modal">
+              <a href="#" onclick="editar('{$id}', '{$nome}', '{$cpf}', '{$nascimento}', '{$email}','{$telefone}', '{$wallet_id}', '{$comissao}', '{$professor}', '{$tutor_id}', '{$foto}')" class="btn btn-default btn-block" data-dismiss="modal">
                 <i class="fa fa-edit text-primary"></i><br>
                 Editar
               </a>
@@ -127,6 +132,14 @@ HTML;
               <a href="index.php?pagina=alunos_vendedor&vendedor={$email}" class="btn btn-default btn-block">
                 <i class="fa fa-graduation-cap"></i><br>
                 Ver Alunos
+              </a>
+            </div>
+
+            <!-- Comissoes -->
+        <div class=" col-md-4 text-center mb-3">
+              <a href="{$link_comissoes}" class="btn btn-default btn-block {$classe_comissoes}">
+                <i class="fa fa-dollar-sign"></i><br>
+                Comissoes
               </a>
             </div>
 
@@ -193,26 +206,31 @@ HTML;
         $('#tabela_filter label input').focus();
     });
 
-    function editar(id, nome, cpf, email, telefone, wallet_id, comissao, professor, foto) {
+    function editar(id, nome, cpf, nascimento, email, telefone, wallet_id, comissao, professor, tutor_id, foto) {
 
         $('#wallet_id').val(wallet_id);
         $('#comissao').val(comissao);
-        $('#professor').text(professor == "1" ? true : false);
+        $('#professor').prop('checked', professor == "1");
+        $('#tutor_id').val(tutor_id);
         $('#id').val(id);
         $('#nome').val(nome);
         $('#telefone').val(telefone);
         $('#cpf').val(cpf);
+        $('#nascimento').val(nascimento);
         $('#email').val(email);
 
         $('#foto').val('');
         $('#target').attr('src', 'img/perfil/' + foto);
 
         $('#tituloModal').text('Editar Registro');
+        if (typeof toggleTutorAtendente === 'function') {
+            toggleTutorAtendente();
+        }
         $('#modalForm').modal('show');
         $('#mensagem').text('');
     }
 
-    function mostrar(nome, cpf, email, telefone, wallet_id, comissao, professor, foto, data, ativo) {
+    function mostrar(nome, cpf, nascimento, email, telefone, wallet_id, comissao, professor, foto, data, ativo) {
     // Animações e estilos herdados do design original
     const animationStyles = `
     <style>
@@ -361,6 +379,10 @@ HTML;
                         <span class="info-value">${cpf}</span>
                     </div>
                     <div class="info-item">
+                        <span class="info-label">Nascimento</span>
+                        <span class="info-value">${nascimento}</span>
+                    </div>
+                    <div class="info-item">
                         <span class="info-label">Telefone</span>
                         <span class="info-value">${telefone}</span>
                     </div>
@@ -421,14 +443,19 @@ HTML;
     function limparCampos() {
         $('#id').val('');
         $('#wallet_id').val('');
-        $('#professor').val('');
+        $('#professor').prop('checked', false);
         $('#professor_mostrar').text('');
+        $('#tutor_id').val('');
         $('#comissao').val('');
         $('#nome').val('');
         $('#telefone').val('');
         $('#cpf').val('');
+        $('#nascimento').val('');
         $('#email').val('');
         $('#foto').val('');
         $('#target').attr('src', 'img/perfil/sem-perfil.jpg');
+        if (typeof toggleTutorAtendente === 'function') {
+            toggleTutorAtendente();
+        }
     }
 </script>

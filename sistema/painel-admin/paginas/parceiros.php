@@ -70,6 +70,15 @@ if (@$_SESSION['nivel'] != 'Administrador' and @$_SESSION['nivel'] != 'Secretari
 						</div>
 					</div>
 
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>Data de Nascimento</label>
+								<input type="text" class="form-control" name="nascimento" id="nascimento" required>
+							</div>
+						</div>
+					</div>
+
 					<div class="col-md-12">
 						<div class="form-group">
 							<label>Indentificador Banco</label>
@@ -152,6 +161,13 @@ if (@$_SESSION['nivel'] != 'Administrador' and @$_SESSION['nivel'] != 'Secretari
 					<div class="col-md-6">
 						<span><b>Telefone: </b></span>
 						<span id="telefone_mostrar"></span>
+					</div>
+				</div>
+
+				<div class="row" style="border-bottom: 1px solid #cac7c7;">
+					<div class="col-md-6">
+						<span><b>Data de Nascimento: </b></span>
+						<span id="nascimento_mostrar"></span>
 					</div>
 				</div>
 

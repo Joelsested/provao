@@ -37,6 +37,7 @@ for($i=0; $i < $total_reg; $i++){
 	$id = $res[$i]['id'];
 	$nome = $res[$i]['nome'];
 	$cpf = $res[$i]['cpf'];
+	$nascimento = $res[$i]['nascimento'];
 	$email = $res[$i]['email'];
 	$telefone = $res[$i]['telefone'];
 	$foto = $res[$i]['foto'];
@@ -74,9 +75,9 @@ echo <<<HTML
 		<td class="esc">{$dataF}</td>
 		
 		<td>
-		<big><a href="#" onclick="editar('{$id}', '{$nome}', '{$cpf}','{$email}','{$telefone}', '{$wallet_id}', '{$comissao}', '{$foto}')" title="Editar Dados"><i class="fa fa-edit text-primary"></i></a></big>
+		<big><a href="#" onclick="editar('{$id}', '{$nome}', '{$cpf}', '{$nascimento}', '{$email}','{$telefone}', '{$wallet_id}', '{$comissao}', '{$foto}')" title="Editar Dados"><i class="fa fa-edit text-primary"></i></a></big>
 
-		<big><a href="#" onclick="mostrar('{$nome}', '{$cpf}','{$email}','{$telefone}', '{$wallet_id}', '{$comissao}', '{$foto}', '{$dataF}', '{$ativo}')" title="Ver Dados"><i class="fa fa-info-circle text-secondary"></i></a></big>
+		<big><a href="#" onclick="mostrar('{$nome}', '{$cpf}', '{$nascimento}', '{$email}','{$telefone}', '{$wallet_id}', '{$comissao}', '{$foto}', '{$dataF}', '{$ativo}')" title="Ver Dados"><i class="fa fa-info-circle text-secondary"></i></a></big>
 
 
 
@@ -130,7 +131,7 @@ HTML;
 		$('#tabela_filter label input').focus();
 	} );
 	
-	function editar(id, nome, cpf, email, telefone, wallet_id, comissao, foto){
+	function editar(id, nome, cpf, nascimento, email, telefone, wallet_id, comissao, foto){
 		$('#wallet_id').val(wallet_id);
 		$('#comissao').val(comissao);
 
@@ -138,6 +139,7 @@ HTML;
 		$('#nome').val(nome);
 		$('#telefone').val(telefone);
 		$('#cpf').val(cpf);
+		$('#nascimento').val(nascimento);
 		$('#email').val(email);	
 		
 		$('#foto').val('');
@@ -149,13 +151,14 @@ HTML;
 	}
 
 
-	function mostrar(nome, cpf, email, telefone, wallet_id, comissao, foto, data, cartao, ativo){
+	function mostrar(nome, cpf, nascimento, email, telefone, wallet_id, comissao, foto, data, cartao, ativo){
 		$('#walletId').text(wallet_id);
 		$('#comissao_mostrar').text(comissao);
 		
 		$('#nome_mostrar').text(nome);
 		$('#telefone_mostrar').text(telefone);
 		$('#cpf_mostrar').text(cpf);
+		$('#nascimento_mostrar').text(nascimento);
 		$('#email_mostrar').text(email);		
 		$('#data_mostrar').text(data);
 		$('#ativo_mostrar').text(ativo);		
@@ -173,6 +176,7 @@ HTML;
 		$('#nome').val('');
 		$('#telefone').val('');
 		$('#cpf').val('');
+		$('#nascimento').val('');
 		$('#email').val('');		
 		$('#foto').val('');
 		$('#target').attr('src','img/perfil/sem-perfil.jpg');		

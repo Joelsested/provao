@@ -9,6 +9,7 @@ $tabela = 'alunos';
 
 $nome = $_POST['nome'];
 $cpf = $_POST['cpf'];
+$cpfDigits = digitsOnly($cpf);
 $email = $_POST['email'];
 $rg = $_POST['rg'];
 $orgao_expedidor = $_POST['orgao_expedidor'];
@@ -24,10 +25,52 @@ $mae = $_POST['mae'];
 $pai = $_POST['pai'];
 $naturalidade = $_POST['naturalidade'];
 $id = $_POST['id'];
+$responsavelId = filter_input(INPUT_POST, 'responsavel_id', FILTER_VALIDATE_INT);
+$allowedLevels = ['Vendedor', 'Tutor', 'Secretario', 'Tesoureiro'];
+$userNivel = $_SESSION['nivel'] ?? '';
+$currentResponsavelId = null;
+if ($id !== "") {
+    $stmtAtual = $pdo->prepare("SELECT usuario FROM $tabela WHERE id = :id");
+    $stmtAtual->execute([':id' => $id]);
+    $currentResponsavelId = (int) ($stmtAtual->fetchColumn() ?: 0);
+}
 
 if (trim($cpf) === '' || trim($nascimento) === '') {
     echo 'CPF e data de nascimento são obrigatórios!';
     exit();
+}
+
+if ($cpfDigits === '') {
+    echo 'CPF invalido!';
+    exit();
+}
+if ($id === "" && !$responsavelId && in_array($userNivel, $allowedLevels, true)) {
+    $responsavelId = (int) $id_user;
+}
+if (!$responsavelId && $currentResponsavelId) {
+    $responsavelId = $currentResponsavelId;
+}
+if (!$responsavelId) {
+    echo 'Selecione o responsavel.';
+    exit();
+}
+
+$placeholders = implode(',', array_fill(0, count($allowedLevels), '?'));
+$stmtResp = $pdo->prepare("SELECT id, nivel, id_pessoa FROM usuarios WHERE id = ? AND nivel IN ($placeholders) AND ativo = 'Sim' LIMIT 1");
+$stmtResp->execute(array_merge([$responsavelId], $allowedLevels));
+$responsavel = $stmtResp->fetch(PDO::FETCH_ASSOC);
+if (!$responsavel) {
+    echo 'Responsavel invalido.';
+    exit();
+}
+if ($responsavel['nivel'] === 'Vendedor') {
+    $stmtVend = $pdo->prepare("SELECT professor, tutor_id FROM vendedores WHERE id = :id");
+    $stmtVend->execute([':id' => $responsavel['id_pessoa']]);
+    $vend = $stmtVend->fetch(PDO::FETCH_ASSOC);
+    if ($vend && (int) $vend['professor'] === 1 && empty($vend['tutor_id'])) {
+        echo 'Vendedor sem tutor vinculado.';
+        exit();
+    }
 }
 
 $senha = birthDigits($nascimento);
@@ -49,8 +92,9 @@ if($total_reg > 0 and $res[0]['id'] != $id){
 
 
 //validar cpf duplicado
-$query = $pdo->prepare("SELECT * FROM $tabela where cpf = :cpf");
-$query->execute([':cpf' => $cpf]);
+$cpfColumn = cleanCpfColumn('cpf');
+$query = $pdo->prepare("SELECT * FROM $tabela where $cpfColumn = :cpf_digits");
+$query->execute([':cpf_digits' => $cpfDigits]);
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 $total_reg = @count($res);
 if($total_reg > 0 and $res[0]['id'] != $id){
@@ -88,10 +132,8 @@ if (empty($upload['skipped'])) {
 
 
 if($id == ""){
-
-	$query = $pdo->prepare("INSERT INTO $tabela SET nome = :nome, cpf = :cpf, email = :email, rg = :rg, orgao_expedidor = :orgao_expedidor, expedicao = :expedicao, telefone = :telefone, cep = :cep, endereco = :endereco, cidade = :cidade, estado = :estado, sexo = :sexo, nascimento = :nascimento, mae = :mae, pai = :pai, naturalidade = :naturalidade, foto = :foto, ativo = 'Sim', usuario = :usuario, data = curDate()");
-
-	$query->execute([
+	$aluno_id = nextTableId($pdo, $tabela);
+	$alunoParams = [
 		':nome' => $nome,
 		':cpf' => $cpf,
 		':email' => $email,
@@ -109,24 +151,39 @@ if($id == ""){
 		':pai' => $pai,
 		':naturalidade' => $naturalidade,
 		':foto' => $foto,
-		':usuario' => $id_user,
-	]);
-$ult_id = $pdo->lastInsertId();
+		':usuario' => $responsavelId,
+	];
+	if ($aluno_id) {
+		$query = $pdo->prepare("INSERT INTO $tabela SET id = :id, nome = :nome, cpf = :cpf, email = :email, rg = :rg, orgao_expedidor = :orgao_expedidor, expedicao = :expedicao, telefone = :telefone, cep = :cep, endereco = :endereco, cidade = :cidade, estado = :estado, sexo = :sexo, nascimento = :nascimento, mae = :mae, pai = :pai, naturalidade = :naturalidade, foto = :foto, ativo = 'Sim', usuario = :usuario, data = curDate()");
+		$alunoParams[':id'] = $aluno_id;
+	} else {
+		$query = $pdo->prepare("INSERT INTO $tabela SET nome = :nome, cpf = :cpf, email = :email, rg = :rg, orgao_expedidor = :orgao_expedidor, expedicao = :expedicao, telefone = :telefone, cep = :cep, endereco = :endereco, cidade = :cidade, estado = :estado, sexo = :sexo, nascimento = :nascimento, mae = :mae, pai = :pai, naturalidade = :naturalidade, foto = :foto, ativo = 'Sim', usuario = :usuario, data = curDate()");
+	}
 
-$query = $pdo->prepare("INSERT INTO usuarios SET nome = :nome, usuario = :email, senha = :senha, cpf = :cpf, senha_crip = :senha_crip, nivel = 'Aluno', foto = :foto, id_pessoa = :id_pessoa, ativo = 'Sim', data = curDate()");
+	$query->execute($alunoParams);
+	$aluno_id_final = $aluno_id ?: $pdo->lastInsertId();
 
-$query->execute([
-	':nome' => $nome,
-	':email' => $email,
-	':cpf' => $cpf,
-	':senha' => '',
-	':senha_crip' => $senha_crip,
-	':foto' => $foto,
-	':id_pessoa' => $ult_id,
-]);
+	$usuario_id = nextTableId($pdo, 'usuarios');
+	$usuarioParams = [
+		':nome' => $nome,
+		':email' => $email,
+		':cpf' => $cpf,
+		':senha' => '',
+		':senha_crip' => $senha_crip,
+		':foto' => $foto,
+		':id_pessoa' => $aluno_id_final,
+	];
+	if ($usuario_id) {
+		$query = $pdo->prepare("INSERT INTO usuarios SET id = :id, nome = :nome, usuario = :email, senha = :senha, cpf = :cpf, senha_crip = :senha_crip, nivel = 'Aluno', foto = :foto, id_pessoa = :id_pessoa, ativo = 'Sim', data = curDate()");
+		$usuarioParams[':id'] = $usuario_id;
+	} else {
+		$query = $pdo->prepare("INSERT INTO usuarios SET nome = :nome, usuario = :email, senha = :senha, cpf = :cpf, senha_crip = :senha_crip, nivel = 'Aluno', foto = :foto, id_pessoa = :id_pessoa, ativo = 'Sim', data = curDate()");
+	}
+
+	$query->execute($usuarioParams);
 
 }else{
-	 $query = $pdo->prepare("UPDATE $tabela SET nome = :nome, cpf = :cpf, email = :email, rg = :rg, orgao_expedidor = :orgao_expedidor, expedicao = :expedicao, telefone = :telefone, cep = :cep, endereco = :endereco, cidade = :cidade, estado = :estado, sexo = :sexo, nascimento = :nascimento, mae = :mae, pai = :pai, naturalidade = :naturalidade, foto = :foto WHERE id = :id");
+	 $query = $pdo->prepare("UPDATE $tabela SET nome = :nome, cpf = :cpf, email = :email, rg = :rg, orgao_expedidor = :orgao_expedidor, expedicao = :expedicao, telefone = :telefone, cep = :cep, endereco = :endereco, cidade = :cidade, estado = :estado, sexo = :sexo, nascimento = :nascimento, mae = :mae, pai = :pai, naturalidade = :naturalidade, foto = :foto, usuario = :usuario WHERE id = :id");
 
 	 $query->execute([
 	 	':nome' => $nome,
@@ -146,6 +203,7 @@ $query->execute([
 	 	':pai' => $pai,
 	 	':naturalidade' => $naturalidade,
 	 	':foto' => $foto,
+	 	':usuario' => $responsavelId,
 	 	':id' => $id,
 	 ]);
 $ult_id = $pdo->lastInsertId();

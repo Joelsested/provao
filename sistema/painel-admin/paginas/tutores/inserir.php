@@ -1,17 +1,27 @@
 <?php
 require_once("../../../conexao.php");
-require_once(__DIR__ . "/../../../config/upload.php");
+require_once(__DIR__ . "/../../../../config/upload.php");
+require_once(__DIR__ . "/../../../../helpers.php");
 $tabela = 'tutores';
 
 $nome = $_POST['nome'];
 $email = $_POST['email'];
 $telefone = $_POST['telefone'];
 $cpf = $_POST['cpf'];
+$nascimento = $_POST['nascimento'] ?? '';
 $id = $_POST['id'];
 $comissao = $_POST['comissao'] ?? null;
 $wallet_id = $_POST['wallet_id'];
 
-$senha = '123456';
+$senha = birthDigits($nascimento);
+if (trim($cpf) === '' || trim($nascimento) === '') {
+    echo 'CPF e data de nascimento são obrigatórios!';
+    exit();
+}
+if ($senha === '') {
+    echo 'Data de nascimento inválida!';
+    exit();
+}
 $senha_crip = md5($senha);
 
 //validar email duplicado
@@ -81,17 +91,30 @@ if ($id == "") {
         }
     }
 
-    $query = $pdo->prepare("INSERT INTO $tabela SET nome = :nome, email = :email, cpf = :cpf, telefone = :telefone, comissao = :comissao, foto = :foto, ativo = 'Sim', data = curDate()");
+    $tutor_id = nextTableId($pdo, $tabela);
+    if ($tutor_id) {
+        $query = $pdo->prepare("INSERT INTO $tabela SET id = :id, nome = :nome, email = :email, cpf = :cpf, nascimento = :nascimento, telefone = :telefone, comissao = :comissao, foto = :foto, ativo = 'Sim', data = curDate()");
+        $query->bindValue(":id", $tutor_id, PDO::PARAM_INT);
+    } else {
+        $query = $pdo->prepare("INSERT INTO $tabela SET nome = :nome, email = :email, cpf = :cpf, nascimento = :nascimento, telefone = :telefone, comissao = :comissao, foto = :foto, ativo = 'Sim', data = curDate()");
+    }
     $query->bindValue(":nome", "$nome");
     $query->bindValue(":email", "$email");
     $query->bindValue(":telefone", "$telefone");
     $query->bindValue(":comissao", $comissao);
     $query->bindValue(":cpf", "$cpf");
+    $query->bindValue(":nascimento", "$nascimento");
     $query->bindValue(":foto", "$foto");
     $query->execute();
-    $ult_id = $pdo->lastInsertId();
+    $ult_id = $tutor_id ?: $pdo->lastInsertId();
 
-    $query = $pdo->prepare("INSERT INTO usuarios SET wallet_id = :wallet_id, nome = :nome, usuario = :email, senha = '', cpf = :cpf, senha_crip = :senha_crip, nivel = 'Tutor', foto = :foto, id_pessoa = :id_pessoa, ativo = 'Sim', data = curDate()");
+    $usuario_id = nextTableId($pdo, 'usuarios');
+    if ($usuario_id) {
+        $query = $pdo->prepare("INSERT INTO usuarios SET id = :id, wallet_id = :wallet_id, nome = :nome, usuario = :email, senha = '', cpf = :cpf, senha_crip = :senha_crip, nivel = 'Tutor', foto = :foto, id_pessoa = :id_pessoa, ativo = 'Sim', data = curDate()");
+        $query->bindValue(":id", $usuario_id, PDO::PARAM_INT);
+    } else {
+        $query = $pdo->prepare("INSERT INTO usuarios SET wallet_id = :wallet_id, nome = :nome, usuario = :email, senha = '', cpf = :cpf, senha_crip = :senha_crip, nivel = 'Tutor', foto = :foto, id_pessoa = :id_pessoa, ativo = 'Sim', data = curDate()");
+    }
 
     $query->bindValue(":nome", "$nome");
     $query->bindValue(":email", "$email");
@@ -115,12 +138,13 @@ if ($id == "") {
             $comissao = 0; // Definir um valor padrão caso nada seja encontrado
         }
     }
-    $query = $pdo->prepare("UPDATE $tabela SET nome = :nome, email = :email, cpf = :cpf, telefone = :telefone, comissao = :comissao, foto = :foto WHERE id = :id");
+    $query = $pdo->prepare("UPDATE $tabela SET nome = :nome, email = :email, cpf = :cpf, nascimento = :nascimento, telefone = :telefone, comissao = :comissao, foto = :foto WHERE id = :id");
     $query->bindValue(":nome", "$nome");
     $query->bindValue(":email", "$email");
     $query->bindValue(":telefone", "$telefone");
     $query->bindValue(":comissao", $comissao);
     $query->bindValue(":cpf", "$cpf");
+    $query->bindValue(":nascimento", "$nascimento");
     $query->bindValue(":foto", "$foto");
     $query->bindValue(":id", "$id");
     $query->execute();
@@ -139,3 +163,4 @@ if ($id == "") {
 
 
 echo 'Salvo com Sucesso';
+

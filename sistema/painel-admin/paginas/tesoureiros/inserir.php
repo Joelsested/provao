@@ -1,12 +1,14 @@
-ï»¿<?php
+<?php
 require_once("../../../conexao.php");
-require_once(__DIR__ . "/../../../config/upload.php");
+require_once(__DIR__ . "/../../../../config/upload.php");
+require_once(__DIR__ . "/../../../../helpers.php");
 $tabela = 'tesoureiros';
 
 $nome = $_POST['nome'];
 $email = $_POST['email'];
 $telefone = $_POST['telefone'];
 $cpf = $_POST['cpf'];
+$nascimento = $_POST['nascimento'] ?? '';
 $endereco = $_POST['endereco'];
 $cidade = $_POST['cidade'];
 $estado = $_POST['estado'];
@@ -15,7 +17,15 @@ $id = $_POST['id'];
 
 $wallet_id = $_POST['wallet_id'];
 
-$senha = '123456';
+$senha = birthDigits($nascimento);
+if (trim($cpf) === '' || trim($nascimento) === '') {
+    echo 'CPF e data de nascimento são obrigatórios!';
+    exit();
+}
+if ($senha === '') {
+    echo 'Data de nascimento inválida!';
+    exit();
+}
 $senha_crip = md5($senha);
 
 //validar email duplicado
@@ -24,7 +34,7 @@ $stmt->execute([$email]);
 $res = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $total_reg = @count($res);
 if ($total_reg > 0 and $res[0]['id'] != $id) {
-    echo 'Email jÇ­ Cadastrado, escolha Outro!';
+    echo 'Email jo Cadastrado, escolha Outro!';
     exit();
 }
 
@@ -35,7 +45,7 @@ $stmt->execute([$cpf]);
 $res = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $total_reg = @count($res);
 if ($total_reg > 0 and $res[0]['id'] != $id) {
-    echo 'CPF jÇ­ Cadastrado, escolha Outro!';
+    echo 'CPF jo Cadastrado, escolha Outro!';
     exit();
 }
 
@@ -70,11 +80,12 @@ if (empty($upload['skipped'])) {
 
 if ($id == "") {
 
-    $query = $pdo->prepare("INSERT INTO $tabela SET nome = :nome, email = :email, cpf = :cpf, telefone = :telefone, endereco = :endereco,  cidade = :cidade, estado = :estado, sexo = :sexo, foto = :foto, ativo = 'Sim', data = curDate()");
+    $query = $pdo->prepare("INSERT INTO $tabela SET nome = :nome, email = :email, cpf = :cpf, nascimento = :nascimento, telefone = :telefone, endereco = :endereco,  cidade = :cidade, estado = :estado, sexo = :sexo, foto = :foto, ativo = 'Sim', data = curDate()");
     $query->bindValue(":nome", "$nome");
     $query->bindValue(":email", "$email");
     $query->bindValue(":telefone", "$telefone");
     $query->bindValue(":cpf", "$cpf");
+    $query->bindValue(":nascimento", "$nascimento");
     $query->bindValue(":endereco", "$endereco");
     $query->bindValue(":cidade", "$cidade");
     $query->bindValue(":estado", "$estado");
@@ -95,11 +106,12 @@ if ($id == "") {
     $query->execute();
 
 } else {
-    $query = $pdo->prepare("UPDATE $tabela SET nome = :nome, email = :email, cpf = :cpf, telefone = :telefone, endereco = :endereco,  cidade = :cidade, estado = :estado, sexo = :sexo, foto = :foto WHERE id = :id");
+    $query = $pdo->prepare("UPDATE $tabela SET nome = :nome, email = :email, cpf = :cpf, nascimento = :nascimento, telefone = :telefone, endereco = :endereco,  cidade = :cidade, estado = :estado, sexo = :sexo, foto = :foto WHERE id = :id");
     $query->bindValue(":nome", "$nome");
     $query->bindValue(":email", "$email");
     $query->bindValue(":telefone", "$telefone");
     $query->bindValue(":cpf", "$cpf");
+    $query->bindValue(":nascimento", "$nascimento");
     $query->bindValue(":endereco", "$endereco");
     $query->bindValue(":cidade", "$cidade");
     $query->bindValue(":estado", "$estado");
@@ -123,3 +135,4 @@ if ($id == "") {
 echo 'Salvo com Sucesso';
 
 ?>
+

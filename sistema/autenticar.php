@@ -30,11 +30,24 @@ if ($usuario === '' || $senha === '') {
 	exit();
 }
 
-function fetchBirth(PDO $pdo, $idPessoa): string {
+function fetchBirth(PDO $pdo, string $nivel, $idPessoa): string {
 	if (empty($idPessoa)) {
 		return '';
 	}
-	$stmt = $pdo->prepare("SELECT nascimento FROM alunos WHERE id = :id");
+	$map = [
+		'Aluno' => 'alunos',
+		'Vendedor' => 'vendedores',
+		'Tutor' => 'tutores',
+		'Parceiro' => 'parceiros',
+		'Secretario' => 'secretarios',
+		'Tesoureiro' => 'tesoureiros',
+		'Professor' => 'professores',
+	];
+	if (!isset($map[$nivel])) {
+		return '';
+	}
+	$tabela = $map[$nivel];
+	$stmt = $pdo->prepare("SELECT nascimento FROM {$tabela} WHERE id = :id");
 	$stmt->bindValue(":id", "$idPessoa");
 	$stmt->execute();
 	$row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -99,7 +112,7 @@ if ($user['nivel'] === 'Administrador') {
         $user['senha_crip'] = $novoHash;
     }
 } else {
-	$storedBirth = normalizeDate(fetchBirth($pdo, $user['id_pessoa']));
+	$storedBirth = normalizeDate(fetchBirth($pdo, $user['nivel'], $user['id_pessoa']));
 	$inputBirth = normalizeDate($senha);
 	if ($storedBirth === '' || $inputBirth === '' || $storedBirth !== $inputBirth) {
 		echo "<script>window.alert('Dados Incorretos!')</script>";

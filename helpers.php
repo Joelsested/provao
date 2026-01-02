@@ -80,3 +80,20 @@ if (!function_exists('cleanCpfColumn')) {
         return "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE($column, '.', ''), '-', ''), ' ', ''), '/', ''), '(', ''), ')', '')";
     }
 }
+
+if (!function_exists('nextTableId')) {
+    function nextTableId(PDO $pdo, string $table): ?int
+    {
+        $table = preg_replace('/[^a-zA-Z0-9_]/', '', $table);
+        if ($table === '') {
+            return null;
+        }
+        $stmt = $pdo->query("SHOW COLUMNS FROM {$table} LIKE 'id'");
+        $colInfo = $stmt ? $stmt->fetch(PDO::FETCH_ASSOC) : null;
+        if ($colInfo && stripos($colInfo['Extra'] ?? '', 'auto_increment') !== false) {
+            return null;
+        }
+        $nextId = $pdo->query("SELECT COALESCE(MAX(id), 0) + 1 FROM {$table}")->fetchColumn();
+        return (int) $nextId;
+    }
+}

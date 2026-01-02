@@ -31,6 +31,7 @@ for($i=0; $i < $total_reg; $i++){
 	$id = $res[$i]['id'];
 	$nome = $res[$i]['nome'];
 	$cpf = $res[$i]['cpf'];
+	$nascimento = $res[$i]['nascimento'];
 	$email = $res[$i]['email'];
 	$telefone = $res[$i]['telefone'];
 	$endereco = $res[$i]['endereco'];
@@ -97,9 +98,9 @@ echo <<<HTML
 
 
 
-		<big><a href="#" onclick="editar('{$id}', '{$nome}', '{$cpf}','{$email}','{$telefone}','{$endereco}','{$cidade}','{$estado}','{$sexo}', '{$foto}')" title="Editar Dados"><i class="fa fa-edit text-primary"></i></a></big>
+		<big><a href="#" onclick="editar('{$id}', '{$nome}', '{$cpf}', '{$nascimento}', '{$email}','{$telefone}','{$endereco}','{$cidade}','{$estado}','{$sexo}', '{$foto}')" title="Editar Dados"><i class="fa fa-edit text-primary"></i></a></big>
 
-		<big><a href="#" onclick="mostrar('{$nome}', '{$cpf}','{$email}','{$telefone}','{$endereco}','{$cidade}','{$estado}','{$sexo}', '{$foto}', '{$dataF}', '{$cartao}', '{$ativo}', '{$senha_usuario}')" title="Ver Dados"><i class="fa fa-info-circle text-secondary"></i></a></big>
+		<big><a href="#" onclick="mostrar('{$nome}', '{$cpf}', '{$nascimento}', '{$email}','{$telefone}','{$endereco}','{$cidade}','{$estado}','{$sexo}', '{$foto}', '{$dataF}', '{$cartao}', '{$ativo}', '{$senha_usuario}')" title="Ver Dados"><i class="fa fa-info-circle text-secondary"></i></a></big>
 
 
 
@@ -162,12 +163,13 @@ HTML;
 		$('#tabela_filter label input').focus();
 	} );
 
-	function editar(id, nome, cpf, email, telefone, endereco, cidade, estado, sexo, foto){
+	function editar(id, nome, cpf, nascimento, email, telefone, endereco, cidade, estado, sexo, foto){
 
 		$('#id').val(id);
 		$('#nome').val(nome);
 		$('#telefone').val(telefone);
 		$('#cpf').val(cpf);
+		$('#nascimento').val(nascimento);
 		$('#email').val(email);
 		$('#endereco').val(endereco);
 		$('#cidade').val(cidade);
@@ -182,11 +184,12 @@ HTML;
 	}
 
 
-	function mostrar(nome, cpf, email, telefone, endereco, cidade, estado, sexo, foto, data, cartao, ativo, senha){
+	function mostrar(nome, cpf, nascimento, email, telefone, endereco, cidade, estado, sexo, foto, data, cartao, ativo, senha){
 		
 		$('#nome_mostrar').text(nome);
 		$('#telefone_mostrar').text(telefone);
 		$('#cpf_mostrar').text(cpf);
+		$('#nascimento_mostrar').text(nascimento);
 		$('#email_mostrar').text(email);
 		$('#senha_mostrar').text(senha);
 		$('#endereco_mostrar').text(endereco);
@@ -208,6 +211,7 @@ HTML;
 		$('#nome').val('');
 		$('#telefone').val('');
 		$('#cpf').val('');
+		$('#nascimento').val('');
 		$('#email').val('');
 		$('#endereco').val('');
 		$('#cidade').val('');

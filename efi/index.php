@@ -322,48 +322,47 @@ if ($tabela_comissao) {
 }
 
 //OBTER COMISSAO DO TUTOR
-$consulta_comissao_tutor = $pdo->query("SELECT * FROM tutores");
-$resposta_consulta_comissao_tutor = $consulta_comissao_tutor->fetchAll(PDO::FETCH_ASSOC);
-
-$consulta_vendedor_e_professor = $pdo->prepare("SELECT professor FROM vendedores where id = :id");
-$consulta_vendedor_e_professor->execute([':id' => $vendedor_id]);
-$resposta_consulta_vendedor_e_professor = $consulta_vendedor_e_professor->fetchAll(PDO::FETCH_ASSOC);
-
-$valor_comissao_vendedor = $resposta_comissao_nivel_vendedor[0]['comissao'] ?? 0;
-$valor_comissao_vendedor = (int) ($resposta_comissao_nivel_vendedor[0]['comissao'] ?? 0);
-
 $consulta_vendedor_professor = $pdo->query("SELECT comissao_tutor FROM config");
 $resposta_consulta_vendedor_professor = $consulta_vendedor_professor->fetch(PDO::FETCH_ASSOC)['comissao_tutor'];
-$vendedor_e_professor = $resposta_consulta_vendedor_e_professor[0]['professor'];
 
-$tutor_usuario = $resposta_consulta_comissao_tutor[0]['email'];
-$comissao_tutor = $resposta_consulta_comissao_tutor[0]['comissao'];
+$vendedor_e_professor = 0;
+$tutor_atendente_id = null;
+if ($nivel_responsavel == 'Vendedor' && !empty($vendedor_id)) {
+    $consulta_vendedor_e_professor = $pdo->prepare("SELECT professor, tutor_id FROM vendedores where id = :id");
+    $consulta_vendedor_e_professor->execute([':id' => $vendedor_id]);
+    $resposta_consulta_vendedor_e_professor = $consulta_vendedor_e_professor->fetch(PDO::FETCH_ASSOC) ?: [];
+    $vendedor_e_professor = $resposta_consulta_vendedor_e_professor['professor'] ?? 0;
+    $tutor_atendente_id = $resposta_consulta_vendedor_e_professor['tutor_id'] ?? null;
+}
 
-$consulta_tutor = $pdo->prepare("SELECT * FROM usuarios where usuario = :usuario");
-$consulta_tutor->execute([':usuario' => $tutor_usuario]);
-$resposta_consulta_tutor = $consulta_tutor->fetchAll(PDO::FETCH_ASSOC);
-$wallet_id_tutor = $resposta_consulta_tutor[0]['wallet_id'];
+$tutor_wallet_id = null;
+if (!empty($tutor_atendente_id)) {
+    $consulta_tutor = $pdo->prepare("SELECT wallet_id FROM usuarios WHERE id_pessoa = :id_pessoa AND nivel = 'Tutor' LIMIT 1");
+    $consulta_tutor->execute([':id_pessoa' => $tutor_atendente_id]);
+    $tutor_wallet_id = $consulta_tutor->fetchColumn();
+}
 
 function addOrUpdatePayee(&$fixos_wallet_ids, $payee_code, $percentage) {
     foreach ($fixos_wallet_ids as &$item) {
         if ($item['payee_code'] === $payee_code) {
             $item['percentage'] += $percentage; // soma a porcentagem
-            return; // já encontrou, não precisa adicionar
+            return; // j?? encontrou, n??o precisa adicionar
         }
     }
-    // se não encontrou, adiciona normalmente
+    // se n??o encontrou, adiciona normalmente
     $fixos_wallet_ids[] = [
         'payee_code' => $payee_code,
         'percentage' => $percentage
     ];
 }
 
-
 if ($nivel_responsavel == 'Tutor') {
-    array_push($fixos_wallet_ids, [
-        'payee_code' => $wallet_id_tutor,
-        'percentage' => $comissao_vendedor * 100
-    ]);
+    if (!empty($wallet_id_nivel_responsavel_pelo_cadastro)) {
+        array_push($fixos_wallet_ids, [
+            'payee_code' => $wallet_id_nivel_responsavel_pelo_cadastro,
+            'percentage' => $comissao_vendedor * 100
+        ]);
+    }
 }
 
 if ($nivel_responsavel == 'Tesoureiro') {
@@ -373,23 +372,9 @@ if ($nivel_responsavel == 'Secretario') {
     addOrUpdatePayee($fixos_wallet_ids, $wallet_id_nivel_responsavel_pelo_cadastro, $comissao_secretario * 100);
 }
 
-
-// if ($nivel_responsavel == 'Tesoureiro') {
-//     array_push($fixos_wallet_ids, [
-//         'payee_code' => $wallet_id_nivel_responsavel_pelo_cadastro,
-//         'percentage' => $comissao_tesoureiro
-//     ]);
-// }
-// if ($nivel_responsavel == 'Secretario') {
-//     array_push($fixos_wallet_ids, [
-//         'payee_code' => $wallet_id_nivel_responsavel_pelo_cadastro,
-//         'percentage' => $comissao_secretario
-//     ]);
-// }
-
-if ($vendedor_e_professor) {
+if ($vendedor_e_professor && $tutor_wallet_id) {
     array_push($fixos_wallet_ids, [
-        'payee_code' => $wallet_id_tutor,
+        'payee_code' => $tutor_wallet_id,
         'percentage' => $resposta_consulta_vendedor_professor * 100
     ]);
 }

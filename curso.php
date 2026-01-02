@@ -1965,7 +1965,7 @@ async function escolherResponsavel() {
 
         const html = `
             <p><strong>Respons?vel atual:</strong> ${data.current ? `${data.current.nome} (${data.current.nivel})` : 'Sem respons?vel definido'}</p>
-            <p>Escolha o respons?vel (vendedor, tutor, secret?rio, tesoureiro ou professor) que confirma esta matr?cula.</p>
+            <p>Escolha o responsavel (vendedor, tutor, secretario ou tesoureiro) que confirma esta matricula.</p>
             <select id="responsavel-seletor" class="swal2-select w-100">${selectOptions}</select>
         `;
 

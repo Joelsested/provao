@@ -100,7 +100,7 @@ HTML;
 		$professor4 = $res[$i]['usuario'];
 		$foto = $res[$i]['foto'];
 		$data = $res[$i]['data'];
-		$categoriasCursos = $res[$i]['categoriasCursos'];
+		$categoriasCursos = $res[$i]['categoriasCursos'] ?? [];
 
 		$tem_fundamental = isset($categoriasCursos['tem_fundamental']) ? $categoriasCursos['tem_fundamental'] : 0;
 		$tem_medio = isset($categoriasCursos['tem_medio']) ? $categoriasCursos['tem_medio'] : 0;
@@ -117,10 +117,9 @@ HTML;
 
 		$dataF = implode('/', array_reverse(explode('-', $data)));
 
-		$query2 = $pdo->prepare("SELECT * FROM usuarios where id_pessoa = :id_pessoa and nivel = 'Aluno'");
+		$query2 = $pdo->prepare("SELECT senha FROM usuarios where id_pessoa = :id_pessoa and nivel = 'Aluno' LIMIT 1");
 		$query2->execute([':id_pessoa' => $id]);
-		$res2 = $query2->fetchAll(PDO::FETCH_ASSOC);
-		$senha_usuario = $res2[0]['senha'];
+		$senha_usuario = $query2->fetchColumn() ?: '';
 
 
 
@@ -188,7 +187,7 @@ HTML;
     </ul>
   </li>
   <big>
-    <a href="#" onclick="editar ('{$id}', '{$nome}','{$cpf}','{$email}', '{$telefone}','{$rg}','{$orgao_expedidor}','{$expedicao}','{$nascimento}','{$cep}','{$sexo}','{$endereco}','{$numero}','{$bairro}','{$cidade}','{$estado}','{$mae}','{$pai}','{$naturalidade}','{$foto}','{$arquivo}')" title="Editar Dados">
+    <a href="#" onclick="editar ('{$id}', '{$nome}','{$cpf}','{$email}', '{$telefone}','{$rg}','{$orgao_expedidor}','{$expedicao}','{$nascimento}','{$cep}','{$sexo}','{$endereco}','{$numero}','{$bairro}','{$cidade}','{$estado}','{$mae}','{$pai}','{$naturalidade}','{$professor4}','{$foto}','{$arquivo}')" title="Editar Dados">
       <i class="fa fa-edit text-primary"></i>
     </a>
   </big>
@@ -276,7 +275,7 @@ HTML;
 
 		   <!-- Edit Data -->
 		   <div class="col-md-4 text-center mb-3">
-              <a href="#" onclick="editar('{$id}', '{$nome}','{$cpf}','{$email}', '{$telefone}','{$rg}','{$orgao_expedidor}','{$expedicao}','{$nascimento}','{$cep}','{$sexo}','{$endereco}','{$numero}','{$bairro}','{$cidade}','{$estado}','{$mae}','{$pai}','{$naturalidade}','{$foto}','{$arquivo}')" class="btn btn-default btn-block" data-dismiss="modal">
+              <a href="#" onclick="editar('{$id}', '{$nome}','{$cpf}','{$email}', '{$telefone}','{$rg}','{$orgao_expedidor}','{$expedicao}','{$nascimento}','{$cep}','{$sexo}','{$endereco}','{$numero}','{$bairro}','{$cidade}','{$estado}','{$mae}','{$pai}','{$naturalidade}','{$professor4}','{$foto}','{$arquivo}')" class="btn btn-default btn-block" data-dismiss="modal">
                 <i class="fa fa-edit text-primary"></i><br>
                 Editar
               </a>
@@ -312,7 +311,7 @@ HTML;
             
             <!-- Delete -->
             <div class="{$ocultar} col-md-4 text-center mb-3">
-              <a href="#" onclick="if(confirm('Confirm deletion?')) { excluir('{$id}'); }" class="btn btn-default btn-block" data-dismiss="modal">
+              <a href="#" onclick="confirmarExclusaoAluno('{$id}', '#actionsModal{$id}'); return false;" class="btn btn-default btn-block">
                 <i class="fa fa-trash-o text-danger"></i><br>
                 Apagar
               </a>
@@ -463,11 +462,31 @@ $(document).ready(function () {
 });
 </script>
 
+<script>
+	function confirmarExclusaoAluno(id, modalId) {
+		Swal.fire({
+			title: 'Confirmar exclusao',
+			text: 'Tem certeza que deseja apagar este aluno?',
+			icon: 'warning',
+			showCancelButton: true,
+			confirmButtonText: 'Sim, apagar',
+			cancelButtonText: 'Cancelar'
+		}).then((result) => {
+			if (result.isConfirmed) {
+				if (modalId) {
+					$(modalId).modal('hide');
+				}
+				excluir(id);
+			}
+		});
+	}
+</script>
+
 <script type="text/javascript">
 
 	
 
-	function editar(id, nome, cpf, email, telefone, rg, orgao_expedidor, expedicao, nascimento, cep, sexo, endereco, numero, bairro, cidade, estado, mae, pai, naturalidade, foto,) {
+	function editar(id, nome, cpf, email, telefone, rg, orgao_expedidor, expedicao, nascimento, cep, sexo, endereco, numero, bairro, cidade, estado, mae, pai, naturalidade, responsavel_id, foto,) {
 
 		$('#id').val(id);
 		$('#nome').val(nome);
@@ -488,6 +507,7 @@ $(document).ready(function () {
 		$('#mae').val(mae);
 		$('#pai').val(pai);
 		$('#naturalidade').val(naturalidade);
+		$('#responsavel_id').val(responsavel_id);
 		$('#foto').val('');
 
 		$('#target').attr('src', '../painel-aluno/img/perfil/' + foto);
@@ -788,6 +808,7 @@ $(document).ready(function () {
 		$('#mae').val('');
 		$('#pai').val('');
 		$('#naturalidade').val('');
+		$('#responsavel_id').val('');
 		$('#foto').val('');
 		$('#target').attr('src', 'img/perfil/sem-perfil.jpg');
 	}

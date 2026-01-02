@@ -6,6 +6,16 @@ $pag = 'alunos';
 @session_start();
 
 $id_user = @$_SESSION['id'];
+$nivel_session = $_SESSION['nivel'] ?? '';
+$responsavelAutoLevels = ['Vendedor', 'Tutor', 'Secretario', 'Tesoureiro'];
+$precisaEscolherResponsavel = !in_array($nivel_session, $responsavelAutoLevels, true);
+$responsaveis = [];
+if ($precisaEscolherResponsavel) {
+	$placeholders = implode(',', array_fill(0, count($responsavelAutoLevels), '?'));
+	$stmtResponsaveis = $pdo->prepare("SELECT id, nome, nivel FROM usuarios WHERE nivel IN ($placeholders) AND ativo = 'Sim' ORDER BY nome");
+	$stmtResponsaveis->execute($responsavelAutoLevels);
+	$responsaveis = $stmtResponsaveis->fetchAll(PDO::FETCH_ASSOC);
+}
 
 if (@$_SESSION['nivel'] != 'Administrador' and @$_SESSION['nivel'] != 'Secretario' and @$_SESSION['nivel'] != 'Tesoureiro' and @$_SESSION['nivel'] != 'Tutor' and @$_SESSION['nivel'] != 'Parceiro' and @$_SESSION['nivel'] != 'Professor' and @$_SESSION['nivel'] != 'Vendedor') {
 	echo "<script>window.location='../index.php'</script>";
@@ -74,7 +84,7 @@ if (@$_SESSION['nivel'] != 'Administrador' and @$_SESSION['nivel'] != 'Secretari
 								<div class="col-md-2">
 							<div class="form-group">
 								<label> Telefone:</label>
-								<input type="text" class="form-control" name="telefone" id="telefone">
+								<input type="text" class="form-control" name="telefone" id="telefone" required>
 
 							
 
@@ -83,6 +93,23 @@ if (@$_SESSION['nivel'] != 'Administrador' and @$_SESSION['nivel'] != 'Secretari
 
 					</div>
 
+					<?php if ($precisaEscolherResponsavel) { ?>
+						<div class="row">
+							<div class="col-md-4">
+								<div class="form-group">
+									<label>Responsavel*</label>
+									<select class="form-control" name="responsavel_id" id="responsavel_id" required>
+										<option value="">Selecione</option>
+										<?php foreach ($responsaveis as $responsavel) : ?>
+											<option value="<?php echo (int) $responsavel['id']; ?>" <?php echo ((int) $responsavel['id'] === (int) $id_user) ? 'selected' : ''; ?>>
+												<?php echo htmlspecialchars($responsavel['nome']); ?> (<?php echo htmlspecialchars($responsavel['nivel']); ?>)
+											</option>
+										<?php endforeach; ?>
+									</select>
+								</div>
+							</div>
+						</div>
+					<?php } ?>
 
 					<div class="row">
 						<div class="col-md-3">
@@ -113,7 +140,7 @@ if (@$_SESSION['nivel'] != 'Administrador' and @$_SESSION['nivel'] != 'Secretari
 						<div class="col-md-2">
 							<div class="form-group">
 								<label>Data de Nascimento:</label>
-								<input type="text" class="form-control" name="nascimento" id="nascimento">
+								<input type="text" class="form-control" name="nascimento" id="nascimento" required>
 
 							</div>
 						</div>
@@ -535,8 +562,11 @@ function formatarCPF(input) {
 
 // --- Lista dos campos obrigatórios ---
 const camposObrigatorios = [
-    'nome', 'cpf', 'email', 'telefone'
+    'nome', 'cpf', 'email', 'telefone', 'nascimento'
 ];
+if (document.getElementById('responsavel_id')) {
+    camposObrigatorios.push('responsavel_id');
+}
 
 // --- Função para verificar se todos os campos estão preenchidos e válidos ---
 function verificarCampos() {

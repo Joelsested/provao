@@ -14,11 +14,24 @@ require_once(__DIR__ . '/../../helpers.php');
 $usuario = trim($_POST['usuario'] ?? '');
 $senha = trim($_POST['senha'] ?? '');
 
-function fetchBirth(PDO $pdo, $idPessoa): string {
+function fetchBirth(PDO $pdo, string $nivel, $idPessoa): string {
 	if (empty($idPessoa)) {
 		return '';
 	}
-	$stmt = $pdo->prepare("SELECT nascimento FROM alunos WHERE id = :id");
+	$map = [
+		'Aluno' => 'alunos',
+		'Vendedor' => 'vendedores',
+		'Tutor' => 'tutores',
+		'Parceiro' => 'parceiros',
+		'Secretario' => 'secretarios',
+		'Tesoureiro' => 'tesoureiros',
+		'Professor' => 'professores',
+	];
+	if (!isset($map[$nivel])) {
+		return '';
+	}
+	$tabela = $map[$nivel];
+	$stmt = $pdo->prepare("SELECT nascimento FROM {$tabela} WHERE id = :id");
 	$stmt->bindValue(":id", "$idPessoa");
 	$stmt->execute();
 	$row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -50,17 +63,48 @@ if (@count($res) == 0) {
 
 $user = $res[0];
 
-$storedBirth = normalizeDate(fetchBirth($pdo, $user['id_pessoa']));
-$inputBirth = normalizeDate($senha);
-
-if ($storedBirth === '' || $inputBirth === '' || $storedBirth !== $inputBirth) {
-	echo "Senha Incorreta!!";
-	exit();
-}
-
 if ($user['ativo'] == 'Não') {
 	echo "Seu Acesso foi desativado pelo Administrador!";
 	exit();
+}
+
+if ($user['nivel'] === 'Administrador') {
+	$storedHash = $user['senha_crip'] ?? '';
+	$plainStored = $user['senha'] ?? '';
+	$validPassword = false;
+	$needsUpgrade = false;
+
+	if ($storedHash !== '' && preg_match('/^\\$(2y|argon2)/', $storedHash)) {
+		$validPassword = password_verify($senha, $storedHash);
+		$needsUpgrade = $validPassword && password_needs_rehash($storedHash, PASSWORD_DEFAULT);
+	} else {
+		if ($storedHash !== '' && hash_equals($storedHash, md5($senha))) {
+			$validPassword = true;
+		} elseif ($plainStored !== '' && hash_equals($plainStored, $senha)) {
+			$validPassword = true;
+		}
+		$needsUpgrade = $validPassword;
+	}
+
+	if (!$validPassword) {
+		echo "Senha Incorreta!!";
+		exit();
+	}
+
+	if ($needsUpgrade) {
+		$novoHash = password_hash($senha, PASSWORD_DEFAULT);
+		$stmt = $pdo->prepare("UPDATE usuarios SET senha_crip = :hash, senha = '' WHERE id = :id");
+		$stmt->execute([':hash' => $novoHash, ':id' => $user['id']]);
+		$user['senha_crip'] = $novoHash;
+	}
+} else {
+	$storedBirth = normalizeDate(fetchBirth($pdo, $user['nivel'], $user['id_pessoa']));
+	$inputBirth = normalizeDate($senha);
+
+	if ($storedBirth === '' || $inputBirth === '' || $storedBirth !== $inputBirth) {
+		echo "Senha Incorreta!!";
+		exit();
+	}
 }
 
 $_SESSION['nivel'] = $user['nivel'];
