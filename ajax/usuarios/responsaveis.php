@@ -1,0 +1,67 @@
+<?php
+header('Content-Type: application/json; charset=utf-8');
+require_once('../../sistema/conexao.php');
+@session_start();
+
+$usuarioId = $_SESSION['id'] ?? null;
+$emailParam = trim($_POST['email'] ?? '');
+if (!$usuarioId && $emailParam === '') {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Usuario nao autenticado.'
+    ], JSON_UNESCAPED_UNICODE);
+    exit();
+}
+
+$stmt = $pdo->prepare("SELECT id_pessoa FROM usuarios WHERE id = :id AND nivel = 'Aluno' LIMIT 1");
+$stmt->execute(['id' => $usuarioId]);
+$alunoPessoa = $stmt->fetch(PDO::FETCH_ASSOC);
+if ((!$alunoPessoa || empty($alunoPessoa['id_pessoa'])) && $emailParam !== '') {
+    $stmt = $pdo->prepare("SELECT id_pessoa FROM usuarios WHERE usuario = :email LIMIT 1");
+    $stmt->execute(['email' => $emailParam]);
+    $alunoPessoa = $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+if (!$alunoPessoa || empty($alunoPessoa['id_pessoa'])) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Aluno nao encontrado.'
+    ], JSON_UNESCAPED_UNICODE);
+    exit();
+}
+
+$alunoId = (int) $alunoPessoa['id_pessoa'];
+$stmtCol = $pdo->query("SHOW COLUMNS FROM alunos LIKE 'responsavel_id'");
+$temResponsavelId = (bool) $stmtCol->fetch(PDO::FETCH_ASSOC);
+
+if ($temResponsavelId) {
+    $stmt = $pdo->prepare("SELECT usuario, responsavel_id FROM alunos WHERE id = :id LIMIT 1");
+} else {
+    $stmt = $pdo->prepare("SELECT usuario FROM alunos WHERE id = :id LIMIT 1");
+}
+$stmt->execute(['id' => $alunoId]);
+$aluno = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+$responsavelAtualId = (int) ($aluno['responsavel_id'] ?? 0);
+if ($responsavelAtualId <= 0) {
+    $responsavelAtualId = (int) ($aluno['usuario'] ?? 0);
+}
+
+$responsavelAtual = null;
+if ($responsavelAtualId > 0) {
+    $stmt = $pdo->prepare("SELECT id, nome, nivel FROM usuarios WHERE id = :id LIMIT 1");
+    $stmt->execute(['id' => $responsavelAtualId]);
+    $responsavelAtual = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
+$allowedLevels = ['Administrador', 'Vendedor', 'Tutor', 'Secretario', 'Tesoureiro'];
+$placeholders = implode(', ', array_fill(0, count($allowedLevels), '?'));
+$stmt = $pdo->prepare("SELECT id, nome, nivel FROM usuarios WHERE nivel IN ($placeholders) AND ativo = 'Sim' AND nome <> 'Professor_padrao' ORDER BY nome");
+$stmt->execute($allowedLevels);
+$opcoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+echo json_encode([
+    'success' => true,
+    'current' => $responsavelAtual,
+    'options' => $opcoes
+], JSON_UNESCAPED_UNICODE);

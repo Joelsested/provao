@@ -1,0 +1,12 @@
+<?php 
+$tabela = 'pagar';
+include_once('../conexao.php');
+
+$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+
+if ($id > 0) {
+	$stmt = $pdo->prepare("UPDATE $tabela SET pago = 'Não', data_pgto = '' WHERE id = ?");
+	$stmt->execute([$id]);
+}
+
+?>

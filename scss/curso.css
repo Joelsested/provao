@@ -1,0 +1,212 @@
+.titulo-curso{
+	font-size: 20px;
+  line-height: 1.4em;
+  margin-bottom: 15px;
+  font-weight: 500;
+  color:#212121;
+}
+
+
+
+.valor{
+	color:#743a00 !important;
+	font-size:16px !important;
+}
+
+.inicie{
+	color:#4f4f4f !important;
+	font-size:11px !important;
+}
+
+
+.relacionados{
+  margin-top:-70px !important;
+}
+
+
+.nome_relacionados{
+  font-size:16px;
+}
+
+.desc_relacionados{
+  font-size:14px !important;
+}
+
+.nome-aluno{
+	color:#4d4d4d !important;
+	font-weight: 500 !important;
+	font-size: 15px !important;
+}
+
+
+.estrelas{
+ color:#f5ad1d !important;
+ margin-right: 10px;
+ margin-left: 10px;
+ font-size:17px !important;;
+}
+
+.estrela{
+ color:#f5ad1d !important;
+ 
+}
+
+.comentario{
+  margin-top: 10px;
+  font-size:14px;
+  font-weight: 400 !important;
+  color:#707070 !important;
+}
+
+
+.faq{
+  font-size:50px;
+}
+
+
+.neutra{
+	color:#4d4d4d !important;
+}
+
+.neutra-forte{
+  color:#303030 !important;
+}
+
+.neutra-escura{
+  color:#000 !important;
+}
+
+.neutra-muted{
+  color:#878787 !important;
+}
+
+.topicos{
+	color:#5c5c5c !important;
+	font-size:14px;
+	margin-bottom:10px;
+}
+
+
+.itens{
+	color:#6e6e6e !important;
+	font-weight: 500;
+}
+
+.texto-15{
+	color:#878686 !important;
+	font-size:15px;
+}
+
+.texto-12{
+  color:#878686 !important;
+  font-size:12px;
+}
+
+.ocultar-web{
+    display:none !important; 
+  }
+
+
+@media only screen and (max-width: 700px) {
+  .ocultar-mobile{
+    display:none !important; 
+  }
+
+   .ocultar-web{
+    display:block !important; 
+  }
+
+  .imagem-cartao{
+    text-align:center;
+    margin-top: 25px;
+  }
+
+  .texto-menor-mobile{
+  	font-size:13px !important;
+  }
+
+  .esquerda-mobile{
+  	float:left;
+  	width:55%;
+  }
+
+  .direita-mobile{
+  	float:right;
+  	width:45%;
+  }
+
+  .esquerda-mobile-checkout{
+    float:left;
+    width:30%;
+  }
+
+  .direita-mobile-checkout{
+    float:right;
+    width:70%;
+  }
+
+
+  .esquerda-mobile-input{
+    float:left;
+    width:50%;
+  }
+
+  .direita-mobile-input{
+    float:right;
+    width:50%;
+  }
+
+  .esquerda-mobile-input-botao{
+    float:left;
+    width:70%;
+  }
+
+  .direita-mobile-input-botao{
+    float:right;
+    width:30%;
+  }
+
+  .topicos{
+		color:#5c5c5c !important;
+		font-size:12px;
+		margin-bottom:0px;
+	}
+
+  .margin-recuada-esquerda-mobile{
+    margin-left:-20px !important;
+  }
+
+  .botoes-mobile{
+    margin-top:0px !important;
+    width:80%;
+    margin:0 auto;
+
+  }
+
+  .scrollbar-mobile{
+    overflow: scroll; 
+    height:600px; 
+    scrollbar-width: thin;
+  }
+
+
+}
+
+
+
+@media only screen and (min-width: 700px) {
+    .margem-sup{    
+    margin-top: -15px;
+  }
+}
+
+
+.ocultar{
+  display:none;
+}
+
+
+.botao-laranja{
+  background: #ff8800; 
+  color:#FFF;"
+}

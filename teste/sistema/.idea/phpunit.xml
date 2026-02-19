@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PHPUnit">
+    <option name="directories">
+      <list>
+        <option value="$PROJECT_DIR$/sistema/dompdf/tests" />
+        <option value="$PROJECT_DIR$/sistema/dompdf/lib/php-font-lib/tests/FontLib" />
+        <option value="$PROJECT_DIR$/sistema/dompdf/lib/php-svg-lib/tests/Svg" />
+        <option value="$PROJECT_DIR$/sistema/dompdf/lib/php-css-parser/tests" />
+      </list>
+    </option>
+  </component>
+</project>
