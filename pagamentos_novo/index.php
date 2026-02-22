@@ -18,6 +18,8 @@ $id_do_aluno = @$_SESSION['id'];
 
 $id_do_curso_pag = $_GET['id_do_curso'];
 $nome_curso_titulo = $_GET['nome_do_curso'];
+$pacoteReq = trim((string) ($_GET['pacote'] ?? $_POST['pacote'] ?? $_REQUEST['pacote'] ?? ''));
+$isPacote = strcasecmp($pacoteReq, 'Sim') === 0;
 
 $query2 = $pdo->prepare("SELECT * FROM usuarios where id = :id");
 $query2->execute([':id' => $id_do_aluno]);
@@ -36,16 +38,21 @@ if(@count($res2) > 0){
 }
 
 
-//buscar id da matricula
-    $query = $pdo->prepare("SELECT * FROM matriculas where id_curso = :id_curso and aluno = :aluno");
-    $query->execute([':id_curso' => $id_do_curso_pag, ':aluno' => $id_do_aluno]);
-    $res = $query->fetchAll(PDO::FETCH_ASSOC);
-    if(@count($res) > 0){
-        $valor_curso = $res[0]['subtotal'];       
-        $status_mat = $res[0]['status'];
-        $id_venda = $res[0]['id'];
+//buscar id da matricula com filtro de pacote/curso
+if ($isPacote) {
+    $sqlMat = "SELECT * FROM matriculas WHERE id_curso = :id_curso AND aluno = :aluno AND pacote = 'Sim' ORDER BY id DESC LIMIT 1";
+} else {
+    $sqlMat = "SELECT * FROM matriculas WHERE id_curso = :id_curso AND aluno = :aluno AND (pacote <> 'Sim' OR pacote IS NULL OR pacote = '') ORDER BY id DESC LIMIT 1";
+}
+$query = $pdo->prepare($sqlMat);
+$query->execute([':id_curso' => $id_do_curso_pag, ':aluno' => $id_do_aluno]);
+$matricula = $query->fetch(PDO::FETCH_ASSOC);
+if ($matricula) {
+        $valor_curso = $matricula['subtotal'];       
+        $status_mat = $matricula['status'];
+        $id_venda = $matricula['id'];
         $valorF = number_format($valor_curso, 2, ',', '.');
-        $ref_pix = $res[0]['ref_api'];
+        $ref_pix = $matricula['ref_api'];
 
         if($ref_pix != ""){
              require('consultar_pagamento.php');
@@ -56,7 +63,7 @@ if(@count($res2) > 0){
                 }
         }
         
-    }
+}
 
 
 $valor = $valor_curso;

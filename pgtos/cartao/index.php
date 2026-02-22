@@ -4,6 +4,8 @@ require_once("../../sistema/conexao.php");
 $id_do_aluno = @$_SESSION['id'];
 $id_do_curso_pag = $_POST['id'];
 $nome_curso_titulo = $_POST['nome'];
+$pacoteReq = trim((string) ($_POST['pacote'] ?? ''));
+$isPacote = strcasecmp($pacoteReq, 'Sim') === 0;
 
 $nome_aluno = "Teste";
 $email_aluno = "hugovasconcelosf@hotmail.com";
@@ -27,10 +29,17 @@ if(@count($res2) > 0){
 
 
 //buscar id da matricula
-    $query = $pdo->prepare("SELECT * FROM matriculas where id_curso = :id_curso and aluno = :aluno");
-    $query->execute([':id_curso' => $id_do_curso_pag, ':aluno' => $id_do_aluno]);
-    $res = $query->fetchAll(PDO::FETCH_ASSOC);
-    if(@count($res) > 0){
+if ($pacoteReq === '') {
+    $sqlMat = "SELECT * FROM matriculas WHERE id_curso = :id_curso AND aluno = :aluno ORDER BY id DESC LIMIT 1";
+} elseif ($isPacote) {
+    $sqlMat = "SELECT * FROM matriculas WHERE id_curso = :id_curso AND aluno = :aluno AND pacote = 'Sim' ORDER BY id DESC LIMIT 1";
+} else {
+    $sqlMat = "SELECT * FROM matriculas WHERE id_curso = :id_curso AND aluno = :aluno AND (pacote <> 'Sim' OR pacote IS NULL OR pacote = '') ORDER BY id DESC LIMIT 1";
+}
+$query = $pdo->prepare($sqlMat);
+$query->execute([':id_curso' => $id_do_curso_pag, ':aluno' => $id_do_aluno]);
+$res = $query->fetchAll(PDO::FETCH_ASSOC);
+if(@count($res) > 0){
         $id_mat = $res[0]['id'];
         $valor_curso = $res[0]['subtotal'];
         $valor_pix = $valor_curso;

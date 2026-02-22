@@ -236,7 +236,12 @@ if (@count($res2) > 0) {
 
 
 //BUSCA DADOS DA MATRICULA
-$query = $pdo->prepare("SELECT * FROM matriculas where id_curso = :id_curso and aluno = :aluno");
+if ($is_pacote == 'Sim') {
+    $sqlMat = "SELECT * FROM matriculas WHERE id_curso = :id_curso AND aluno = :aluno AND pacote = 'Sim' ORDER BY id DESC LIMIT 1";
+} else {
+    $sqlMat = "SELECT * FROM matriculas WHERE id_curso = :id_curso AND aluno = :aluno AND (pacote <> 'Sim' OR pacote IS NULL OR pacote = '') ORDER BY id DESC LIMIT 1";
+}
+$query = $pdo->prepare($sqlMat);
 $query->execute([':id_curso' => $id_do_curso_pag, ':aluno' => $id_do_aluno]);
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 

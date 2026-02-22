@@ -130,7 +130,7 @@ if($pacote == 'Sim'){
 		$quant_mat = $matriculas + 1; 
 
 				
-		$stmtMatAlunoCurso = $pdo->prepare("SELECT * FROM matriculas WHERE id_curso = ? AND aluno = ?");
+		$stmtMatAlunoCurso = $pdo->prepare("SELECT * FROM matriculas WHERE id_curso = ? AND aluno = ? AND (pacote != 'Sim' OR pacote IS NULL OR pacote = '')");
 		$stmtMatAlunoCurso->execute([(int) $id_do_curso, (int) $aluno]);
 		$res3 = $stmtMatAlunoCurso->fetchAll(PDO::FETCH_ASSOC);
 		
@@ -142,7 +142,7 @@ if($pacote == 'Sim'){
 			$stmtDelete->execute([(int) $id_mat]);
 		}
 			//inserir a matrÇðcula do curso caso ela nÇœo exista
-			$stmtInsertMat = $pdo->prepare("INSERT INTO matriculas SET id_curso = :curso, aluno = :aluno, professor = :professor, aulas_concluidas = '1', data = curDate(), status = 'Matriculado', pacote = 'NÇœo', id_pacote = :id_pacote, obs = 'Pacote' ");
+			$stmtInsertMat = $pdo->prepare("INSERT INTO matriculas SET id_curso = :curso, aluno = :aluno, professor = :professor, aulas_concluidas = '1', data = curDate(), status = 'Matriculado', pacote = 'Nao', id_pacote = :id_pacote, obs = 'Pacote' ");
 			$stmtInsertMat->bindValue(":curso", (int) $id_do_curso, PDO::PARAM_INT);
 			$stmtInsertMat->bindValue(":aluno", (int) $aluno, PDO::PARAM_INT);
 			$stmtInsertMat->bindValue(":professor", (int) $id_professor, PDO::PARAM_INT);

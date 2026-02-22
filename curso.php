@@ -1897,6 +1897,7 @@ require_once("cabecalho.php");
 					</div>
 
 					<input type="hidden" name="id" value="<?php echo $id_do_curso_pag ?>">
+					<input type="hidden" name="pacote" value="Nao">
 
 
 				</form>
@@ -2825,7 +2826,8 @@ if (@$_POST['painel_aluno'] == 'sim') {
 
 				id,
 
-				nome
+				nome,
+				pacote: 'Nao'
 
 			},
 

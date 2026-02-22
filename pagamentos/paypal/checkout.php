@@ -10,8 +10,18 @@ $paypal = new PaypalExpress;
 
 // buscar do banco informações do cursp
 $id_curso = $_GET['id'];
+$pacoteReq = trim((string) ($_GET['pacote'] ?? ''));
+$isPacote = strcasecmp($pacoteReq, 'Sim') === 0;
 
-$query = $pdo->prepare("SELECT * FROM matriculas where id_curso = :id_curso and aluno = :aluno");
+if ($pacoteReq === '') {
+    $sqlMat = "SELECT * FROM matriculas WHERE id_curso = :id_curso AND aluno = :aluno ORDER BY id DESC LIMIT 1";
+} elseif ($isPacote) {
+    $sqlMat = "SELECT * FROM matriculas WHERE id_curso = :id_curso AND aluno = :aluno AND pacote = 'Sim' ORDER BY id DESC LIMIT 1";
+} else {
+    $sqlMat = "SELECT * FROM matriculas WHERE id_curso = :id_curso AND aluno = :aluno AND (pacote <> 'Sim' OR pacote IS NULL OR pacote = '') ORDER BY id DESC LIMIT 1";
+}
+
+$query = $pdo->prepare($sqlMat);
 $query->execute([':id_curso' => $id_curso, ':aluno' => $id_aluno]);
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 $matricula = $res[0]['id'];
@@ -19,7 +29,7 @@ $valor = $res[0]['subtotal'];
 $pacote = $res[0]['pacote'];
 
 
-if($pacote != 'Não'){
+if($pacote == 'Sim'){
     $query = $pdo->prepare("SELECT * from pacotes where id = :id");
     $query->execute([':id' => $id_curso]);
                $res_curso = $query->fetchAll(PDO::FETCH_ASSOC);                            

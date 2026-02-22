@@ -20,8 +20,12 @@ $pacote = $_POST['pacote'];
 
 $id_aluno = (int) $id_aluno;
 $id_do_curso_pag = (int) $id_do_curso_pag;
+$isPacote = strcasecmp(trim((string) $pacote), 'Sim') === 0;
 
-$stmt = $pdo->prepare("SELECT * FROM matriculas WHERE id_curso = ? AND aluno = ?");
+$sql = $isPacote
+	? "SELECT * FROM matriculas WHERE id_curso = ? AND aluno = ? AND pacote = 'Sim' ORDER BY id DESC LIMIT 1"
+	: "SELECT * FROM matriculas WHERE id_curso = ? AND aluno = ? AND (pacote <> 'Sim' OR pacote IS NULL OR pacote = '') ORDER BY id DESC LIMIT 1";
+$stmt = $pdo->prepare($sql);
 $stmt->execute([$id_do_curso_pag, $id_aluno]);
 $res = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

@@ -6,24 +6,12 @@ $mes_atual = Date('m');
 $ano_atual = Date('Y');
 $data_pgto_comissao = $ano_atual.'-'.$mes_atual.'-'.$dia_pgto_comissao;
 
-if($forma_pgto == 'MP'){
-@session_start();
-$id_aluno = $_SESSION['id'];
-
-$query = $pdo->prepare("SELECT * FROM matriculas where id_curso = :id_curso and aluno = :aluno");
-$query->execute([':id_curso' => $id_matricula, ':aluno' => $id_aluno]);
-$res = $query->fetchAll(PDO::FETCH_ASSOC);
-$subtotal = $res[0]['subtotal'];
-$id_matricula = $res[0]['id'];
-$total_recebido = $subtotal - ($subtotal * ($taxa_mp / 100));
-
-}
-
 $query = $pdo->prepare("SELECT * FROM matriculas where id = :id");
 $query->execute([':id' => $id_matricula]);
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 if(@count($res) > 0){
 	$subtotal = $res[0]['subtotal'];
+	$total_recebido = $subtotal;
 	$pacote = $res[0]['pacote'];
 	$aluno = $res[0]['aluno'];
 	$id_curso = $res[0]['id_curso'];
@@ -79,6 +67,10 @@ if(@count($res) > 0){
 }
 
 
+if($forma_pgto == 'MP'){
+	$total_recebido = $subtotal - ($subtotal * ($taxa_mp / 100));
+}
+
 if($forma_pgto == 'Paypal'){		
 	$total_recebido = $subtotal - ($subtotal * ($taxa_paypal / 100));
 }
@@ -88,12 +80,12 @@ if($forma_pgto == 'Pix' and @$pix_api == 'Sim'){
 }
 
 
-//ATUALIZANDO A MATRÍCULA
+//ATUALIZANDO A MATRÃCULA
 $query = $pdo->prepare("UPDATE matriculas SET status = 'Matriculado', forma_pgto = :forma_pgto, total_recebido = :total_recebido where id = :id");
 $query->execute([':forma_pgto' => $forma_pgto, ':total_recebido' => $total_recebido, ':id' => $id_matricula]);
 
 
-//ADICIONAR MAIS UM CARTÃO PARA O ALUNO
+//ADICIONAR MAIS UM CARTÃƒO PARA O ALUNO
 $cartoes += 1;
 $stmtCartao = $pdo->prepare("UPDATE alunos SET cartao = :cartao where id = :id");
 $stmtCartao->execute([':cartao' => $cartoes, ':id' => $id_pessoa_aluno]);
@@ -120,19 +112,19 @@ if($pacote == 'Sim'){
 		$quant_mat = $matriculas + 1; 
 
 				
-		$query3 = $pdo->prepare("SELECT * FROM matriculas where id_curso = :id_curso and aluno = :aluno");
+		$query3 = $pdo->prepare("SELECT * FROM matriculas where id_curso = :id_curso and aluno = :aluno AND (pacote != 'Sim' OR pacote IS NULL OR pacote = '')");
 		$query3->execute([':id_curso' => $id_do_curso, ':aluno' => $aluno]);
 		$res3 = $query3->fetchAll(PDO::FETCH_ASSOC);
 		
 
 		if(@count($res3) > 0){	
 			$id_mat = @$res3[0]['id'];
-			//excluir a matrícula do curso se ela j? existir
+			//excluir a matrÃ­cula do curso se ela j? existir
 			$stmtDel = $pdo->prepare("DELETE FROM matriculas where id = :id");
 			$stmtDel->execute([':id' => $id_mat]);
 		}
-			//inserir a matrícula do curso caso ela não exista
-			$stmtInsert = $pdo->prepare("INSERT INTO matriculas SET id_curso = :id_curso, aluno = :aluno, professor = :professor, aulas_concluidas = '1', data = curDate(), status = 'Matriculado', pacote = 'Não', id_pacote = :id_pacote, obs = 'Pacote' ");
+			//inserir a matrÃ­cula do curso caso ela nÃ£o exista
+			$stmtInsert = $pdo->prepare("INSERT INTO matriculas SET id_curso = :id_curso, aluno = :aluno, professor = :professor, aulas_concluidas = '1', data = curDate(), status = 'Matriculado', pacote = 'Nao', id_pacote = :id_pacote, obs = 'Pacote' ");
 			$stmtInsert->execute([
 				':id_curso' => $id_do_curso,
 				':aluno' => $aluno,
@@ -178,7 +170,7 @@ if($pacote == 'Sim'){
 // 		}
 
 
-// //LANÇAR COMISSÃO DO PROFESSOR
+// //LANÃ‡AR COMISSÃƒO DO PROFESSOR
 // $valor_comissao_pagar = ($valor_comissao * $subtotal) / 100;
 // if(strtotime($hoje) < strtotime($data_pgto_comissao)){
 // 	$data_venc = $data_pgto_comissao;
@@ -187,7 +179,7 @@ if($pacote == 'Sim'){
 // }
 
 // if($valor_comissao_pagar > 0){
-// 	$query = $pdo->query("INSERT INTO pagar SET descricao = 'Comissão',  valor = '$valor_comissao_pagar', data = curDate(), vencimento = '$data_venc', pago = 'Não', arquivo = 'sem-foto.png', professor = '$usuario_comissao', curso = '$nome_curso'");
+// 	$query = $pdo->query("INSERT INTO pagar SET descricao = 'ComissÃ£o',  valor = '$valor_comissao_pagar', data = curDate(), vencimento = '$data_venc', pago = 'NÃ£o', arquivo = 'sem-foto.png', professor = '$usuario_comissao', curso = '$nome_curso'");
 // }
 
 
@@ -195,3 +187,4 @@ if($pacote == 'Sim'){
 // require_once('email-aprovar-matricula.php');
 
  ?>
+

@@ -1826,6 +1826,7 @@ require_once("cabecalho.php");
 
 
 					<input type="hidden" name="id" value="<?php echo $id_do_curso_pag ?>">
+					<input type="hidden" name="pacote" value="Sim">
 
 
 
