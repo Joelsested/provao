@@ -37,7 +37,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 				<span id="link-drive" class="text-muted"><small><small><a title="Assistir pelo Google Drive"
 								id="link_drive_curso" href="" target="_blank"><i class="fa fa-link"
 									aria-hidden="true"></i>
-								Assistir pelo Google Drive</a> (Ao Finalizar solicitar liberação do
+								Assistir pelo Google Drive</a> (Ao Finalizar solicitar liberaÃ§Ã£o do
 							Certificado)</small></small></span>
 
 
@@ -108,6 +108,10 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 					allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen
 					id="target-video-aula"></iframe>
 
+				<div id="video-fallback" style="display:none; margin: 10px 0;">
+					<a id="link-video-externo" href="#" target="_blank" class="btn btn-sm btn-primary">Abrir video em nova aba</a>
+				</div>
+
 				<span id="texto-finalizado"></span>
 
 				<div align="center">
@@ -119,7 +123,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 					</a>
 
 					<a href="#" onclick="proximo()" class="cinza_escuro" id="btn-proximo">
-						<span style="margin-right:10px">Próximo<i class="fa fa-arrow-right"
+						<span style="margin-right:10px">PrÃ³ximo<i class="fa fa-arrow-right"
 								style="font-size:20px;margin-left:3px"></i>
 						</span>
 					</a>
@@ -169,7 +173,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 
 							<div class="col-md-6">
 								<div class="form-group">
-									<label>Número da Aula <small>(Se Necessário)</small></label>
+									<label>NÃºmero da Aula <small>(Se NecessÃ¡rio)</small></label>
 									<input type="number" class="form-control" name="num_aula" id="num_aula">
 								</div>
 							</div>
@@ -193,7 +197,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 
 						<hr>
 						<div align="center" class="text-muted">
-							<small>Se preferir mande sua dúvida diretamente em nosso whatsapp <a
+							<small>Se preferir mande sua dÃºvida diretamente em nosso whatsapp <a
 									href="http://api.whatsapp.com/send?1=pt_BR&phone=<?php echo $tel_whatsapp ?>"
 									title="Chamar no Whatsapp" target="_blank"><i
 										class="fa fa-whatsapp"></i><?php echo $tel_sistema ?></a></small>
@@ -323,7 +327,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 
 						<div class="col-md-12">
 							<div class="form-group">
-								<label>Mensagem da Avaliação<small>(Max 500 Caracteres)</small></label>
+								<label>Mensagem da AvaliaÃ§Ã£o<small>(Max 500 Caracteres)</small></label>
 								<textarea maxlength="500" class="form-control" name="avaliacao"
 									id="avaliacao"></textarea>
 							</div>
@@ -389,10 +393,114 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 
 
 
+<!-- Modal Ações do Curso -->
+<div class="modal fade" id="modalAcoesCurso" tabindex="-1" role="dialog" aria-labelledby="modalAcoesCursoLabel"
+	aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header" style="background:#1f5f95; color:#fff;">
+				<h4 class="modal-title" id="modalAcoesCursoLabel">Ações do Curso</h4>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close" style="margin-top: -25px">
+					<span aria-hidden="true" style="color:#fff;">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<p class="text-muted" style="margin-bottom: 12px;">Curso: <strong id="acoes-curso-nome"></strong></p>
+				<div class="acoes-curso-horizontal">
+					<button id="btn-acao-videos" type="button" class="btn btn-success btn-acao-horizontal" onclick="acaoVerVideosCurso()">
+						<i class="fa fa-video-camera"></i> Vídeos
+					</button>
+					<button id="btn-acao-apostilas" type="button" class="btn btn-primary btn-acao-horizontal" onclick="acaoAbrirApostilaCurso()">
+						<i class="fa fa-book"></i> Apostilas
+					</button>
+					<button id="btn-acao-gabarito" type="button" class="btn btn-warning btn-acao-horizontal" onclick="acaoAbrirGabaritoCurso()">
+						<i class="fa fa-download"></i> Gabarito
+					</button>
+					<button id="btn-acao-avaliacoes" type="button" class="btn btn-info btn-acao-horizontal" onclick="acaoAbrirAvaliacoesCurso()">
+						<i class="fa fa-bar-chart"></i> Avaliações
+					</button>
+					<button id="btn-acao-prova" type="button" class="btn btn-vinho btn-acao-horizontal" onclick="acaoFazerProvaCurso()">
+						<i class="fa fa-question-circle-o"></i> Fazer Prova
+					</button>
+				</div>
+				<small class="text-muted" id="acoes-curso-alerta" style="display:block; margin-top: 12px;"></small>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Modal Gabarito -->
+<div class="modal fade" id="modalGabaritoCurso" tabindex="-1" role="dialog" aria-labelledby="modalGabaritoCursoLabel"
+	aria-hidden="true">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h4 class="modal-title" id="modalGabaritoCursoLabel">Gabaritos e Arquivos do Curso - <span id="nome-curso-gabarito"></span></h4>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close" style="margin-top: -25px">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<div id="listar-doc-modal"></div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Modal Apostilas -->
+<div class="modal fade" id="modalApostilasCurso" tabindex="-1" role="dialog" aria-labelledby="modalApostilasCursoLabel"
+	aria-hidden="true">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h4 class="modal-title" id="modalApostilasCursoLabel">Apostilas do Curso - <span id="nome-curso-apostilas"></span></h4>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close" style="margin-top: -25px">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<div id="listar-apostilas-modal"></div>
+			</div>
+		</div>
+	</div>
+</div>
+
 <input type="hidden" id="id_da_matricula">
 <input type="hidden" id="id_do_curso">
 
 <script type="text/javascript">var pag = "<?= $pag ?>"</script>
+<style>
+	#modalAcoesCurso .modal-dialog {
+		width: 760px;
+		max-width: 95%;
+	}
+	.acoes-curso-horizontal {
+		display: flex;
+		gap: 8px;
+		flex-wrap: nowrap;
+		align-items: stretch;
+	}
+	.btn-acao-horizontal {
+		flex: 1 1 0;
+		min-width: 0;
+		font-weight: 600;
+		font-size: 14px;
+		white-space: nowrap;
+		padding: 8px 10px;
+	}
+	.btn-vinho {
+		background-color: #7b1e3a;
+		border-color: #7b1e3a;
+		color: #fff;
+	}
+	.btn-vinho:hover,
+	.btn-vinho:focus,
+	.btn-vinho:active {
+		background-color: #65172f;
+		border-color: #65172f;
+		color: #fff;
+	}
+</style>
 <?php $ajax_js_ver = @filemtime(__DIR__ . '/../js/ajax.js'); ?>
 <script src="js/ajax.js?v=<?php echo $ajax_js_ver; ?>"></script>
 
@@ -420,6 +528,245 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 
 
 <script type="text/javascript">
+	var contextoAcoesCurso = {
+		idMatricula: 0,
+		idCurso: 0,
+		nomeCurso: '',
+		totalAulas: 0,
+		aulasConcluidas: 0,
+		idPrimeiraAula: 0,
+		idAulaPendente: 0,
+		linkCurso: '',
+		urlApostila: '',
+		urlAvaliacoes: '',
+		podeAcessar: false,
+		temVideo: false,
+		temApostila: false,
+		temGabarito: false,
+		podeProva: false,
+		provaAprovada: false,
+		notaPercentual: 0,
+		notaEscala10: 0,
+		mediaAprovacao: 60
+	};
+
+	function mostrarAvisoAcoesCurso(mensagem) {
+		if (window.Swal) {
+			Swal.fire({
+				icon: 'info',
+				title: 'AtenÃ§Ã£o',
+				text: mensagem
+			});
+			return;
+		}
+		alert(mensagem);
+	}
+
+	function ajustarBotaoAcaoCurso(seletor, habilitado) {
+		var $btn = $(seletor);
+		$btn.prop('disabled', !habilitado);
+		$btn.css('opacity', habilitado ? '1' : '0.6');
+	}
+
+	function abrirModalAcoesCursoPorBotao(botao) {
+		var $btn = $(botao);
+		var lerBooleano = function (valor) {
+			return String(valor || '').toLowerCase() === 'true';
+		};
+		abrirModalAcoesCurso(
+			parseInt($btn.data('id-mat') || 0, 10),
+			parseInt($btn.data('id-curso') || 0, 10),
+			String($btn.data('nome-curso') || ''),
+			parseInt($btn.data('total-aulas') || 0, 10),
+			parseInt($btn.data('aulas-concluidas') || 0, 10),
+			parseInt($btn.data('id-primeira-aula') || 0, 10),
+			parseInt($btn.data('id-aula-pendente') || 0, 10),
+			String($btn.data('link-curso') || ''),
+			String($btn.data('url-apostila') || ''),
+			String($btn.data('url-avaliacoes') || ''),
+			lerBooleano($btn.data('pode-acessar')),
+			lerBooleano($btn.data('tem-video')),
+			lerBooleano($btn.data('tem-apostila')),
+			lerBooleano($btn.data('tem-gabarito')),
+			lerBooleano($btn.data('pode-prova')),
+			lerBooleano($btn.data('prova-aprovada')),
+			parseFloat($btn.data('nota-percentual') || 0),
+			parseFloat($btn.data('nota-escala10') || 0),
+			parseFloat($btn.data('media-aprovacao') || 60)
+		);
+	}
+
+	function abrirModalAcoesCurso(idMatricula, idCurso, nomeCurso, totalAulas, aulasConcluidas, idPrimeiraAula, idAulaPendente, linkCurso, urlApostila, urlAvaliacoes, podeAcessar, temVideo, temApostila, temGabarito, podeProva, provaAprovada, notaPercentual, notaEscala10, mediaAprovacao) {
+		contextoAcoesCurso.idMatricula = parseInt(idMatricula || 0, 10);
+		contextoAcoesCurso.idCurso = parseInt(idCurso || 0, 10);
+		contextoAcoesCurso.nomeCurso = nomeCurso || '';
+		contextoAcoesCurso.totalAulas = parseInt(totalAulas || 0, 10);
+		contextoAcoesCurso.aulasConcluidas = parseInt(aulasConcluidas || 0, 10);
+		contextoAcoesCurso.idPrimeiraAula = parseInt(idPrimeiraAula || 0, 10);
+		contextoAcoesCurso.idAulaPendente = parseInt(idAulaPendente || 0, 10);
+		contextoAcoesCurso.linkCurso = linkCurso || '';
+		contextoAcoesCurso.urlApostila = urlApostila || '';
+		contextoAcoesCurso.urlAvaliacoes = urlAvaliacoes || '';
+		contextoAcoesCurso.podeAcessar = !!podeAcessar;
+		contextoAcoesCurso.temVideo = !!temVideo;
+		contextoAcoesCurso.temApostila = !!temApostila;
+		contextoAcoesCurso.temGabarito = !!temGabarito;
+		contextoAcoesCurso.podeProva = !!podeProva;
+		contextoAcoesCurso.provaAprovada = !!provaAprovada;
+		contextoAcoesCurso.notaPercentual = Number(notaPercentual || 0);
+		contextoAcoesCurso.notaEscala10 = Number(notaEscala10 || 0);
+		contextoAcoesCurso.mediaAprovacao = Number(mediaAprovacao || 60);
+
+		$('#acoes-curso-nome').text(contextoAcoesCurso.nomeCurso);
+		$('#acoes-curso-alerta').text(contextoAcoesCurso.podeAcessar ? '' : 'Curso com status aguardando pagamento.');
+
+		ajustarBotaoAcaoCurso('#btn-acao-videos', contextoAcoesCurso.podeAcessar && contextoAcoesCurso.idPrimeiraAula > 0);
+		ajustarBotaoAcaoCurso('#btn-acao-apostilas', contextoAcoesCurso.podeAcessar && contextoAcoesCurso.temApostila);
+		ajustarBotaoAcaoCurso('#btn-acao-gabarito', contextoAcoesCurso.podeAcessar && contextoAcoesCurso.temGabarito);
+		ajustarBotaoAcaoCurso('#btn-acao-avaliacoes', true);
+		// MantÃ©m clicÃ¡vel para exibir aviso quando a prova ainda nÃ£o estiver liberada.
+		ajustarBotaoAcaoCurso('#btn-acao-prova', true);
+
+		$('#modalAcoesCurso').modal('show');
+	}
+
+	function acaoVerVideosCurso() {
+		if (!contextoAcoesCurso.podeAcessar) {
+			mostrarAvisoAcoesCurso('Este curso ainda nÃ£o estÃ¡ liberado.');
+			return;
+		}
+		if (contextoAcoesCurso.idPrimeiraAula <= 0) {
+			mostrarAvisoAcoesCurso('Este curso nÃ£o possui aulas cadastradas.');
+			return;
+		}
+		$('#id_da_matricula').val(contextoAcoesCurso.idMatricula);
+		$('#id_do_curso').val(contextoAcoesCurso.idCurso);
+		$('#modalAcoesCurso').modal('hide');
+		abrirAula(contextoAcoesCurso.idPrimeiraAula, 'aula');
+	}
+
+	function listarApostilasModal(id) {
+		$.ajax({
+			url: 'paginas/' + pag + "/listar-apostilas.php",
+			method: 'POST',
+			data: { id },
+			dataType: "html",
+			success: function (result) {
+				$("#listar-apostilas-modal").html(result);
+			}
+		});
+	}
+
+	function acaoAbrirApostilaCurso() {
+		if (!contextoAcoesCurso.podeAcessar) {
+			mostrarAvisoAcoesCurso('Este curso ainda nÃ£o estÃ¡ liberado.');
+			return;
+		}
+		if (!contextoAcoesCurso.temApostila || !contextoAcoesCurso.urlApostila) {
+			mostrarAvisoAcoesCurso('Este curso nÃ£o possui apostila cadastrada.');
+			return;
+		}
+		$('#nome-curso-apostilas').text(contextoAcoesCurso.nomeCurso);
+		listarApostilasModal(contextoAcoesCurso.idCurso);
+		$('#modalApostilasCurso').modal('show');
+	}
+
+	function listarDocModal(id) {
+		$.ajax({
+			url: 'paginas/' + pag + "/listar-doc.php",
+			method: 'POST',
+			data: { id },
+			dataType: "html",
+			success: function (result) {
+				$("#listar-doc-modal").html(result);
+			}
+		});
+	}
+
+	function acaoAbrirGabaritoCurso() {
+		if (!contextoAcoesCurso.podeAcessar) {
+			mostrarAvisoAcoesCurso('Este curso ainda nÃ£o estÃ¡ liberado.');
+			return;
+		}
+		if (!contextoAcoesCurso.temGabarito) {
+			mostrarAvisoAcoesCurso('Este curso nÃ£o possui gabarito/arquivo cadastrado.');
+			return;
+		}
+		$('#nome-curso-gabarito').text(contextoAcoesCurso.nomeCurso);
+		listarDocModal(contextoAcoesCurso.idCurso);
+		$('#modalGabaritoCurso').modal('show');
+	}
+
+	function acaoAbrirAvaliacoesCurso() {
+		if (!contextoAcoesCurso.urlAvaliacoes) {
+			mostrarAvisoAcoesCurso('NÃ£o foi possÃ­vel carregar as avaliaÃ§Ãµes deste curso.');
+			return;
+		}
+		modalAvaliacao(contextoAcoesCurso.urlAvaliacoes);
+	}
+
+	function acaoFazerProvaCurso() {
+		if (!contextoAcoesCurso.podeAcessar) {
+			mostrarAvisoAcoesCurso('Este curso ainda nÃ£o estÃ¡ liberado.');
+			return;
+		}
+		if (contextoAcoesCurso.provaAprovada) {
+			var nota10 = contextoAcoesCurso.notaEscala10.toFixed(1).replace('.', ',');
+			var notaPerc = contextoAcoesCurso.notaPercentual.toFixed(2).replace('.', ',');
+			var msgAprovado = 'Prova ja feita com aprovacao. Nota: ' + nota10 + ' (' + notaPerc + '%).';
+			if (window.Swal) {
+				Swal.fire({
+					icon: 'success',
+					title: 'Prova ja realizada',
+					text: msgAprovado,
+					showCancelButton: true,
+					confirmButtonText: 'Ver Avaliacoes',
+					cancelButtonText: 'Fechar'
+				}).then(function (result) {
+					if (result.isConfirmed && contextoAcoesCurso.urlAvaliacoes) {
+						modalAvaliacao(contextoAcoesCurso.urlAvaliacoes);
+					}
+				});
+			} else {
+				alert(msgAprovado);
+			}
+			return;
+		}
+		if (!contextoAcoesCurso.podeProva) {
+			var aulasConcluidas = parseInt(contextoAcoesCurso.aulasConcluidas || 0, 10);
+			var totalAulas = parseInt(contextoAcoesCurso.totalAulas || 0, 10);
+			var mensagem = 'Prova ainda nÃ£o liberada. VocÃª concluiu ' + aulasConcluidas + ' de ' + totalAulas + ' aulas. Assista todas as aulas em VÃ­deos para liberar a prova.';
+			if (window.Swal) {
+				Swal.fire({
+					icon: 'info',
+					title: 'Prova nÃ£o liberada',
+					text: mensagem,
+					showCancelButton: true,
+					confirmButtonText: 'Ir para VÃ­deos',
+					cancelButtonText: 'Fechar'
+				}).then(function (result) {
+					if (result.isConfirmed) {
+						var aulaDestino = parseInt(contextoAcoesCurso.idAulaPendente || 0, 10);
+						if (aulaDestino <= 0) {
+							aulaDestino = parseInt(contextoAcoesCurso.idPrimeiraAula || 0, 10);
+						}
+						if (aulaDestino > 0) {
+							$('#id_da_matricula').val(contextoAcoesCurso.idMatricula);
+							$('#id_do_curso').val(contextoAcoesCurso.idCurso);
+							$('#modalAcoesCurso').modal('hide');
+							abrirAula(aulaDestino, 'aula');
+						}
+					}
+				});
+			} else {
+				alert(mensagem);
+			}
+			return;
+		}
+		$('#modalAcoesCurso').modal('hide');
+		questionario(contextoAcoesCurso.idCurso, contextoAcoesCurso.nomeCurso, contextoAcoesCurso.idMatricula);
+	}
+
 	function abrirAulas(id, nome, aulas, id_curso, link) {
 
 		if (link == "") {
@@ -448,13 +795,21 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 </script>
 
 <script type="text/javascript">
-	function listarAulas(id, id_mat) {
-		var id_usu = localStorage.id_usu;
+	function obterIdAlunoAtivo() {
+		var sessaoId = "<?= (int) ($_SESSION['id'] ?? 0) ?>";
+		try {
+			return localStorage.getItem('active_user_id') || localStorage.id_usu || sessaoId;
+		} catch (e) {
+			return sessaoId;
+		}
+	}
 
+	function listarAulas(id, id_mat) {
 		$.ajax({
 			url: 'paginas/' + pag + "/listar-aulas.php",
 			method: 'POST',
-			data: { id, id_mat, id_usu },
+			data: { id, id_mat, _ts: Date.now() },
+			cache: false,
 			dataType: "html",
 
 			success: function (result) {
@@ -464,54 +819,56 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 		});
 	}
 
-
-	function salv(id_alt, id_curso, numeracao, pergunta, id_aluno, letras, correta) {
-
-		$.ajax({
-			url: 'paginas/' + pag + "/salvar-respostas.php",
-			method: 'POST',
-			data: { id_alt, id_curso, numeracao, pergunta, id_aluno, letras, correta },
-			dataType: "text",
-
-			success: function (mensagem) {
-
-
-
-				if (mensagem.trim() == "Salvo com Sucesso") {
-					listar();
-				} else if (mensagem.trim() == "Sessao expirada, atualize a pagina") {
-					alert(mensagem)
-					window.location = "../../../index.php";
-				} else {
-					$('#mensagem-excluir').addClass('text-danger')
-					$('#mensagem-excluir').text(mensagem)
-				}
-
-
-			}
-		});
-	}
-
 </script>
 
 
 <script type="text/javascript">
+	function normalizarLinkAula(link) {
+		var valor = (link || '').trim();
+		if (!valor || valor === 'https://SEU_LINK_PADRAO' || valor === 'SEU_LINK_PADRAO') {
+			return '';
+		}
+		if (valor.indexOf('youtu.be/') !== -1) {
+			var idCurto = valor.split('youtu.be/')[1].split(/[?&]/)[0];
+			return idCurto ? ('https://www.youtube.com/embed/' + idCurto) : '';
+		}
+		if (valor.indexOf('youtube.com/watch') !== -1) {
+			var matchWatch = valor.match(/[?&]v=([^&#]+)/);
+			return matchWatch && matchWatch[1] ? ('https://www.youtube.com/embed/' + matchWatch[1]) : '';
+		}
+		if (valor.indexOf('youtube.com/shorts/') !== -1) {
+			var idShort = valor.split('youtube.com/shorts/')[1].split(/[?&]/)[0];
+			return idShort ? ('https://www.youtube.com/embed/' + idShort) : '';
+		}
+		return valor;
+	}
+
+	function exibirFallbackVideo(link) {
+		if (!link) {
+			$('#video-fallback').hide();
+			$('#link-video-externo').attr('href', '#');
+			return;
+		}
+		$('#link-video-externo').attr('href', link);
+		$('#video-fallback').show();
+	}
+
 	function abrirAula(id, aula) {
-		var id_usu = localStorage.id_usu;
 		var questionario = "<?= $questionario_config ?>";
 
 		$('#id_da_aula').val(id);
 		$.ajax({
 			url: 'paginas/' + pag + "/listar-video.php",
 			method: 'POST',
-			data: { id, aula, id_usu },
+			data: { id, aula, _ts: Date.now() },
+			cache: false,
 			dataType: "html",
 
 			success: function (result) {
 				//alert(result)
 				if (result.trim() === 'Curso Finalizado') {
 
-					$('#nome_da_aula').text('Parabéns, você concluiu a Disciplina');
+					$('#nome_da_aula').text('ParabÃ©ns, vocÃª concluiu a Disciplina');
 
 
 
@@ -521,10 +878,10 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 					$('#numero_da_aula').text('');
 					$('#nome_da_sessao').text('');
 
-				} else if (result.trim() === 'Aulas Concluídas') {
+				} else if (result.trim() === 'Aulas ConcluÃ­das') {
 
-					$('#nome_da_aula').text('Parabéns, você concluiu as aulas, agora vá para a avaliação final!');
-					$('#texto-finalizado').text('Responda o questionário final para ser aprovado na Disciplina.');
+					$('#nome_da_aula').text('ParabÃ©ns, vocÃª concluiu as aulas, agora vÃ¡ para a avaliaÃ§Ã£o final!');
+					$('#texto-finalizado').text('Responda o questionÃ¡rio final para ser aprovado na Disciplina.');
 
 					document.getElementById('btn-anterior').style.display = 'none';
 					document.getElementById('btn-proximo').style.display = 'none';
@@ -537,12 +894,31 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 
 					document.getElementById('btn-anterior').style.display = 'inline-block';
 					document.getElementById('btn-proximo').style.display = 'inline-block';
-					document.getElementById('target-video-aula').style.display = 'inline-block';
 					$('#texto-finalizado').text('');
 
 					var res = result.split('***');
+					if (res.length < 4) {
+						$('#texto-finalizado').text('NÃ£o foi possÃ­vel abrir esta aula agora.');
+						document.getElementById('target-video-aula').style.display = 'none';
+						$('#target-video-aula').attr('src', '');
+						exibirFallbackVideo('');
+						$('#modalAula').modal('show');
+						return;
+					}
+					var linkAula = normalizarLinkAula(res[2]);
 
-					$('#target-video-aula').attr('src', res[2]);
+					if (linkAula === '') {
+						document.getElementById('target-video-aula').style.display = 'none';
+						$('#target-video-aula').attr('src', '');
+						$('#texto-finalizado').text('Esta aula nÃ£o possui vÃ­deo cadastrado. Clique em PrÃ³xima para continuar.');
+						exibirFallbackVideo('');
+					} else {
+						document.getElementById('target-video-aula').style.display = 'inline-block';
+						$('#target-video-aula').attr('src', 'about:blank');
+						$('#target-video-aula').attr('src', linkAula);
+						$('#texto-finalizado').text('Se o vÃ­deo nÃ£o carregar no painel, use o botÃ£o para abrir em nova aba.');
+						exibirFallbackVideo(linkAula);
+					}
 					$('#numero_da_aula').text('Aula - ' + res[0]);
 					$('#nome_da_aula').text(res[1]);
 					$('#modalAula').modal('show');
@@ -676,7 +1052,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 			dataType: "text",
 
 			success: function (mensagem) {
-				if (mensagem.trim() == "Excluído com Sucesso") {
+				if (mensagem.trim() == "ExcluÃ­do com Sucesso") {
 					listarPerguntas(id_curso);
 				} else {
 					$('#mensagem-excluir').addClass('text-danger')
@@ -798,7 +1174,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 			dataType: "text",
 
 			success: function (mensagem) {
-				if (mensagem.trim() == "Excluído com Sucesso") {
+				if (mensagem.trim() == "ExcluÃ­do com Sucesso") {
 					listarRespostas(id_pergunta);
 				} else {
 					$('#mensagem-resposta').addClass('text-danger')
@@ -880,13 +1256,13 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 		}
 		if (!idMat || idMat.toLowerCase() === 'undefined' || idMat.toLowerCase() === 'null') {
 			$('#mensagem-excluir').addClass('text-danger')
-			$('#mensagem-excluir').text('Matricula invalida.')
+			$('#mensagem-excluir').text('MatrÃ­cula invÃ¡lida.')
 			return;
 		}
 		idMat = idMat.replace(/[^0-9]/g, '');
 		if (!idMat) {
 			$('#mensagem-excluir').addClass('text-danger')
-			$('#mensagem-excluir').text('Matricula invalida.')
+			$('#mensagem-excluir').text('MatrÃ­cula invÃ¡lida.')
 			return;
 		}
 		$.ajax({
@@ -918,64 +1294,41 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 		$('#id_curso_quest').val(curso);
 		$('#id_mat_quest').val(id);
 		$('#modalQuest').modal('show');
-		listarQuest(curso);
+		listarQuest(curso, id);
 
 	}
 
-	function listarQuest(curso) {
+	function listarQuest(curso, id_mat) {
+		var id_usu = obterIdAlunoAtivo();
 		$.ajax({
 			url: 'paginas/' + pag + "/listar-quest.php",
 			method: 'POST',
-			data: { curso },
+			data: { curso, id_mat, id_usu },
 			dataType: "html",
+			cache: false,
 
 			success: function (result) {
-				// console.log(result)
-				$("#quest").html(result);
+				const html = (result || '').trim();
+				if (!html) {
+					$("#quest").html('<div class="alert alert-danger" style="margin: 15px;">NÃ£o foi possÃ­vel carregar o questionÃ¡rio.</div>');
+					return;
+				}
+				$("#quest").html(html);
+				$("#quest").find("script").each(function () {
+					if (this.src) {
+						var s = document.createElement('script');
+						s.src = this.src;
+						document.head.appendChild(s);
+					} else {
+						$.globalEval(this.text || this.textContent || this.innerHTML || '');
+					}
+				});
 
+			},
+			error: function (xhr) {
+				const msg = xhr && xhr.responseText ? xhr.responseText : 'Erro inesperado ao carregar o questionario.';
+				$("#quest").html('<div class="alert alert-danger" style="margin: 15px;">' + msg + '</div>');
 			}
 		});
 	}
-
-
-
-	$("#form-quest").submit(function () {
-		event.preventDefault();
-		var formData = new FormData(this);
-
-		$.ajax({
-			url: 'paginas/' + pag + "/resultado.php",
-			type: 'POST',
-			data: formData,
-
-			success: function (mensagem) {
-				var msg = mensagem.split('***');
-				var nota = msg[1];
-				$('#mensagem-quest').text('');
-				$('#mensagem-quest').removeClass()
-				if (msg[0].trim() == "Aprovado") {
-					alert('Parabéns, você foi aprovado com ' + nota + '%,!');
-					$('#btn-fechar-quest').click();
-					$('#mensagem-quest').text('');
-					listarCursos()
-				} else if (msg[0].trim() == "Reprovado") {
-					alert('Você foi reprovado. sua nota foi de ' + nota + '%, você pode refazer o questionário com atenção para tentar novamente!');
-					$('#btn-fechar-quest').click();
-					$('#mensagem-quest').text('');
-					listarCursos()
-
-				} else {
-					$('#mensagem-quest').addClass('text-danger')
-					$('#mensagem-quest').text(msg[0])
-				}
-
-			},
-
-			cache: false,
-			contentType: false,
-			processData: false,
-
-		});
-
-	});
 </script>

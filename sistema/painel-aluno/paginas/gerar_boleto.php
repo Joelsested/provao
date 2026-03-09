@@ -52,6 +52,30 @@ function normalizarUnicode($texto)
     return $texto;
 }
 
+function normalizarTelefoneBoleto($telefone)
+{
+    $telefone = preg_replace('/\D/', '', (string) $telefone);
+    if ($telefone === '') {
+        return '';
+    }
+
+    // Remove código do país (55) quando presente.
+    if (strpos($telefone, '55') === 0 && strlen($telefone) > 11) {
+        $telefone = substr($telefone, 2);
+    }
+
+    // Remove prefixo 0 de longa distância (ex: 0XX...).
+    while (strlen($telefone) > 11 && strpos($telefone, '0') === 0) {
+        $telefone = substr($telefone, 1);
+    }
+
+    if (!preg_match('/^[1-9]{2}9?[0-9]{8}$/', $telefone)) {
+        return '';
+    }
+
+    return $telefone;
+}
+
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['valor_parcela'])) {
@@ -134,7 +158,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $payload['nome'] = $nome_aluno ?? ($payload['nome'] ?? '');
         $payload['email'] = $email_aluno ?? ($payload['email'] ?? '');
         $payload['cpf'] = $cpf_aluno ?? ($payload['cpf'] ?? '');
-        $payload['telefone'] = ($phone_aluno ?? '') ?: ($payload['telefone'] ?? '69999694538');
+        $telefoneFonteAluno = normalizarTelefoneBoleto($phone_aluno ?? '');
+        $telefoneFontePayload = normalizarTelefoneBoleto($payload['telefone'] ?? '');
+        $payload['telefone'] = $telefoneFonteAluno !== '' ? $telefoneFonteAluno : $telefoneFontePayload;
+        if ($payload['telefone'] === '') {
+            die('Erro: Atualize o número de telefone no seu cadastro. Formato obrigatório: DDD + número (10 ou 11 dígitos, sem 55).');
+        }
 
         if (count($resposta_matricula) == 0) {
             die("Erro: Matrícula não encontrada ou não pertence ao aluno logado.");
@@ -303,7 +332,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (RequestException $e) {
             echo "Erro na requisição: " . $e->getMessage();
         } catch (Exception $e) {
-            echo "Erro: " . $e->getMessage();
+            $mensagemErro = $e->getMessage();
+            if (stripos($mensagemErro, 'Telefone do cliente inválido') !== false) {
+                $mensagemErro = 'Atualize o número de telefone no seu cadastro. Formato obrigatório: DDD + número (10 ou 11 dígitos, sem 55).';
+            }
+            echo "Erro: " . $mensagemErro;
         }
     }
 }

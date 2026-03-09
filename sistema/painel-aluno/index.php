@@ -33,7 +33,7 @@ if (@$_GET['pagina'] != "") {
 
 
 
-//RECUPERAR DADOS DO USUÃRIO
+//RECUPERAR DADOS DO USUÃƒÂRIO
 
 $query = $pdo->prepare("SELECT * FROM usuarios where id = :id");
 $query->execute([':id' => $id_usuario]);
@@ -961,7 +961,7 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 
 							<div class="form-group">
 
-								<label>Documento:<small><small>( RG, CTPS, etc)</small></small></label>
+								<label>Documento:<small><small> ( RG, CTPS, etc)</small></small></label>
 
 								<input type="text" class="form-control" name="rg_usu" value="<?php echo $rg_usu ?>" placeholder="Documento pra certificaÃ§Ã£o">
 
@@ -1035,7 +1035,7 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 
 							<div class="form-group">
 
-								<label>EndereÃ§o:<small><small>(Rua, NÃºmero e Bairro)</small></small></label>
+								<label>EndereÃ§o:<small><small> (Rua, NÃºmero e Bairro)</small></small></label>
 
 								<input type="text" class="form-control" id="endereco_usu" name="endereco_usu" name="endereco_usu" value="<?php echo $endereco_usu ?>" placeholder="Rua X NÃºmero 50 Bairro X">
 
@@ -1049,7 +1049,7 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 
 							<div class="form-group">
 
-								<label>Numero:</label>
+								<label>NÃºmero:</label>
 
 								<input type="text" class="form-control" id="numero_usu" name="numero_usu" value="<?php echo $numero_usu ?>" placeholder="Numero">
 
@@ -1294,9 +1294,9 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 
 							<div class="form-group">
 
-								<label>DescriÃ§Ã£o</label>
+								<label>DescriÃƒÂ§ÃƒÂ£o</label>
 
-								<input value="" type="text" class="form-control" id="descricao" name="descricao" placeholder="DescriÃ§Ã£o" required>
+								<input value="" type="text" class="form-control" id="descricao" name="descricao" placeholder="DescriÃƒÂ§ÃƒÂ£o" required>
 
 							</div>
 
@@ -1597,7 +1597,7 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 
 
 
-				if (mensagem.trim() == "ExcluÃ­do com Sucesso") {
+				if (mensagem.trim() == "ExcluÃƒÂ­do com Sucesso") {
 
 					location.reload();
 
@@ -1846,7 +1846,7 @@ if (@count($res) > 0) {
 
 						<div class="col-md-12">
 
-							<span class="neutra"><a id="link_mostrar_rod" target="_blank"><i>Clique aqui</i></a> para comprar ou ver mais detalhes sobre nossa promoÃ§Ã£o!!</span>
+							<span class="neutra"><a id="link_mostrar_rod" target="_blank"><i>Clique aqui</i></a> para comprar ou ver mais detalhes sobre nossa promoÃƒÂ§ÃƒÂ£o!!</span>
 
 
 

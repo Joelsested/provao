@@ -32,7 +32,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 
 
 
-// Se for uma requisição POST para deletar arquivo
+// Se for uma requisiÃ§Ã£o POST para deletar arquivo
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["id"])) {
 
@@ -60,7 +60,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["id"])) {
 
   if ($stmt->execute(["id" => $id])) {
 
-   // Excluir o arquivo físico, se existir
+   // Excluir o arquivo fÃ­sico, se existir
 
    if (file_exists($caminhoArquivo)) {
 
@@ -320,7 +320,7 @@ $resposta_consulta = $consulta_arquivos->fetchAll(PDO::FETCH_ASSOC);
 
   const caminhoArquivo = "img/arquivos/" + arquivo;
 
-  const extensao = arquivo.split('.').pop().toLowerCase(); // Obtém a extensão do arquivo
+  const extensao = arquivo.split('.').pop().toLowerCase(); // ObtÃ©m a extensÃ£o do arquivo
 
 
 
@@ -372,7 +372,7 @@ $resposta_consulta = $consulta_arquivos->fetchAll(PDO::FETCH_ASSOC);
 
     title: 'Erro',
 
-    text: 'Formato de arquivo não suportado!',
+    text: 'Formato de arquivo nÃ£o suportado!',
 
     icon: 'error',
 
@@ -396,7 +396,7 @@ $resposta_consulta = $consulta_arquivos->fetchAll(PDO::FETCH_ASSOC);
 
    title: "Deseja apagar o arquivo?",
 
-   text: "Esta ação não poderá ser desfeita!",
+   text: "Esta aÃ§Ã£o nÃ£o poderÃ¡ ser desfeita!",
 
    icon: "warning",
 
@@ -432,7 +432,7 @@ $resposta_consulta = $consulta_arquivos->fetchAll(PDO::FETCH_ASSOC);
 
        title: "Apagado!",
 
-       text: "O arquivo foi excluído.",
+       text: "O arquivo foi excluÃ­do.",
 
        icon: "success"
 

@@ -72,6 +72,28 @@ class EFIBoletoPayment
         return $boletoData;
     }
 
+    private function normalizarTelefoneBoleto($telefone)
+    {
+        $telefone = preg_replace('/\D/', '', (string) $telefone);
+        if ($telefone === '') {
+            return '';
+        }
+
+        if (strpos($telefone, '55') === 0 && strlen($telefone) > 11) {
+            $telefone = substr($telefone, 2);
+        }
+
+        while (strlen($telefone) > 11 && strpos($telefone, '0') === 0) {
+            $telefone = substr($telefone, 1);
+        }
+
+        if (!preg_match('/^[1-9]{2}9?[0-9]{8}$/', $telefone)) {
+            return '';
+        }
+
+        return $telefone;
+    }
+
     private function createCharge($dados, $token)
     {
 
@@ -150,6 +172,11 @@ class EFIBoletoPayment
             date('Y-m-d', strtotime($dados['vencimento'])) :
             date('Y-m-d', strtotime('+7 days'));
 
+        $telefone = $this->normalizarTelefoneBoleto($dados['telefone'] ?? '');
+        if ($telefone === '') {
+            throw new Exception('Telefone do cliente inválido para boleto. Use DDD + número com 10 ou 11 dígitos.');
+        }
+
         $body = [
             'payment' => [
                 'banking_billet' => [
@@ -159,8 +186,7 @@ class EFIBoletoPayment
                         'email' => $dados['email'],
                         'cpf' => preg_replace('/\D/', '', $dados['cpf']),
                         'birth' => $dados['nascimento'] ?? null,
-                        // 'phone_number' => preg_replace('/\D/', '', $dados['phone_number'] ?? '')
-                        'phone_number' => $dados['telefone']
+                        'phone_number' => $telefone
                     ]
                 ]
             ]

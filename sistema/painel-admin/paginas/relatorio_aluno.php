@@ -4,7 +4,6 @@ require_once('../conexao.php');
 
 require_once('verificar.php');
 
-require_once __DIR__ . '/../../../efi/pix.php';
 require_once __DIR__ . '/../../../efi/boleto.php';
 
 $options = require_once __DIR__ . '/../../../efi/options.php';
@@ -333,12 +332,11 @@ $hoje = date('Y-m-d');
 $config = [
     'client_id' => $options['clientId'],
     'client_secret' => $options['clientSecret'],
-    'certificate_path' => $options['certificate'], // Apenas para PIX
-    'chave_pix' => $options['pixKey'] ?? '', // Sua chave PIX
+    'certificate_path' => $options['certificate'],
     'sandbox' => $options['sandbox'] // true para teste, false para produção
 ];
 
-$pixPayment = new EFIBoletoPayment(
+$boletoPaymentApi = new EFIBoletoPayment(
     $config['client_id'],
     $config['client_secret'],
     $config['sandbox']
@@ -357,8 +355,8 @@ $boletos_efi = ['data' => []];
 //     return $charge['data']['status'];
 // }
 
-function getChargeStatus($pixPayment, $chargeId) {
-    $consultarCobranca = $pixPayment->consultarCobranca($chargeId);
+function getChargeStatus($boletoPaymentApi, $chargeId) {
+    $consultarCobranca = $boletoPaymentApi->consultarCobranca($chargeId);
     return $consultarCobranca['data']['status'] ?? 'indefinido';
 }
 
@@ -419,7 +417,7 @@ foreach ($matriculas as $mat) {
 foreach ($resposta_parcelas as $i => $parcela) {
   $statusApi = '';
   if (!empty($parcela['charge_id'])) {
-    $statusApi = getChargeStatus($pixPayment, $parcela['charge_id']);
+    $statusApi = getChargeStatus($boletoPaymentApi, $parcela['charge_id']);
   }
 
   $statusResumo = 'pendente';
@@ -470,7 +468,7 @@ foreach ($resposta_parcelas as $parcela) {
   if ($urlComprovante === '') {
     continue;
   }
-  $tipoComprovante = preg_match('~^https?://~i', $urlComprovante) ? 'url' : 'pix';
+  $tipoComprovante = preg_match('~^https?://~i', $urlComprovante) ? 'url' : 'codigo';
   if (($parcela['status_resumo'] ?? '') !== 'pago') {
     continue;
   }
@@ -1289,6 +1287,10 @@ foreach ($resposta_parcelas as $parcela) {
           <p><i class="fa fa-phone"></i> <?php echo htmlspecialchars($telefone_aluno); ?></p>
 
         </div>
+
+        <a href="javascript:history.back()" class="btn btn-primary btn-custom no-print" style="margin-left:auto;">
+          <i class="fa fa-arrow-left"></i> Voltar
+        </a>
 
       </div>
 
@@ -3606,21 +3608,21 @@ function abrirBoleto(link) {
       .replace(/'/g, '&#039;');
 
     Swal.fire({
-      title: 'Comprovante PIX',
+      title: 'Comprovante de Pagamento',
       html: `
-        <p style="margin-bottom:10px;">Copia e cola PIX:</p>
-        <textarea id="pix-code" style="width:100%; height:140px; border:1px solid #ddd; border-radius:6px; padding:8px;" readonly>${linkSeguro}</textarea>
-        <button id="btn-copiar-pix" style="margin-top:10px; background:#007bff; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">
+        <p style="margin-bottom:10px;">Código para cópia:</p>
+        <textarea id="codigo-pagamento" style="width:100%; height:140px; border:1px solid #ddd; border-radius:6px; padding:8px;" readonly>${linkSeguro}</textarea>
+        <button id="btn-copiar-codigo" style="margin-top:10px; background:#007bff; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">
           Copiar
         </button>
       `,
       showCloseButton: true,
       showConfirmButton: false,
       didOpen: () => {
-        const btn = document.getElementById('btn-copiar-pix');
+        const btn = document.getElementById('btn-copiar-codigo');
         if (btn) {
           btn.addEventListener('click', () => {
-            const textarea = document.getElementById('pix-code');
+            const textarea = document.getElementById('codigo-pagamento');
             if (textarea) {
               textarea.select();
               textarea.setSelectionRange(0, 99999);

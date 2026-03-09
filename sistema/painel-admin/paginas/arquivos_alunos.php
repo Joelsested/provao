@@ -154,9 +154,13 @@ if ($_SESSION['nivel'] === 'Administrador' || $_SESSION['nivel'] === 'Secretario
 
 
 
- <div>
+ <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
 
-  <h1>Arquivos</h1>
+  <h1 style="margin:0;">Arquivos</h1>
+
+  <a href="javascript:history.back()" class="btn btn-default">
+   <i class="fa fa-arrow-left"></i> Voltar
+  </a>
 
  </div>
 
