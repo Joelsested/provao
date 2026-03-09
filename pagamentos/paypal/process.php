@@ -1,4 +1,8 @@
 <?php
+http_response_code(410);
+echo 'Forma de pagamento desativada. Utilize somente o gateway EFY.';
+exit;
+
 include_once('../../sistema/conexao.php');
 
 $redirectStr = '';

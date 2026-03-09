@@ -74,6 +74,11 @@ if (!$responsavel) {
     echo 'Responsavel invalido.';
     exit();
 }
+$nivelResponsavelSelecionado = (string) ($responsavel['nivel'] ?? '');
+if (in_array($nivelResponsavelSelecionado, ['Tutor', 'Secretario'], true) && (int) ($responsavel['id'] ?? 0) !== (int) $id_user) {
+    echo 'Atendente so pode ser responsavel quando faz a propria matricula.';
+    exit();
+}
 
 $responsavelProfessor = responsavelEhProfessor($pdo, $responsavel);
 if ($responsavel['nivel'] === 'Vendedor') {
@@ -138,6 +143,10 @@ if ($id !== '') {
     $responsavelMudou = (int) $responsavelId !== (int) $currentResponsavelId;
     $atendenteMudou = (int) $usuarioDestino > 0 && (int) $usuarioDestino !== (int) $currentAtendenteId;
     if ($responsavelMudou || $atendenteMudou) {
+        if (!$responsavelProfessor) {
+            echo 'Responsavel sem Professor nao permite trocar atendente.';
+            exit();
+        }
         $bloqueioTroca = podeTrocarAtendente($pdo, (int) $id, (int) $usuarioDestino, date('Y-m-d'));
         if (!empty($bloqueioTroca['bloqueado'])) {
             echo (string) ($bloqueioTroca['mensagem'] ?? 'Troca bloqueada por regra de comissao.');

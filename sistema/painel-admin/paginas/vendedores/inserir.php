@@ -2,7 +2,13 @@
 require_once("../../../conexao.php");
 require_once(__DIR__ . "/../../../../config/upload.php");
 require_once(__DIR__ . "/../../../../helpers.php");
+@session_start();
 $tabela = 'vendedores';
+
+if (($_SESSION['nivel'] ?? '') === 'Aluno') {
+    echo 'Aluno nao pode cadastrar vendedor.';
+    exit();
+}
 
 function tabelaTemColuna(PDO $pdo, string $tabela, string $coluna): bool
 {
@@ -21,20 +27,22 @@ $temSecretarioId = tabelaTemColuna($pdo, $tabela, 'secretario_id');
 if (!$temSecretarioId) {
     try {
         $pdo->exec("ALTER TABLE {$tabela} ADD COLUMN secretario_id int(11) DEFAULT NULL");
-        $temSecretarioId = true;
     } catch (Exception $e) {
-        $temSecretarioId = false;
+        // sem bloqueio
     }
+    // Revalida para ambientes sem permissao de ALTER TABLE
+    $temSecretarioId = tabelaTemColuna($pdo, $tabela, 'secretario_id');
 }
 
 $temPodeLoginAluno = tabelaTemColuna($pdo, $tabela, 'pode_login_como_aluno');
 if (!$temPodeLoginAluno) {
     try {
         $pdo->exec("ALTER TABLE {$tabela} ADD COLUMN pode_login_como_aluno TINYINT(1) NOT NULL DEFAULT 0");
-        $temPodeLoginAluno = true;
     } catch (Exception $e) {
-        $temPodeLoginAluno = false;
+        // sem bloqueio
     }
+    // Revalida para ambientes sem permissao de ALTER TABLE
+    $temPodeLoginAluno = tabelaTemColuna($pdo, $tabela, 'pode_login_como_aluno');
 }
 
 $nome = $_POST['nome'];
@@ -214,7 +222,9 @@ $query->bindValue(":id_pessoa", "$ult_id");
 $query->execute();
 $usuarioVendedorId = $usuario_id ?: (int) $pdo->lastInsertId();
 if ($usuarioVendedorId > 0) {
-    tentarVinculoVendedorAlunoPorCpf($pdo, $cpf);
+    if (function_exists('tentarVinculoVendedorAlunoPorCpf')) {
+        tentarVinculoVendedorAlunoPorCpf($pdo, $cpf);
+    }
 }
 } else {
 
@@ -261,7 +271,9 @@ if ($usuarioVendedorId > 0) {
     $query->bindValue(":foto", "$foto");
     $query->bindValue(":id_pessoa", "$id");
     $query->execute();
-    tentarVinculoVendedorAlunoPorCpf($pdo, $cpf);
+    if (function_exists('tentarVinculoVendedorAlunoPorCpf')) {
+        tentarVinculoVendedorAlunoPorCpf($pdo, $cpf);
+    }
 }
 
 

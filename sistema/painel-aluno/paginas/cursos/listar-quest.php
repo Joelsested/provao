@@ -1,9 +1,44 @@
 <?php
 require_once("../../../conexao.php");
+require_once(__DIR__ . '/../../aluno_context.php');
 
 $id_curso = $_POST['curso'];
 @session_start();
 $id_aluno = $_SESSION['id'];
+$id_matricula = (int) ($_POST['id_mat'] ?? 0);
+
+$mediaAprovacao = isset($media_config) ? (float) $media_config : 60.0;
+if ($id_matricula > 0) {
+	$paramsMat = [':id' => $id_matricula];
+	$ctxIds = aluno_context_ids($pdo);
+	$whereAluno = aluno_context_bind_in('aluno', $ctxIds, $paramsMat, 'al_ctx');
+	$queryMat = $pdo->prepare("SELECT nota FROM matriculas WHERE id = :id AND {$whereAluno} LIMIT 1");
+	$queryMat->execute($paramsMat);
+	$notaAtual = (float) ($queryMat->fetchColumn() ?: 0);
+	if ($notaAtual >= $mediaAprovacao) {
+		$notaEscala10 = number_format($notaAtual / 10, 1, ',', '.');
+		echo '<div class="alert alert-success" style="margin: 15px;">Prova ja feita com aprovacao. Nota final: ' . $notaEscala10 . '.</div>';
+		exit;
+	}
+}
+function normalizarParaUtf8($valor)
+{
+	if (is_array($valor)) {
+		foreach ($valor as $chave => $item) {
+			$valor[$chave] = normalizarParaUtf8($item);
+		}
+		return $valor;
+	}
+
+	if (is_string($valor)) {
+		if (!mb_check_encoding($valor, 'UTF-8')) {
+			return mb_convert_encoding($valor, 'UTF-8', 'ISO-8859-1,Windows-1252,UTF-8');
+		}
+		return $valor;
+	}
+
+	return $valor;
+}
 
 $queryCurso = $pdo->prepare("SELECT * FROM cursos WHERE id = :id ORDER BY id asc");
 $queryCurso->execute(['id' => $id_curso]);
@@ -65,6 +100,14 @@ if ($total_reg > 0) {
 		);
 	}
 }
+$nomeCurso = isset($resCurso[0]['nome']) ? $resCurso[0]['nome'] : 'Questionario';
+$questionsJson = json_encode(
+	normalizarParaUtf8($questions_data),
+	JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+);
+if ($questionsJson === false) {
+	$questionsJson = '[]';
+}
 ?>
 
 <!DOCTYPE html>
@@ -72,9 +115,9 @@ if ($total_reg > 0) {
 
 <head>
 	<meta charset="UTF-8">
-	<title>Questionário - <?php echo $resCurso[0]['nome']; ?></title>
+	<title>Questionario - <?php echo htmlspecialchars($nomeCurso, ENT_QUOTES, 'UTF-8'); ?></title>
 	<!-- <script src="https://cdn.tailwindcss.com"></script> -->
-	<script src="/script/questionario.js"></script>
+	<script src="<?php echo $url_sistema; ?>script/questionario.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 	<style>
 		@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -211,7 +254,7 @@ if ($total_reg > 0) {
 		<div class="bg-gradient-to-r from-[<?php echo $bg_m ?>] to-[<?php echo $bg_m ?>] p-6 text-white">
 			<div class="flex justify-between items-center">
 				<div class="flex items-center gap-2">
-					<h2 class="text-lg font-bold mb-1"><?php echo $resCurso[0]['nome']; ?></h2>
+					<h2 class="text-lg font-bold mb-1"><?php echo htmlspecialchars($nomeCurso, ENT_QUOTES, 'UTF-8'); ?></h2>
 
 				</div>
 				<div class="bg-white bg-opacity-20 rounded-full px-2 py-1">
@@ -275,21 +318,31 @@ if ($total_reg > 0) {
 
 	<script>
 		// Dados das perguntas vindos do PHP
-		const questions = <?php echo json_encode($questions_data); ?>;
+		const questionsRaw = <?php echo $questionsJson; ?>;
+		const questions = Array.isArray(questionsRaw) ? questionsRaw : [];
 
 		let currentStep = 0;
 		const answers = []; // Armazenar IDs das respostas selecionadas
 		const selectedAnswers = []; // Armazenar dados completos das respostas
 
 		function openModal() {
-			if (questions.length === 0) {
-				alert('Nenhuma pergunta encontrada no banco de dados.');
-				return;
+			try {
+				if (!Array.isArray(questions) || questions.length === 0) {
+					const questionArea = document.getElementById('questionArea');
+					if (questionArea) {
+						questionArea.innerHTML = '<div class="alert alert-warning">Nenhuma pergunta encontrada para este curso.</div>';
+					}
+					return;
+				}
+				renderQuestion();
+				updateProgress();
+			} catch (err) {
+				const questionArea = document.getElementById('questionArea');
+				if (questionArea) {
+					questionArea.innerHTML = '<div class="alert alert-danger">Erro ao abrir a prova. Recarregue a página.</div>';
+				}
+				console.error('Erro em openModal:', err);
 			}
-
-
-			renderQuestion();
-			updateProgress();
 		}
 
 		function closeModal() {
@@ -319,6 +372,14 @@ if ($total_reg > 0) {
 
 			const question = questions[currentStep];
 			const questionArea = document.getElementById('questionArea');
+			if (!questionArea) {
+				console.error('questionArea não encontrado');
+				return;
+			}
+			if (!question || !Array.isArray(question.options)) {
+				questionArea.innerHTML = '<div class="alert alert-danger">Questão inválida no banco de dados.</div>';
+				return;
+			}
 
 			questionArea.innerHTML = `
 				<div class="question-enter">
@@ -565,7 +626,9 @@ if ($total_reg > 0) {
 			const questionCounter = document.getElementById('questionCounter');
 
 			progressBar.style.width = '100%';
-			progressText.textContent = '100% concluído';
+			if (progressText) {
+				progressText.textContent = '100% concluído';
+			}
 			questionCounter.textContent = `Resumo Final`;
 		}
 
@@ -621,11 +684,13 @@ if ($total_reg > 0) {
 					</svg>
 				`;
 				});
-			document.getElementById('modalQuest');
-			modalQuest.scrollTo({
-				top: 0,
-				behavior: 'smooth'
-			});
+			const modalQuest = document.getElementById('modalQuest');
+			if (modalQuest && typeof modalQuest.scrollTo === 'function') {
+				modalQuest.scrollTo({
+					top: 0,
+					behavior: 'smooth'
+				});
+			}
 		}
 
 		function mostrarResultado(data) {

@@ -1,370 +1,269 @@
 <?php
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
 
 require_once __DIR__ . '/config/webhook.php';
+require_once __DIR__ . '/sistema/conexao.php';
+require_once __DIR__ . '/efi/boleto.php';
+
 webhook_require_token();
 
-// Incluir arquivos necessários
-require_once("sistema/conexao.php");
-require_once 'efi/boleto.php';
+$webhookLogFile = __DIR__ . '/logs/efi_webhook_boleto.log';
+if (!is_dir(dirname($webhookLogFile))) {
+    @mkdir(dirname($webhookLogFile), 0775, true);
+}
 
-// Configurações
-$options = require_once 'efi/options.php';
-$config = [
-    'client_id' => $options['clientId'],
-    'client_secret' => $options['clientSecret'],
-    'certificate_path' => $options['certificate'], // Apenas para PIX
-    'chave_pix' => $options['pixKey'] ?? '', // Sua chave PIX
-    'sandbox' => $options['sandbox'] // true para teste, false para produção
-];
-
-// Função para log de mensagens
-function logMessage($message, $errorLogFile = null)
+function fileWebhookLog(string $message): void
 {
-    $timestamp = date('Y-m-d H:i:s');
-    $logEntry = "[$timestamp] $message" . PHP_EOL;
+    global $webhookLogFile;
+    $line = '[' . date('Y-m-d H:i:s') . '] ' . $message . PHP_EOL;
+    @file_put_contents($webhookLogFile, $line, FILE_APPEND);
+}
 
-    if ($errorLogFile) {
-        error_log($logEntry, 3, $errorLogFile);
-    } else {
-        error_log($message);
+register_shutdown_function(function (): void {
+    $err = error_get_last();
+    if ($err && in_array((int) $err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        fileWebhookLog('FATAL: ' . ($err['message'] ?? '') . ' em ' . ($err['file'] ?? '') . ':' . ($err['line'] ?? ''));
+    }
+});
+
+/**
+ * Registra log em tabela, sem quebrar o webhook se a tabela nao existir.
+ */
+function webhookLog(PDO $pdo, string $eventType, array $payload): void
+{
+    try {
+        $stmt = $pdo->prepare("INSERT INTO webhook_logs (event_type, payload, received_at) VALUES (:event_type, :payload, NOW())");
+        $stmt->execute([
+            ':event_type' => $eventType,
+            ':payload' => json_encode($payload, JSON_UNESCAPED_UNICODE),
+        ]);
+    } catch (Throwable $e) {
+        error_log('[EFI BOLETO WEBHOOK] Falha ao gravar webhook_logs: ' . $e->getMessage());
+        fileWebhookLog('Falha webhook_logs: ' . $e->getMessage());
     }
 }
 
-// Função para log de webhook
-function logWebhook($pdo, $eventType, $payload, $receivedAt)
+/**
+ * Extrai token "notification" tanto de form-urlencoded quanto JSON.
+ */
+function extrairNotificationToken(string $rawBody): string
 {
-    try {
-        $stmt = $pdo->prepare("INSERT INTO webhook_logs (event_type, payload, received_at) VALUES (?, ?, ?)");
-        $stmt->execute([$eventType, $payload, $receivedAt]);
-        return true;
-    } catch (PDOException $e) {
-        error_log("Erro ao salvar log: " . $e->getMessage());
-        return false;
+    $rawBody = trim($rawBody);
+
+    if (isset($_POST['notification']) && trim((string) $_POST['notification']) !== '') {
+        return trim((string) $_POST['notification']);
     }
-}
 
-// Função para atualizar status do pagamento boleto
-function atualizarStatusPagamentoBoleto($pdo, $chargeId, $status)
-{
-    try {
-        $stmt = $pdo->prepare("UPDATE pagamentos_boleto SET status = ? WHERE charge_id = ?");
-        return $stmt->execute([$status, $chargeId]);
-    } catch (PDOException $e) {
-        error_log("Erro ao atualizar pagamento boleto: " . $e->getMessage());
-        return false;
+    if ($rawBody === '') {
+        return '';
     }
-}
 
-// Função para buscar id_matricula pelo charge_id
-function buscarIdMatriculaBoleto($pdo, $chargeId)
-{
-    try {
-        $stmt = $pdo->prepare("SELECT id_matricula FROM pagamentos_boleto WHERE charge_id = ?");
-        $stmt->execute([$chargeId]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result ? $result['id_matricula'] : null;
-    } catch (PDOException $e) {
-        error_log("Erro ao buscar id_matricula: " . $e->getMessage());
-        return null;
-    }
-}
-
-// Função para atualizar status da matrícula
-function atualizarStatusMatricula($pdo, $idMatricula, $status)
-{
-    try {
-        $stmt = $pdo->prepare("UPDATE matriculas SET status = ? WHERE id = ?");
-        return $stmt->execute([$status, $idMatricula]);
-    } catch (PDOException $e) {
-        error_log("Erro ao atualizar matrícula: " . $e->getMessage());
-        return false;
-    }
-}
-
-// Função para verificar se matrícula é um pacote e buscar dados necessários
-function verificarDadosMatricula($pdo, $idMatricula)
-{
-    try {
-        $stmt = $pdo->prepare("SELECT id_curso, aluno, pacote FROM matriculas WHERE id = ?");
-        $stmt->execute([$idMatricula]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        error_log("Erro ao verificar dados da matrícula: " . $e->getMessage());
-        return null;
-    }
-}
-
-// Função para verificar se curso é um pacote
-function verificarSeCursoEPacote($pdo, $idMatricula)
-{
-    try {
-        $stmt = $pdo->prepare("SELECT pacote FROM matriculas WHERE id = ?");
-        $stmt->execute([$idMatricula]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result ? $result['pacote'] : null;
-    } catch (PDOException $e) {
-        error_log("Erro ao verificar se curso é pacote: " . $e->getMessage());
-        return null;
-    }
-}
-
-// Função para ativar cursos do pacote
-function ativarCursosDoPacote($pdo, $idCurso, $alunoId)
-{
-    try {
-        logMessage("Matrícula é um pacote. Iniciando liberação automática dos cursos individuais.");
-
-        // Desativa temporariamente o modo safe update
-        $pdo->query("SET SQL_SAFE_UPDATES = 0");
-
-        // Cria uma tabela temporária com os cursos do pacote
-        $pdo->query("CREATE TEMPORARY TABLE temp_cursos_pacote AS
-            SELECT 
-                cp.id AS id_cursos_pacotes,
-                cp.id_curso AS id_do_curso,
-                c.matriculas,
-                c.professor AS id_professor
-            FROM 
-                cursos_pacotes cp
-            JOIN 
-                cursos c ON cp.id_curso = c.id
-            WHERE 
-                cp.id_pacote = {$idCurso}");
-
-        // Verifica se há registros na tabela temporária
-        $query_count = $pdo->query("SELECT COUNT(*) FROM temp_cursos_pacote");
-        $total_registros = $query_count->fetchColumn();
-
-        logMessage("Encontrados {$total_registros} cursos no pacote {$idCurso}");
-
-        if ($total_registros > 0) {
-            $pdo->query("CREATE TEMPORARY TABLE temp_matriculas_existentes AS
-                SELECT id_curso
-                FROM matriculas
-                WHERE aluno = {$alunoId} AND id_pacote = {$idCurso}");
-
-            // Insere novas matrículas apenas para os cursos que o aluno não está matriculado ainda
-            $stmt_insert_matriculas = $pdo->prepare("INSERT INTO matriculas 
-                (id_curso, aluno, professor, aulas_concluidas, data, status, pacote, id_pacote, obs)
-                SELECT 
-                    tcp.id_do_curso,
-                    :aluno_id,
-                    tcp.id_professor,
-                    1,
-                    CURDATE(),
-                    'Matriculado',
-                    'Não',
-                    :id_curso,
-                    'Pacote'
-                FROM 
-                    temp_cursos_pacote tcp
-                LEFT JOIN
-                    temp_matriculas_existentes tme ON tcp.id_do_curso = tme.id_curso
-                WHERE 
-                    tme.id_curso IS NULL");
-
-            $stmt_insert_matriculas->execute([
-                ':aluno_id' => $alunoId,
-                ':id_curso' => $idCurso
-            ]);
-
-            $novas_matriculas = $stmt_insert_matriculas->rowCount();
-            logMessage("Adicionadas {$novas_matriculas} novas matrículas para os cursos do pacote");
-
-            // Atualiza contador de matrículas apenas para os cursos onde novas matrículas foram adicionadas
-            $pdo->query("UPDATE cursos c
-                JOIN temp_cursos_pacote tcp ON c.id = tcp.id_do_curso
-                LEFT JOIN temp_matriculas_existentes tme ON tcp.id_do_curso = tme.id_curso
-                SET c.matriculas = c.matriculas + 1
-                WHERE tme.id_curso IS NULL");
-
-            // Limpa as tabelas temporárias
-            $pdo->query("DROP TEMPORARY TABLE IF EXISTS temp_cursos_pacote");
-            $pdo->query("DROP TEMPORARY TABLE IF EXISTS temp_matriculas_existentes");
-
-            // Reativa o modo safe update
-            $pdo->query("SET SQL_SAFE_UPDATES = 1");
-
-            logMessage("Liberação automática de cursos do pacote concluída com sucesso");
-            return true;
-        } else {
-            logMessage("Nenhum curso encontrado para este pacote");
-            return false;
+    $json = json_decode($rawBody, true);
+    if (is_array($json)) {
+        foreach (['notification', 'notification_token', 'token'] as $k) {
+            if (!empty($json[$k])) {
+                return trim((string) $json[$k]);
+            }
         }
-    } catch (PDOException $e) {
-        logMessage("Erro ao liberar cursos do pacote: " . $e->getMessage());
-        return false;
     }
+
+    $parsed = [];
+    parse_str($rawBody, $parsed);
+    if (!empty($parsed['notification'])) {
+        return trim((string) $parsed['notification']);
+    }
+
+    if (strpos($rawBody, '=') !== false) {
+        [$key, $value] = explode('=', $rawBody, 2);
+        if (trim((string) $key) === 'notification') {
+            return trim((string) $value);
+        }
+    }
+
+    return '';
 }
 
-// Processar webhook
+/**
+ * Atualiza status do pagamento e matricula com idempotencia.
+ */
+function atualizarStatusBoleto(PDO $pdo, int $chargeId, string $statusGateway): array
+{
+    $statusGateway = strtolower(trim($statusGateway));
+
+    $stmtPg = $pdo->prepare("SELECT id, id_matricula, status FROM pagamentos_boleto WHERE charge_id = :charge_id LIMIT 1");
+    $stmtPg->execute([':charge_id' => $chargeId]);
+    $pagamento = $stmtPg->fetch(PDO::FETCH_ASSOC);
+
+    if (!$pagamento) {
+        return [
+            'atualizado' => false,
+            'motivo' => 'pagamento_boleto_nao_encontrado',
+            'id_matricula' => null,
+        ];
+    }
+
+    $idMatricula = (int) ($pagamento['id_matricula'] ?? 0);
+
+    $stmtUpdPg = $pdo->prepare("UPDATE pagamentos_boleto SET status = :status WHERE id = :id");
+    $stmtUpdPg->execute([
+        ':status' => $statusGateway,
+        ':id' => (int) $pagamento['id'],
+    ]);
+
+    $matriculaAtualizada = false;
+    if ($idMatricula > 0 && in_array($statusGateway, ['paid', 'settled'], true)) {
+        $stmtMat = $pdo->prepare("UPDATE matriculas SET status = 'Matriculado' WHERE id = :id");
+        $stmtMat->execute([':id' => $idMatricula]);
+        $matriculaAtualizada = true;
+
+        // Se for pacote, libera cursos individuais nao matriculados ainda.
+        $stmtInfo = $pdo->prepare("SELECT id_curso, aluno, pacote FROM matriculas WHERE id = :id LIMIT 1");
+        $stmtInfo->execute([':id' => $idMatricula]);
+        $matInfo = $stmtInfo->fetch(PDO::FETCH_ASSOC);
+
+        if ($matInfo && strtolower((string) ($matInfo['pacote'] ?? '')) === 'sim') {
+            $idPacote = (int) ($matInfo['id_curso'] ?? 0);
+            $idAluno = (int) ($matInfo['aluno'] ?? 0);
+
+            if ($idPacote > 0 && $idAluno > 0) {
+                $sql = "
+                    INSERT INTO matriculas (id_curso, aluno, professor, aulas_concluidas, data, status, pacote, id_pacote, obs)
+                    SELECT
+                        cp.id_curso,
+                        :aluno,
+                        c.professor,
+                        1,
+                        CURDATE(),
+                        'Matriculado',
+                        'Não',
+                        :id_pacote,
+                        'Pacote'
+                    FROM cursos_pacotes cp
+                    JOIN cursos c ON c.id = cp.id_curso
+                    WHERE cp.id_pacote = :id_pacote
+                      AND NOT EXISTS (
+                        SELECT 1
+                        FROM matriculas m
+                        WHERE m.aluno = :aluno
+                          AND m.id_pacote = :id_pacote
+                          AND m.id_curso = cp.id_curso
+                      )
+                ";
+                $stmtIns = $pdo->prepare($sql);
+                $stmtIns->execute([
+                    ':aluno' => $idAluno,
+                    ':id_pacote' => $idPacote,
+                ]);
+            }
+        }
+    }
+
+    return [
+        'atualizado' => true,
+        'motivo' => 'ok',
+        'id_matricula' => $idMatricula > 0 ? $idMatricula : null,
+        'matricula_atualizada' => $matriculaAtualizada,
+    ];
+}
+
 try {
-
-
-    // Verificar se é uma requisição POST
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
         http_response_code(405);
-        echo json_encode(['error' => 'Método não permitido']);
+        echo json_encode(['success' => false, 'message' => 'Método não permitido.']);
         exit;
     }
 
-    // Lê o conteúdo bruto enviado
-    $input = file_get_contents('php://input');
+    $rawBody = file_get_contents('php://input') ?: '';
+    fileWebhookLog('REQ method=' . ($_SERVER['REQUEST_METHOD'] ?? '') . ' uri=' . ($_SERVER['REQUEST_URI'] ?? '') . ' body=' . $rawBody);
+    $notificationToken = extrairNotificationToken($rawBody);
 
-    // Tenta decodificar como JSON
-    $data = json_decode($input, true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        $data = ['raw' => $input];
-    }
-
-
-
-    // Prepara os dados para log
-    $eventType = $data['event'] ?? $data['type'] ?? 'boleto_webhook';
-    $payload = json_encode($data, JSON_UNESCAPED_UNICODE);
-    $receivedAt = date('Y-m-d H:i:s');
-
-    // Extrai o notification hash
-    $notification = trim($input);
-
-    if (strpos($notification, '=') === false) {
-        http_response_code(400);
-        echo json_encode(['error' => 'Formato de notificação inválido']);
-        logWebhook($pdo, 'boleto_error', $payload, $receivedAt);
+    if ($notificationToken === '') {
+        webhookLog($pdo, 'boleto_webhook_invalido', [
+            'erro' => 'notification_token_ausente',
+            'raw' => $rawBody,
+        ]);
+        http_response_code(200);
+        echo json_encode(['success' => true, 'ignored' => true, 'message' => 'Notification token ausente.']);
         exit;
     }
 
-
-
-    list($key, $value) = explode('=', $notification, 2);
-    $notification_hash = $value;
-    $notification_hash = rtrim($notification_hash, '"');
-
-
-    logMessage("Processando webhook de boleto. Notification hash: $notification_hash");
-
-    // Consultar webhook da EFI
-    $boletoWebhook = new EFIBoletoPayment(
-        $config['client_id'],
-        $config['client_secret'],
-        $config['sandbox']
+    $options = require __DIR__ . '/efi/options.php';
+    $boleto = new EFIBoletoPayment(
+        (string) ($options['clientId'] ?? ''),
+        (string) ($options['clientSecret'] ?? ''),
+        (bool) ($options['sandbox'] ?? false)
     );
 
-    $result = $boletoWebhook->consultarWebhook($notification_hash);
+    $consulta = $boleto->consultarWebhook($notificationToken);
+    fileWebhookLog('CONSULTA notification=' . $notificationToken . ' retorno=' . json_encode($consulta, JSON_UNESCAPED_UNICODE));
+    $eventos = (array) ($consulta['data'] ?? []);
 
-
-
-    if (!$result || !isset($result['data']) || empty($result['data'])) {
-        http_response_code(400);
-        echo json_encode(['error' => 'Dados do webhook inválidos']);
-        logWebhook($pdo, 'boleto_error', json_encode(['error' => 'Dados inválidos', 'result' => $result]), $receivedAt);
+    if (empty($eventos)) {
+        webhookLog($pdo, 'boleto_webhook_sem_eventos', [
+            'notification' => $notificationToken,
+            'consulta' => $consulta,
+        ]);
+        http_response_code(200);
+        echo json_encode(['success' => true, 'ignored' => true, 'message' => 'Sem eventos para notificação.']);
         exit;
     }
 
-    // Pega o último item do array (status mais recente)
-    $lastItem = end($result['data']);
-    $currentStatus = $lastItem['status']['current'];
-    $chargeId = $lastItem['identifiers']['charge_id'];
+    $ultimo = end($eventos);
+    $chargeId = (int) (($ultimo['identifiers']['charge_id'] ?? 0));
+    $status = (string) ($ultimo['status']['current'] ?? '');
 
-    logMessage("Status atual do boleto: $currentStatus, Charge ID: $chargeId");
-
-    if ($currentStatus === 'paid') {
-        // Boleto pago - processar pagamento
-        $pdo->beginTransaction();
-
-        try {
-           
-            // Atualizar status do pagamento boleto
-            if (!atualizarStatusPagamentoBoleto($pdo, $chargeId, 'paid')) {
-                throw new Exception("Falha ao atualizar pagamento boleto");
-            }
-
-            // Buscar id_matricula
-            $idMatricula = buscarIdMatriculaBoleto($pdo, $chargeId);
-
-            if ($idMatricula) {
-                // Atualizar status da matrícula
-                if (!atualizarStatusMatricula($pdo, $idMatricula, 'Matriculado')) {
-                    throw new Exception("Falha ao atualizar matrícula");
-                }
-
-                // Verificar se a matrícula é de um pacote e ativar cursos individuais
-                $dadosMatricula = verificarDadosMatricula($pdo, $idMatricula);
-
-                if ($dadosMatricula) {
-                    $idCurso = $dadosMatricula['id_curso'];
-                    $alunoId = $dadosMatricula['aluno'];
-
-                    // Verificar se o curso é um pacote
-                    $pacote = verificarSeCursoEPacote($pdo, $idMatricula);
-
-                    if ($pacote === 'Sim') {
-                        logMessage("Detectado pagamento de pacote via boleto. Charge ID: $chargeId, Curso: $idCurso, Aluno: $alunoId");
-
-                        if (!ativarCursosDoPacote($pdo, $idCurso, $alunoId)) {
-                            logMessage("Falha ao ativar cursos do pacote para Charge ID: $chargeId");
-                        } else {
-                            logMessage("Cursos do pacote ativados com sucesso para Charge ID: $chargeId");
-                        }
-                    }
-                }
-            } else {
-                error_log("ID da matrícula não encontrado para Charge ID: $chargeId");
-            }
-
-            $pdo->commit();
-
-            // Log de sucesso
-            logWebhook($pdo, 'boleto_paid', json_encode([
-                'charge_id' => $chargeId,
-                'id_matricula' => $idMatricula,
-                'status' => 'processado_com_sucesso',
-                'webhook_data' => $lastItem
-            ]), $receivedAt);
-
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            error_log("Erro ao processar boleto pago: " . $e->getMessage());
-            logWebhook($pdo, 'boleto_error', json_encode([
-                'charge_id' => $chargeId,
-                'error' => $e->getMessage()
-            ]), $receivedAt);
-
-            http_response_code(500);
-            echo json_encode(['error' => 'Erro ao processar pagamento']);
-            exit;
-        }
-
-    } else {
-        // Status diferente de paid - apenas fazer log
-        logWebhook($pdo, 'boleto_status_' . $currentStatus, json_encode([
-            'charge_id' => $chargeId,
-            'status' => $currentStatus,
-            'dados_completos' => $lastItem
-        ]), $receivedAt);
-
-        logMessage("Boleto com status '$currentStatus' registrado no log. Charge ID: $chargeId");
+    if ($chargeId <= 0 || $status === '') {
+        webhookLog($pdo, 'boleto_webhook_evento_invalido', [
+            'notification' => $notificationToken,
+            'ultimo_evento' => $ultimo,
+        ]);
+        http_response_code(200);
+        echo json_encode(['success' => true, 'ignored' => true, 'message' => 'Evento sem charge/status.']);
+        exit;
     }
 
-    // Resposta de sucesso
+    $pdo->beginTransaction();
+    try {
+        $resultado = atualizarStatusBoleto($pdo, $chargeId, $status);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    }
+
+    webhookLog($pdo, 'boleto_webhook_processado', [
+        'notification' => $notificationToken,
+        'charge_id' => $chargeId,
+        'status' => $status,
+        'resultado' => $resultado,
+        'ultimo_evento' => $ultimo,
+    ]);
+
     http_response_code(200);
+    fileWebhookLog('OK charge_id=' . $chargeId . ' status=' . $status);
     echo json_encode([
         'success' => true,
         'charge_id' => $chargeId,
-        'status' => $currentStatus,
-        'processed' => $currentStatus === 'paid'
+        'status' => $status,
+        'resultado' => $resultado,
+    ]);
+} catch (Throwable $e) {
+    error_log('[EFI BOLETO WEBHOOK] Erro: ' . $e->getMessage());
+    fileWebhookLog('EXCEPTION: ' . $e->getMessage());
+    webhookLog($pdo, 'boleto_webhook_erro', [
+        'erro' => $e->getMessage(),
+        'trace' => $e->getTraceAsString(),
     ]);
 
-} catch (Exception $e) {
-    error_log("Erro geral no processamento do webhook de boleto: " . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['error' => 'Erro interno do servidor']);
-
-    // Log do erro
-    logWebhook($pdo, 'boleto_error', json_encode([
-        'error' => $e->getMessage(),
-        'input' => $input ?? 'N/A'
-    ]), date('Y-m-d H:i:s'));
+    // Para evitar loop de reenvio com 500 no painel da EFI:
+    http_response_code(200);
+    echo json_encode([
+        'success' => false,
+        'ignored' => true,
+        'message' => 'Webhook recebido, mas com erro interno registrado.',
+    ]);
 }
-?>

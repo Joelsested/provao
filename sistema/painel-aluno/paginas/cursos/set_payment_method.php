@@ -1,5 +1,6 @@
 <?php
 require_once("../../../conexao.php");
+require_once(__DIR__ . "/../../../../helpers.php");
 $tabela = 'matriculas';
 @session_start();
 
@@ -8,7 +9,7 @@ $id_curso = $_POST['id_curso'] ?? null;
 $forma_pgto = $_POST['forma_pgto'] ?? null;
 $id_matricula = $_POST['id'] ?? ($_POST['id_matricula'] ?? null);
 
-// Se voce ja tiver essas infos no POST ou sessao, pode pegar de la
+// Se você já tiver essas informações no POST ou sessão, pode pegar de lá.
 $nome_do_curso = $_POST['nome_do_curso'] ?? 'Pagamento Curso';
 $pacote = $_POST['pacote'] ?? '';
 $quantidadeParcelas = $_POST['quantidadeParcelas'] ?? 1; // valor padrao
@@ -17,8 +18,60 @@ header('Content-Type: application/json; charset=utf-8');
 
 $startedTransaction = false;
 
+function idadeCompletaEmAnos(string $dataNascimento, ?DateTimeImmutable $hojeRef = null): int
+{
+    $dataNormalizada = function_exists('normalizeDate') ? normalizeDate($dataNascimento) : trim($dataNascimento);
+    if ($dataNormalizada === '' || $dataNormalizada === '0000-00-00') {
+        return -1;
+    }
+
+    $hoje = $hojeRef ?: new DateTimeImmutable('today');
+    try {
+        $nascimento = new DateTimeImmutable($dataNormalizada);
+    } catch (Throwable $e) {
+        return -1;
+    }
+
+    if ($nascimento > $hoje) {
+        return -1;
+    }
+
+    return (int) $nascimento->diff($hoje)->y;
+}
+
+function colunaExisteTabela(PDO $pdo, string $tabela, string $coluna): bool
+{
+    try {
+        $stmt = $pdo->prepare("SHOW COLUMNS FROM {$tabela} LIKE :coluna");
+        $stmt->execute([':coluna' => $coluna]);
+        return (bool) $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function garantirColunaLiberacaoMenor(PDO $pdo): void
+{
+    if (colunaExisteTabela($pdo, 'alunos', 'liberado_menor_18')) {
+        return;
+    }
+    try {
+        $pdo->exec("ALTER TABLE alunos ADD COLUMN liberado_menor_18 TINYINT(1) NOT NULL DEFAULT 0");
+    } catch (Throwable $e) {
+        // Mantem fluxo sem interromper caso nao consiga alterar estrutura.
+    }
+}
+
 try {
+    if (($_SESSION['nivel'] ?? '') === 'Vendedor') {
+        throw new Exception("Você não pode comprar como vendedor. Entre como aluno.");
+    }
+
     $forma_pgto = strtoupper(trim((string)$forma_pgto));
+    $formasPermitidas = ['BOLETO', 'BOLETO_PARCELADO', 'CARTAO_DE_CREDITO'];
+    if (!in_array($forma_pgto, $formasPermitidas, true)) {
+        throw new Exception("Forma de pagamento inválida para o fluxo EFY.");
+    }
     $quantidadeParcelas = (int)$quantidadeParcelas;
     if ($quantidadeParcelas < 1) {
         $quantidadeParcelas = 1;
@@ -33,6 +86,25 @@ try {
 
     if (!$id_usuario || !$id_curso || !$forma_pgto) {
         throw new Exception("Dados incompletos");
+    }
+
+    garantirColunaLiberacaoMenor($pdo);
+    $stmtAluno = $pdo->prepare("
+        SELECT a.nascimento, COALESCE(a.liberado_menor_18, 0) AS liberado_menor_18
+        FROM usuarios u
+        INNER JOIN alunos a ON a.id = u.id_pessoa
+        WHERE u.id = :id_usuario
+        LIMIT 1
+    ");
+    $stmtAluno->execute([':id_usuario' => (int) $id_usuario]);
+    $dadosAluno = $stmtAluno->fetch(PDO::FETCH_ASSOC) ?: null;
+    if (!$dadosAluno) {
+        throw new Exception("Aluno não encontrado.");
+    }
+    $idade = idadeCompletaEmAnos((string) ($dadosAluno['nascimento'] ?? ''));
+    $liberadoMenor = (int) ($dadosAluno['liberado_menor_18'] ?? 0) === 1;
+    if ($idade >= 0 && $idade < 18 && !$liberadoMenor) {
+        throw new Exception("Aluno menor de 18 anos. Só admin pode liberar matrículas para alunos menores.");
     }
 
     $pacote_normalizado = strtolower(trim((string)$pacote));
@@ -67,14 +139,14 @@ try {
     }
 
     if (!$matriculas) {
-        throw new Exception("Matricula nao encontrada");
+        throw new Exception("Matrícula não encontrada");
     }
 
     foreach ($matriculas as $matricula) {
         $status = strtoupper(trim((string)($matricula['status'] ?? '')));
         $total_recebido = (float)($matricula['total_recebido'] ?? 0);
         if ($status !== 'AGUARDANDO' || $total_recebido > 0) {
-            throw new Exception("Pagamento ja confirmado. Nao e possivel alterar.");
+            throw new Exception("Pagamento já confirmado. Não é possível alterar.");
         }
     }
 

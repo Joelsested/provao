@@ -1074,7 +1074,7 @@ foreach ($transactions as $registro) {
 
     function enviarWhatsAppBoleto(url, curso, parcela, valor) {
         if (!telefoneAluno) {
-            alert('Telefone do aluno nao encontrado.');
+            alert('Telefone do aluno não encontrado.');
             return;
         }
         var texto = 'Segue o boleto';
@@ -1138,7 +1138,7 @@ function copiarPix(valor) {
                     Swal.fire({
                         icon: 'error',
                         title: 'Falha ao atualizar',
-                        text: mensagem || 'Nao foi possivel atualizar o vencimento.'
+                        text: mensagem || 'Não foi possível atualizar o vencimento.'
                     });
                 }
             })
@@ -1146,7 +1146,7 @@ function copiarPix(valor) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Falha ao atualizar',
-                    text: 'Nao foi possivel atualizar o vencimento.'
+                    text: 'Não foi possível atualizar o vencimento.'
                 });
             });
     }

@@ -107,16 +107,64 @@ HTML;
 echo <<<HTML
 </tbody>
 </table>
+<div id="rodape_registros_outros_alunos" style="margin-top:8px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:nowrap; overflow-x:auto;">
+	<div id="resumo_registros_outros_alunos" style="color:#666; white-space:nowrap;"></div>
+	<div id="paginacao_registros_outros_alunos" style="white-space:nowrap;"></div>
+</div>
 </small>
 HTML;
 ?>
 
 <script type="text/javascript">
 	$(document).ready(function () {
-		$('#tabela').DataTable({
+		const dtApi = $('#tabela').DataTable({
 			"ordering": false,
 			"stateSave": true,
 		});
+
+		function sincronizarPaginacaoRodape() {
+			const $destino = $('#paginacao_registros_outros_alunos');
+			if (!$destino.length) {
+				return;
+			}
+			const $paginacao = $('#tabela_paginate');
+			if ($paginacao.length) {
+				$paginacao.css({ float: 'none', textAlign: 'right', margin: 0 });
+				$destino.empty().append($paginacao);
+				return;
+			}
+			$destino.empty();
+		}
+
+		function atualizarResumoRegistros() {
+			const $resumo = $('#resumo_registros_outros_alunos');
+			if (!$resumo.length || !dtApi) {
+				return;
+			}
+			const info = dtApi.page.info();
+			const totalFiltrado = info ? info.recordsDisplay : 0;
+			const totalGeral = info ? info.recordsTotal : 0;
+
+			if (!totalFiltrado) {
+				$resumo.text('Nenhum aluno encontrado.');
+				return;
+			}
+
+			const inicio = (info.start || 0) + 1;
+			const fim = info.end || totalFiltrado;
+			$resumo.text('Mostrando ' + inicio + ' até ' + fim + ' de ' + totalFiltrado + ' alunos' + (totalFiltrado !== totalGeral ? ' (total: ' + totalGeral + ')' : '') + '.');
+		}
+
+		$('#tabela_info').hide();
+		sincronizarPaginacaoRodape();
+		atualizarResumoRegistros();
+
+		$('#tabela').on('draw.dt', function () {
+			$('#tabela_info').hide();
+			sincronizarPaginacaoRodape();
+			atualizarResumoRegistros();
+		});
+
 		$('#tabela_filter label input').focus();
 	});
 </script>

@@ -2123,6 +2123,15 @@ async function realizarMatricula() {
 
 
 	function pagamento(id, nome, valor, modal) {
+		const vendedorLogado = <?php echo ($nivel == "Vendedor") ? 'true' : 'false'; ?>;
+		if (vendedorLogado) {
+			Swal.fire({
+				icon: 'warning',
+				title: 'Atencao',
+				text: 'Voce nao pode compra como vendedor, entrar como aluno'
+			});
+			return;
+		}
 
 
 

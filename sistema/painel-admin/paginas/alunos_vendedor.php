@@ -340,7 +340,10 @@ HTML;
     echo <<<HTML
 </tbody>
 <small><div align="center" id="mensagem-excluir"></div></small>
-</table>	
+</table>
+<div id="rodape_registros_alunos_vendedor" style="margin-top:8px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+    <div id="resumo_registros_alunos_vendedor" style="color:#666;"></div>
+</div>
 
 
 
@@ -363,6 +366,7 @@ HTML;
     $(document).ready(function () {
         let dtApi = null;
         let termoBuscaAtual = '';
+        let totalRegistrosTabela = $('#tabela tbody tr').length;
 
         function normalizarTexto(valor) {
             return (valor || '')
@@ -391,6 +395,33 @@ HTML;
                     $(this).hide();
                 }
             });
+        }
+
+        function atualizarResumoRegistrosVendedor() {
+            if (!$('#resumo_registros_alunos_vendedor').length) {
+                return;
+            }
+
+            if (dtApi) {
+                const info = dtApi.page.info();
+                const totalFiltrado = info ? info.recordsDisplay : 0;
+                const totalGeral = info ? info.recordsTotal : totalRegistrosTabela;
+                if (!totalFiltrado) {
+                    $('#resumo_registros_alunos_vendedor').text('Nenhum aluno encontrado.');
+                    return;
+                }
+                const inicio = (info.start || 0) + 1;
+                const fim = info.end || totalFiltrado;
+                $('#resumo_registros_alunos_vendedor').text('Mostrando ' + inicio + ' até ' + fim + ' de ' + totalFiltrado + ' alunos' + (totalFiltrado !== totalGeral ? ' (total: ' + totalGeral + ')' : '') + '.');
+                return;
+            }
+
+            const visiveis = $('#tabela tbody tr:visible').length;
+            if (!visiveis) {
+                $('#resumo_registros_alunos_vendedor').text('Nenhum aluno encontrado.');
+                return;
+            }
+            $('#resumo_registros_alunos_vendedor').text('Mostrando ' + visiveis + ' de ' + totalRegistrosTabela + ' alunos.');
         }
 
         function iniciarTabelaAlunosVendedor(tentativas) {
@@ -436,29 +467,40 @@ HTML;
             });
             $('#tabela_filter').hide();
             $('#tabela_length').hide();
+            $('#tabela_info').hide();
             dtApi.page.len(parseInt($('#mostrar_alunos_unico').val() || '10', 10)).draw();
+            atualizarResumoRegistrosVendedor();
+            $('#tabela').on('draw.dt', function () {
+                $('#tabela_info').hide();
+                atualizarResumoRegistrosVendedor();
+            });
         }
 
         $('#busca_alunos_unica').on('input', function () {
             termoBuscaAtual = $(this).val() || '';
             if (dtApi) {
                 dtApi.search(termoBuscaAtual).draw();
+                atualizarResumoRegistrosVendedor();
                 return;
             }
             aplicarBuscaLimiteLocal();
+            atualizarResumoRegistrosVendedor();
         });
 
         $('#mostrar_alunos_unico').on('change', function () {
             const limite = parseInt($(this).val() || '10', 10);
             if (dtApi) {
                 dtApi.page.len(limite).draw();
+                atualizarResumoRegistrosVendedor();
                 return;
             }
             aplicarBuscaLimiteLocal();
+            atualizarResumoRegistrosVendedor();
         });
 
         iniciarTabelaAlunosVendedor(20);
         aplicarBuscaLimiteLocal();
+        atualizarResumoRegistrosVendedor();
         $('#busca_alunos_unica').focus();
     });
 

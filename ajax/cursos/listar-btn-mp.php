@@ -1,4 +1,8 @@
 <?php
+http_response_code(410);
+echo 'Forma de pagamento desativada. Utilize somente o gateway EFY.';
+exit;
+
 require_once('../../config/env.php');
 $mp_enabled = filter_var(env('MP_ENABLED', 'false'), FILTER_VALIDATE_BOOLEAN);
 if (!$mp_enabled) {

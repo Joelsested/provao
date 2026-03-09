@@ -8,12 +8,13 @@ $pag = 'atendimentos_novo';
 $id_user = @$_SESSION['id'];
 $nivel_session = $_SESSION['nivel'] ?? '';
 $responsavelAutoLevels = ['Vendedor', 'Tutor', 'Secretario', 'Tesoureiro'];
+$responsavelSelectableLevels = ['Vendedor', 'Tesoureiro', 'Parceiro'];
 $precisaEscolherResponsavel = !in_array($nivel_session, $responsavelAutoLevels, true);
 $responsaveis = [];
 if ($precisaEscolherResponsavel) {
-	$placeholders = implode(',', array_fill(0, count($responsavelAutoLevels), '?'));
+	$placeholders = implode(',', array_fill(0, count($responsavelSelectableLevels), '?'));
 	$stmtResponsaveis = $pdo->prepare("SELECT id, nome, nivel FROM usuarios WHERE nivel IN ($placeholders) AND ativo = 'Sim' ORDER BY nome");
-	$stmtResponsaveis->execute($responsavelAutoLevels);
+	$stmtResponsaveis->execute($responsavelSelectableLevels);
 	$responsaveis = $stmtResponsaveis->fetchAll(PDO::FETCH_ASSOC);
 }
 

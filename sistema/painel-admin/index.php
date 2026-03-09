@@ -510,7 +510,7 @@ $_SESSION['last_activity'] = time();
                     </li>
                   <?php } ?>
                   <?php if ($nivel_usuario == 'Secretario' || $nivel_usuario == 'Tesoureiro') { ?>
-                    <li><a href="index.php?pagina=atendimentos_novo"><i class="fa fa-angle-right "></i>Mês</a>
+                    <li><a href="index.php?pagina=atendimentos_novo"><i class="fa fa-angle-right "></i>Meus Alunos</a>
                     </li>
                   <?php } ?>
 
@@ -1319,7 +1319,7 @@ $_SESSION['last_activity'] = time();
                 <div class="row">
                   <div class="col-md-3">
                     <div class="form-group">
-                      <label><i class="fa fa-percentage mr-1"></i> Desconto Pix %</label>
+                      <label><i class="fa fa-percentage mr-1"></i> Desconto (legado)</label>
                       <input type="number" class="form-control" id="desconto_pix" name="desconto_pix"
                         value="<?php echo $desconto_pix ?>">
                     </div>
@@ -1526,7 +1526,7 @@ $_SESSION['last_activity'] = time();
                   </div>
                   <div class="col-md-4">
                     <div class="form-group">
-                      <label><i class="fa fa-qrcode mr-1"></i> Tipo Chave Pix</label>
+                      <label><i class="fa fa-qrcode mr-1"></i> Tipo de Chave (legado)</label>
                       <select class="form-control" name="tipo_chave_pix_sistema" id="tipo_chave_pix_sistema"
                         value="<?php echo $tipo_chave_pix ?>">
                         <option value="CNPJ" <?php if ($tipo_chave_pix == 'CNPJ') { ?> selected <?php } ?>>CNPJ</option>
@@ -1542,7 +1542,7 @@ $_SESSION['last_activity'] = time();
                   </div>
                   <div class="col-md-4">
                     <div class="form-group">
-                      <label><i class="fa fa-key mr-1"></i> Chave Pix</label>
+                      <label><i class="fa fa-key mr-1"></i> Chave (legado)</label>
                       <input type="text" class="form-control" id="chave_pix" name="chave_pix"
                         value="<?php echo $chave_pix ?>">
                     </div>
@@ -1778,10 +1778,10 @@ $_SESSION['last_activity'] = time();
                 <label>Forma de PGTO</label>
                 <select class="form-control sel13" name="pago" style="width:100%;">
                   <option value="">Todas</option>
-                  <option value="Pix">Pix</option>
-                  <option value="MP">MP</option>
-                  <option value="Boleto">Boleto</option>
-                  <option value="Paypal">Paypal</option>
+                  <option value="BOLETO">Boleto</option>
+                  <option value="BOLETO_PARCELADO">Boleto Parcelado</option>
+                  <option value="CARTAO_DE_CREDITO">Cartão de Crédito</option>
+                  <option value="CARTAO_RECORRENTE">Cartão Recorrente</option>
                 </select>
               </div>
             </div>
@@ -2063,7 +2063,7 @@ $_SESSION['last_activity'] = time();
                 <select class="form-control sel82" name="sel_professor" id="sel_professor" style="width:100%;">
                   <option value="">Selecione um Colaborador</option>
                   <?php
-                  $query = $pdo->query("SELECT * FROM usuarios where nivel = 'Professor' or nivel = 'Administrador' or nivel = 'Secretario' or nivel = 'Parceiro' or nivel = 'Tesoureiro' or nivel = 'Tutor' or nivel = 'Assessor' or nivel = 'Vendedor'order by nome asc");
+                  $query = $pdo->query("SELECT * FROM usuarios where nivel = 'Professor' or nivel = 'Administrador' or nivel = 'Secretario' or nivel = 'Parceiro' or nivel = 'Tesoureiro' or nivel = 'Tutor' or nivel = 'Assessor' or nivel = 'Vendedor' order by nome asc");
                   $res = $query->fetchAll(PDO::FETCH_ASSOC);
                   for ($i = 0; $i < @count($res); $i++) {
                     foreach ($res[$i] as $key => $value) {

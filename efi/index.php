@@ -2,6 +2,7 @@
 
 require_once('../vendor/autoload.php');
 require_once("../sistema/conexao.php");
+require_once(__DIR__ . '/../helpers.php');
 
 ini_set('display_errors', 0);
 ini_set('display_startup_errors', 0);
@@ -119,6 +120,50 @@ function registrarAuditoriaAutoatendimento(string $origem, int $usuarioAlunoId, 
     @file_put_contents(__DIR__ . '/split_autoatendimento.log', $linha, FILE_APPEND);
 }
 
+function idadeCompletaEmAnosLocal(string $dataNascimento, ?DateTimeImmutable $hojeRef = null): int
+{
+    $dataNormalizada = function_exists('normalizeDate') ? normalizeDate($dataNascimento) : trim($dataNascimento);
+    if ($dataNormalizada === '' || $dataNormalizada === '0000-00-00') {
+        return -1;
+    }
+
+    $hoje = $hojeRef ?: new DateTimeImmutable('today');
+    try {
+        $nascimento = new DateTimeImmutable($dataNormalizada);
+    } catch (Throwable $e) {
+        return -1;
+    }
+
+    if ($nascimento > $hoje) {
+        return -1;
+    }
+
+    return (int) $nascimento->diff($hoje)->y;
+}
+
+function colunaExisteTabelaLocal(PDO $pdo, string $tabela, string $coluna): bool
+{
+    try {
+        $stmt = $pdo->prepare("SHOW COLUMNS FROM {$tabela} LIKE :coluna");
+        $stmt->execute([':coluna' => $coluna]);
+        return (bool) $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function garantirColunaLiberacaoMenorLocal(PDO $pdo): void
+{
+    if (colunaExisteTabelaLocal($pdo, 'alunos', 'liberado_menor_18')) {
+        return;
+    }
+    try {
+        $pdo->exec("ALTER TABLE alunos ADD COLUMN liberado_menor_18 TINYINT(1) NOT NULL DEFAULT 0");
+    } catch (Throwable $e) {
+        // Mantem fluxo mesmo sem alterar estrutura.
+    }
+}
+
 // Parâmetros recebidos via GET
 $forma_de_pagamento = $_GET['formaDePagamento'] ?? '';
 $billingType = strtoupper((string) $forma_de_pagamento);
@@ -130,8 +175,12 @@ if ($billingType === 'BOLETO_PARCELADO') {
     if ($quantidadeParcelas > 6) {
         $quantidadeParcelas = 6;
     }
-} else {
+} elseif ($billingType === 'BOLETO') {
     $quantidadeParcelas = 1;
+} else {
+    http_response_code(400);
+    echo 'Forma de pagamento não suportada neste endpoint EFY. Utilize apenas BOLETO ou BOLETO_PARCELADO.';
+    exit;
 }
 
 //Busca dados para atualização da situação da matricula
@@ -183,8 +232,7 @@ $webhookBoletoParceladoUrl = montarUrlWebhook('https://www.sested-eja.com/efi_we
 $config = [
     'client_id' => $options['clientId'],
     'client_secret' => $options['clientSecret'],
-    'certificate_path' => $options['certificate'], // Apenas para PIX
-    'chave_pix' => $options['pixKey'] ?? '', // Sua chave PIX
+    'certificate_path' => $options['certificate'],
     'sandbox' => $options['sandbox'] // true para teste, false para produção
 ];
 
@@ -194,12 +242,6 @@ $resConfig = $queryConfig->fetchAll(PDO::FETCH_ASSOC);
 $comissao_tesoureiro = (float) ($resConfig[0]['comissao_tesoureiro'] ?? 0);
 $comissao_tutor = (float) ($resConfig[0]['comissao_tutor'] ?? 0);
 
-
-$queryPix = $pdo->query("SELECT desconto_pix FROM config");
-$resPix = $queryPix->fetchAll(PDO::FETCH_ASSOC);
-
-$descontoPix = json_encode($resPix[0]['desconto_pix']);
-
 $query2 = $pdo->prepare("SELECT * FROM usuarios where id = :id");
 $query2->execute([':id' => $id_do_aluno]);
 $res2 = $query2->fetchAll(PDO::FETCH_ASSOC);
@@ -207,6 +249,7 @@ $nivel_responsavel_pelo_cadastro_do_aluno = 0;
 $usuario_atendente_do_aluno = 0;
 if (@count($res2) > 0) {
     $id_pessoa = $res2[0]['id_pessoa'];
+    garantirColunaLiberacaoMenorLocal($pdo);
     $query3 = $pdo->prepare("SELECT * FROM alunos where id = :id");
     $query3->execute([':id' => $id_pessoa]);
     $res3 = $query3->fetchAll(PDO::FETCH_ASSOC);
@@ -218,6 +261,13 @@ if (@count($res2) > 0) {
         $telefone_aluno = normalizarTelefone($res3[0]['telefone'] ?? '');
         $nivel_responsavel_pelo_cadastro_do_aluno = obterUsuarioResponsavelAluno($res3[0]);
         $usuario_atendente_do_aluno = (int) ($res3[0]['usuario'] ?? 0);
+        $idadeAluno = idadeCompletaEmAnosLocal((string) ($res3[0]['nascimento'] ?? ''));
+        $liberadoMenor = (int) ($res3[0]['liberado_menor_18'] ?? 0) === 1;
+        if ($idadeAluno >= 0 && $idadeAluno < 18 && !$liberadoMenor) {
+            http_response_code(403);
+            echo 'Aluno menor de 18 anos. Só admin pode liberar matrículas para alunos menores.';
+            exit;
+        }
     }
     if (empty($nome_aluno)) {
         $nome_aluno = normalizarUnicode($res2[0]['nome'] ?? '');
@@ -252,11 +302,9 @@ if (@count($res) > 0) {
     $id_usuario_professor = $res[0]['professor'];
     $valorF = number_format($valor_curso, 2, ',', '.');
 
-    // Verifica o tipo de pagamento e define o valor a pagar
+    // Valor a pagar para fluxo de boleto EFY.
     if ($billingType == "BOLETO") {
-        // $valor_a_pagar = $valor_curso;
-    } elseif ($billingType == "PIX") {
-        $valor_a_pagar = $valor_curso - ($valor_curso * ($descontoPix / 100));
+        $valor_a_pagar = $valor_curso;
     }
 }
 // echo 'ValorF FLoatVal - ';
@@ -563,66 +611,6 @@ function registrarClienteEfi($token, $baseUrl, $certificadoPath, $nome, $cpf, $e
     return json_decode($response, true);
 }
 
-// Função para criar cobrança PIX
-function criarCobrancaPix($token, $baseUrl, $certificadoPath, $cliente_id, $valor, $descricao, $id_curso, $repasses = [])
-{
-    // Valor em centavos
-    $valorCentavos = intval($valor * 100);
-
-    $url = $baseUrl . '/v2/cob';
-
-    $dados = [
-        'calendario' => [
-            'expiracao' => 3600 // Expiração em segundos (1 hora)
-        ],
-        'devedor' => [
-            'cpf' => $cliente_id,
-            'nome' => 'Gabriel Ramos Luciano da Silva'
-        ],
-        'valor' => [
-            'original' => number_format($valor, 2, '.', '')
-        ],
-        'chave' => 'bda40203-4fc1-43b1-b058-b783d6921a37', // Sua chave PIX registrada na Efí
-        'solicitacaoPagador' => $descricao
-    ];
-
-    //     Adiciona splits se existirem
-    if (!empty($repasses)) {
-        $dados['repasses'] = $repasses;
-    }
-
-    $headers = [
-        'Authorization: Bearer ' . $token,
-        'Content-Type: application/json'
-    ];
-
-    $curl = curl_init();
-    curl_setopt_array($curl, [
-        CURLOPT_URL => $url,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_ENCODING => '',
-        CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 30,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_CUSTOMREQUEST => 'POST',
-        CURLOPT_POSTFIELDS => json_encode($dados),
-        CURLOPT_HTTPHEADER => $headers,
-        CURLOPT_SSLCERT => $certificadoPath,
-        CURLOPT_SSLCERTPASSWD => '',
-        CURLOPT_SSL_VERIFYPEER => true
-    ]);
-
-    $response = curl_exec($curl);
-    $err = curl_error($curl);
-    curl_close($curl);
-
-    if ($err) {
-        throw new Exception("Erro ao criar cobrança PIX: " . $err);
-    }
-
-    return json_decode($response, true);
-}
-
 // Função para criar boleto
 function criarBoleto($token, $baseUrl, $certificadoPath, $cliente_id, $valor, $descricao, $id_curso, $repasses = [])
 {
@@ -863,166 +851,7 @@ if ($forma_de_pagamento == 'BOLETO_PARCELADO' and $quantidadeParcelas > 1) {
 try {
 
 
-    if ($billingType == 'PIX') {
-        require_once 'pix.php';
-
-        $pixPayment = new EFIPixPayment(
-            $config['client_id'],
-            $config['client_secret'],
-            $config['certificate_path'],
-            $config['sandbox']
-        );
-
-        // Preparar dados para PIX
-        $dadosPix = [
-            'cpf' => $data['cpf'] ?? '13294939663',
-            'nome' => $data['nome'] ?? 'Gabriel Ramos',
-            'valor' => floatval($valor_a_pagar ?? 0),
-            'chave_pix' => $config['chave_pix'],
-            'descricao' => $data['descricao'] ?? 'Pagamento PIX',
-            'expiracao' => $data['expiracao'] ?? 3600
-        ];
-
-
-
-        // Validações específicas do PIX
-        if (empty($dadosPix['cpf'])) {
-            throw new Exception('CPF é obrigatório para PIX');
-        }
-        if (empty($dadosPix['nome'])) {
-            throw new Exception('Nome é obrigatório para PIX');
-        }
-        if ($dadosPix['valor'] <= 0) {
-            throw new Exception('Valor deve ser maior que zero');
-        }
-
-        // Adicionar informações adicionais se fornecidas
-        if (isset($data['infoAdicionais'])) {
-            $dadosPix['infoAdicionais'] = $data['infoAdicionais'];
-        }
-
-        // Criar cobrança PIX
-        $resultado = $pixPayment->createPixCharge($dadosPix);
-
-        // Formatar resposta PIX
-        $response = [
-            'success' => true,
-            'type' => 'PIX',
-            'data' => [
-                'txid' => $resultado['txid'],
-                'status' => $resultado['status'],
-                'valor' => $resultado['valor'],
-                'qr_code' => $resultado['qr_code'],
-                'qr_code_image' => $resultado['qr_code_image'],
-                'link_pagamento' => $resultado['link_pagamento'],
-                'vencimento' => $resultado['vencimento']
-            ]
-        ];
-
-        $qrCodeData = json_decode($qrResponse, true);
-
-        $urlPagamento = $resultado['link_pagamento']; // Aqui continua o código
-        $imagemQrCode = $resultado['qr_code_image'];
-        $textoCopiaCola = $resultado['qr_code'];
-        $txid = $resultado['txid'];
-
-        // Armazenar informações do pagamento PIX no banco de dados
-        $query = $pdo->prepare("INSERT INTO pagamentos_pix (id_matricula, txid, qrcode_url, texto_copia_cola, valor, status) 
-                               VALUES (?, ?, ?, ?, ?, 'pendente')");
-        $query->execute([$id_venda, $txid, $imagemQrCode, $textoCopiaCola, $valor_a_pagar]);
-        $id_pagamento_pix = $pdo->lastInsertId();
-
-        // Atualizar forma_pgto na tabela matricula
-        $update = $pdo->prepare("UPDATE matriculas SET forma_pgto = 'PIX' WHERE id = ?");
-        $update->execute([$id_venda]);
-
-
-        echo '
-        <!DOCTYPE html>
-        <html lang="pt-br">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Pagamento PIX</title>
-            <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-        </head>
-        <body class="bg-gray-100 font-sans">
-            <div class="container mx-auto px-4 py-10 max-w-3xl">
-                <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-                    <h1 class="text-2xl font-bold text-center mb-4 text-blue-600">Pagamento via PIX</h1>
-                    <div class="border-t border-b border-gray-200 py-4 mb-4">
-                        <p class="text-center text-lg mb-2">Valor com desconto: <span class="font-bold text-green-600">R$ ' . number_format($resultado['valor'], 2, ',', '.') . '</span></p>
-                        <p class="text-center text-sm text-gray-600">Escaneie o QR Code abaixo ou copie o código PIX</p>
-                    </div>
-                    <div class="flex flex-col items-center justify-center mb-6">
-                        <img src="' . $resultado['qr_code_image'] . '" alt="QR Code PIX" class="w-64 h-64 mb-4">
-                        <div class="w-full">
-                            <div class="relative">
-                                <input type="text" id="pix-code" value="' . $resultado['link_pagamento'] . '" readonly class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-sm" />
-                                <button onclick="copiarCodigo()" class="absolute inset-y-0 right-0 px-4 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600">
-                                    Copiar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-                        <div class="flex">
-                            <div class="flex-shrink-0">
-                                <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                </svg>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm text-yellow-700">
-                                    O pagamento é processado automaticamente. Após o pagamento, aguarde alguns instantes para a matrícula ser liberada.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="text-center">
-                        <a href="../sistema/painel-aluno/index.php" class="inline-block bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded">
-                            Voltar ao Painel
-                        </a>
-                        <button id="verificar-pagamento" class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded ml-2">
-                            Verificar Pagamento
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <script>
-                function copiarCodigo() {
-                    var codigoInput = document.getElementById("pix-code");
-                    codigoInput.select();
-                    codigoInput.setSelectionRange(0, 99999);
-                    document.execCommand("copy");
-                    alert("Código PIX copiado para a área de transferência!");
-                }
-                
-                document.getElementById("verificar-pagamento").addEventListener("click", function() {
-                    // Fazer uma requisição AJAX para verificar o status do pagamento
-                    var xhr = new XMLHttpRequest();
-                    xhr.open("GET", "verificar_pagamento_pix.php?id_pagamento=' . $resultado['txid'] . '", true);
-                    xhr.onreadystatechange = function() {
-                        if (xhr.readyState === 4 && xhr.status === 200) {
-                            var response = JSON.parse(xhr.responseText);
-                            if (response.status === "aprovado") {
-                                alert("Pagamento confirmado! Redirecionando para o painel...");
-                                window.location.href = "../sistema/painel-aluno/index.php";
-                            } else {
-                                alert("Pagamento ainda não foi confirmado. Por favor, tente novamente em alguns instantes.");
-                            }
-                        }
-                    };
-                    xhr.send();
-                });
-            </script>
-        </body>
-        </html>';
-
-
-        // return $response;
-
-    } elseif ($billingType == 'BOLETO') {
+    if ($billingType == 'BOLETO') {
 
         require_once 'boleto.php';
 

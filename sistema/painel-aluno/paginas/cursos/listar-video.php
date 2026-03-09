@@ -2,7 +2,14 @@
 require_once("../../../conexao.php");
 $tabela = 'aulas';
 @session_start();
-$id_aluno = $_POST['id_usu'];
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
+$id_aluno = (int) ($_SESSION['id'] ?? 0);
+if ($id_aluno <= 0) {
+	echo 'Sessao invalida';
+	exit();
+}
 
 $id = $_POST['id'];
 $aula = $_POST['aula'];

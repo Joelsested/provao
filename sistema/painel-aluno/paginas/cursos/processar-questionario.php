@@ -1,5 +1,6 @@
 <?php
 require_once("../../../conexao.php");
+require_once(__DIR__ . '/../../aluno_context.php');
 
 header('Content-Type: application/json');
 
@@ -20,6 +21,24 @@ try {
     if (empty($respostas)) {
         echo json_encode(['success' => false, 'message' => 'Nenhuma resposta foi enviada']);
         exit();
+    }
+
+    $mediaAprovacao = isset($media_config) ? (float) $media_config : 60.0;
+    if (!empty($id_matricula)) {
+        $paramsMat = [':id' => (int) $id_matricula];
+        $ctxIds = aluno_context_ids($pdo);
+        $whereAluno = aluno_context_bind_in('aluno', $ctxIds, $paramsMat, 'al_ctx');
+        $queryMat = $pdo->prepare("SELECT nota FROM matriculas WHERE id = :id AND {$whereAluno} LIMIT 1");
+        $queryMat->execute($paramsMat);
+        $notaAtual = (float) ($queryMat->fetchColumn() ?: 0);
+        if ($notaAtual >= $mediaAprovacao) {
+            $notaEscala10 = number_format($notaAtual / 10, 1, ',', '.');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Prova ja feita com aprovacao. Nota final: ' . $notaEscala10 . '.'
+            ], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
     }
 
     // Iniciar transação para garantir consistência

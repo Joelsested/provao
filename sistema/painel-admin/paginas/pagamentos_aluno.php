@@ -1,7 +1,6 @@
 <?php
 require_once('../conexao.php');
 require_once('verificar.php');
-require_once __DIR__ . '/../../../efi/pix.php';
 require_once __DIR__ . '/../../../efi/boleto.php';
 $options = require_once __DIR__ . '/../../../efi/options.php';
 $pag = 'pagamentos_aluno';
@@ -38,6 +37,36 @@ $id_aluno = $resposta_usuario_aluno[0]['id'];
 
 $id_do_aluno = $id_aluno;
 $telefone_aluno = '';
+$temRecorrenciaEfi = false;
+try {
+    $temAssinaturas = $pdo->query("SHOW TABLES LIKE 'efi_assinaturas_cartao'")->fetch(PDO::FETCH_NUM);
+    $temParcelas = $pdo->query("SHOW TABLES LIKE 'efi_assinaturas_cartao_parcelas'")->fetch(PDO::FETCH_NUM);
+    $temRecorrenciaEfi = (bool) $temAssinaturas && (bool) $temParcelas;
+} catch (Throwable $e) {
+    $temRecorrenciaEfi = false;
+}
+
+if ($temRecorrenciaEfi) {
+    $selectRecorrenciaCartao = "
+        COALESCE(ea.quantidade_parcelas, 1) AS quantidade_parcelas,
+        (
+            SELECT COUNT(*)
+            FROM efi_assinaturas_cartao_parcelas ep
+            WHERE ep.id_matricula = matriculas.id
+              AND ep.status = 'PAGA'
+        ) AS parcelas_pagas,
+        (
+            SELECT COUNT(*)
+            FROM efi_assinaturas_cartao_parcelas ep
+            WHERE ep.id_matricula = matriculas.id
+              AND ep.status IN ('PENDENTE', 'ATRASADA')
+        ) AS parcelas_pendentes
+    ";
+    $joinRecorrenciaCartao = "LEFT JOIN efi_assinaturas_cartao ea ON ea.id_matricula = matriculas.id";
+} else {
+    $selectRecorrenciaCartao = "1 AS quantidade_parcelas, 0 AS parcelas_pagas, 0 AS parcelas_pendentes";
+    $joinRecorrenciaCartao = "";
+}
 try {
  $stmtTelefone = $pdo->prepare("SELECT a.telefone FROM usuarios u JOIN alunos a ON a.id = u.id_pessoa WHERE u.id = :id LIMIT 1");
  $stmtTelefone->execute([':id' => $id_do_aluno]);
@@ -71,7 +100,7 @@ $resposta_consulta_boleto_parcelado = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 
 // Consultas separadas por forma de pagamento
-$formas_pagamento = ['BOLETO', 'PIX', 'MP', 'CARTAO_DE_CREDITO'];
+$formas_pagamento = ['BOLETO', 'BOLETO_PARCELADO', 'CARTAO_DE_CREDITO', 'CARTAO_RECORRENTE'];
 $pagamentos = [];
 
 // foreach ($formas_pagamento as $forma) {
@@ -118,7 +147,7 @@ foreach ($formas_pagamento as $forma) {
     $pagamentos[$forma] = $query->fetchAll(PDO::FETCH_ASSOC);
 }
 
-$pagamentos_cartao = array_merge($pagamentos['MP'] ?? [], $pagamentos['CARTAO_DE_CREDITO'] ?? []);
+$pagamentos_cartao = array_merge($pagamentos['CARTAO_DE_CREDITO'] ?? [], $pagamentos['CARTAO_RECORRENTE'] ?? []);
 
 $consulta_matricula = $pdo->prepare("SELECT id, forma_pgto, pacote, id_curso FROM matriculas WHERE aluno = :aluno");
 $consulta_matricula->execute(['aluno' => $id_do_aluno]);
@@ -149,9 +178,7 @@ foreach ($resposta_consulta as $matricula) {
         $nome_curso_pacote = json_decode('"' . $nome_curso_pacote . '"');
     }
 
-    if ($forma_pgto === 'PIX') {
-        $tabela_pagamentos = 'pagamentos_pix';
-    } elseif ($forma_pgto === 'BOLETO') {
+    if ($forma_pgto === 'BOLETO' || $forma_pgto === 'BOLETO_PARCELADO') {
         $tabela_pagamentos = 'pagamentos_boleto';
     } else {
         continue;
@@ -167,16 +194,12 @@ foreach ($resposta_consulta as $matricula) {
     }
 }
 
-$pix_transactions = [];
 $boleto_transactions = [];
 
 foreach ($transactions as $registro) {
-    $eh_pix = isset($registro['txid']);
     $eh_boleto = isset($registro['nosso_numero']);
 
-    if ($eh_pix) {
-        $pix_transactions[] = $registro;
-    } elseif ($eh_boleto) {
+    if ($eh_boleto) {
         $boleto_transactions[] = $registro;
     }
 }
@@ -188,12 +211,14 @@ $consulta_matriculas_cartao_p = $pdo->prepare("
     SELECT 
         matriculas.*, 
         pacotes.nome AS nome_curso,
-        usuarios.nome AS nome_professor
+        usuarios.nome AS nome_professor,
+        {$selectRecorrenciaCartao}
     FROM matriculas 
     JOIN pacotes ON pacotes.id = matriculas.id_curso 
     JOIN usuarios ON usuarios.id = matriculas.professor
+    {$joinRecorrenciaCartao}
     WHERE matriculas.aluno = :aluno
-    AND matriculas.forma_pgto = 'CARTAO_DE_CREDITO'
+    AND matriculas.forma_pgto IN ('CARTAO_DE_CREDITO', 'CARTAO_RECORRENTE')
     AND matriculas.pacote = 'Sim'
 ");
 $consulta_matriculas_cartao_p->execute(['aluno' => $id_do_aluno]);
@@ -203,12 +228,14 @@ $consulta_matriculas_cartao_c = $pdo->prepare("
     SELECT 
         matriculas.*, 
         cursos.nome AS nome_curso,
-        usuarios.nome AS nome_professor
+        usuarios.nome AS nome_professor,
+        {$selectRecorrenciaCartao}
     FROM matriculas 
     JOIN cursos ON cursos.id = matriculas.id_curso 
     JOIN usuarios ON usuarios.id = matriculas.professor
+    {$joinRecorrenciaCartao}
     WHERE matriculas.aluno = :aluno
-    AND matriculas.forma_pgto = 'CARTAO_DE_CREDITO'
+    AND matriculas.forma_pgto IN ('CARTAO_DE_CREDITO', 'CARTAO_RECORRENTE')
     AND (matriculas.pacote = 'Nao' OR matriculas.pacote = 'Não' OR matriculas.pacote IS NULL)
 ");
 $consulta_matriculas_cartao_c->execute(['aluno' => $id_do_aluno]);
@@ -233,19 +260,18 @@ $nome_aluno = $resAluno['nome'] ?? 'Desconhecido';
 $config = [
     'client_id' => $options['clientId'],
     'client_secret' => $options['clientSecret'],
-    'certificate_path' => $options['certificate'], // Apenas para PIX
-    'chave_pix' => $options['pixKey'] ?? '', // Sua chave PIX
+    'certificate_path' => $options['certificate'],
     'sandbox' => $options['sandbox'] // true para teste, false para produção
 ];
 
-$pixPayment = new EFIBoletoPayment(
+$boletoPaymentApi = new EFIBoletoPayment(
     $config['client_id'],
     $config['client_secret'],
     $config['sandbox']
 );
 
 $status_cache = [];
-function buscarStatusBoleto($pixPayment, $chargeId, &$status_cache)
+function buscarStatusBoleto($boletoPaymentApi, $chargeId, &$status_cache)
 {
     if (!$chargeId) {
         return '';
@@ -254,7 +280,7 @@ function buscarStatusBoleto($pixPayment, $chargeId, &$status_cache)
         return $status_cache[$chargeId];
     }
     try {
-        $consultar = $pixPayment->consultarCobranca($chargeId);
+        $consultar = $boletoPaymentApi->consultarCobranca($chargeId);
         $status = $consultar['data']['status'] ?? '';
     } catch (Exception $e) {
         $status = '';
@@ -330,7 +356,7 @@ function resumirStatusBoleto($statusApi, $situacao = null)
     <th>Valor</th>
     <th>Situação</th>
     <th>Comissões</th>
-    <th>Pix Copia e Cola</th>
+    <th>Código de Pagamento</th>
     <th>Gerar boleto</th>
     <th>Enviar</th>
    </tr>
@@ -344,7 +370,7 @@ function resumirStatusBoleto($statusApi, $situacao = null)
         $chargeId = $registro['charge_id'] ?? '';
         $statusApi = '';
         if (!empty($chargeId)) {
-            $statusApi = buscarStatusBoleto($pixPayment, $chargeId, $status_cache);
+            $statusApi = buscarStatusBoleto($boletoPaymentApi, $chargeId, $status_cache);
         }
         $statusResumo = resumirStatusBoleto($statusApi, $registro['situacao'] ?? null);
         $vencido = ($statusResumo === 'Vencido');
@@ -367,9 +393,9 @@ function resumirStatusBoleto($statusApi, $situacao = null)
      </td>
      <td style="max-width: 100px; overflow: hidden;">
       <?php if (!empty($registro['transaction_receipt_url'])): ?>
-       <div class="btn btn-primary" onclick="copiarPix('<?php echo htmlspecialchars($registro['transaction_receipt_url'], ENT_QUOTES); ?>')">
+       <div class="btn btn-primary" onclick="copiarCodigoPagamento('<?php echo htmlspecialchars($registro['transaction_receipt_url'], ENT_QUOTES); ?>')">
         <i class="fa fa-file-pdf-o" aria-hidden="true"></i>
-        Copiar Pix
+        Copiar Código
        </div>
       <?php endif; ?>
      </td>
@@ -418,6 +444,85 @@ function resumirStatusBoleto($statusApi, $situacao = null)
      </td>
     </tr>
    <?php endforeach; ?>
+ </tbody>
+ </table>
+
+ <br>
+ <h4>CARTÃO RECORRENTE EFY</h4>
+ <br>
+ <table>
+  <thead>
+   <tr>
+    <th>ID Matrícula</th>
+    <th>Curso / Pacote</th>
+    <th>Forma</th>
+    <th>Parcelas</th>
+    <th>Valor Total</th>
+    <th>Situação</th>
+   </tr>
+  </thead>
+  <tbody>
+   <?php if (!empty($cartao_transactions)): ?>
+    <?php foreach ($cartao_transactions as $registro): ?>
+     <?php
+        $ehRecorrente = (($registro['forma_pgto'] ?? '') === 'CARTAO_RECORRENTE');
+        if ($ehRecorrente) {
+            $parcelasTotal = max(1, (int) ($registro['quantidade_parcelas'] ?? 1));
+            if (!empty($registro['qtd_parcelas_cartao'])) {
+                $parcelasTotal = max(1, (int) $registro['qtd_parcelas_cartao']);
+            } elseif (!empty($registro['qtd_parcelas'])) {
+                $parcelasTotal = max(1, (int) $registro['qtd_parcelas']);
+            } elseif (!empty($registro['parcelas'])) {
+                $parcelasTotal = max(1, (int) $registro['parcelas']);
+            }
+        } else {
+            $parcelasTotal = 1;
+            if (!empty($registro['qtd_parcelas_cartao'])) {
+                $parcelasTotal = max(1, (int) $registro['qtd_parcelas_cartao']);
+            } elseif (!empty($registro['qtd_parcelas'])) {
+                $parcelasTotal = max(1, (int) $registro['qtd_parcelas']);
+            } elseif (!empty($registro['parcelas'])) {
+                $parcelasTotal = max(1, (int) $registro['parcelas']);
+            } elseif (!empty($registro['quantidade_parcelas'])) {
+                $parcelasTotal = max(1, (int) $registro['quantidade_parcelas']);
+            }
+        }
+        $parcelasPagas = (int) ($registro['parcelas_pagas'] ?? 0);
+        $parcelasPendentes = (int) ($registro['parcelas_pendentes'] ?? 0);
+        $statusLinha = strtoupper(trim((string) ($registro['status'] ?? '')));
+        if ($statusLinha === '') {
+            $statusLinha = 'PENDENTE';
+        }
+        $formaLinha = ($registro['forma_pgto'] ?? '') === 'CARTAO_RECORRENTE' ? 'Cartão recorrente' : 'Cartão de crédito';
+        $valorTotalLinha = (float) ($registro['valor_total_cartao'] ?? 0);
+        if ($valorTotalLinha <= 0) {
+            $valorTotalLinha = (float) ($registro['subtotal'] ?? 0);
+            if ($valorTotalLinha <= 0) {
+                $valorTotalLinha = (float) ($registro['valor'] ?? 0);
+            }
+        }
+     ?>
+     <tr>
+      <td><?php echo (int) ($registro['id'] ?? 0); ?></td>
+      <td><?php echo htmlspecialchars((string) json_decode('"' . ($registro['nome_curso'] ?? '') . '"'), ENT_QUOTES, 'UTF-8'); ?></td>
+      <td><?php echo $formaLinha; ?></td>
+      <td>
+       <?php
+            echo $parcelasPagas . '/' . $parcelasTotal . ' pagas';
+            if ($parcelasPendentes > 0) {
+                echo ' (' . $parcelasPendentes . ' pendentes)';
+            }
+       ?>
+      </td>
+      <td><?php echo 'R$ ' . number_format($valorTotalLinha, 2, ',', '.'); ?></td>
+      <td><?php echo htmlspecialchars($statusLinha, ENT_QUOTES, 'UTF-8'); ?></td>
+     </tr>
+    <?php endforeach; ?>
+   <?php else: ?>
+    <tr>
+     <td colspan="6" style="text-align:center;">Nenhum pagamento de cartão encontrado.</td>
+    </tr>
+   <?php endif; ?>
   </tbody>
  </table>
 
@@ -447,12 +552,12 @@ function resumirStatusBoleto($statusApi, $situacao = null)
         window.open(link, '_blank');
     }
 
-    function copiarPix(valor) {
+    function copiarCodigoPagamento(valor) {
         navigator.clipboard.writeText(valor).then(() => {
             Swal.fire({
                 icon: 'success',
                 title: 'Copiado!',
-                text: 'O código Pix foi copiado para sua área de transferência.'
+                text: 'O código foi copiado para sua área de transferência.'
             });
         }).catch(err => {
             console.error('Erro ao copiar: ', err);
@@ -594,8 +699,8 @@ function resumirStatusBoleto($statusApi, $situacao = null)
                 <div>
                     <div style="margin-bottom:10px;">Valor do pagamento: ${valorFormatado}</div>
                     <img src="${qrcode}" width="250px" style="display:block; margin:0 auto 10px;" />
-                    <input type="text" id="pix-code" value="${texto_copia_cola}" readonly style="border: 1px solid #ddd; width: 100%; padding: 8px;" />
-                    <button onclick="copiarPix('${texto_copia_cola.replace("'", "\'")}')" style="margin-top:10px;">Copiar</button>
+                    <input type="text" id="codigo-pagamento" value="${texto_copia_cola}" readonly style="border: 1px solid #ddd; width: 100%; padding: 8px;" />
+                    <button onclick="copiarCodigoPagamento('${texto_copia_cola.replace("'", "\'")}')" style="margin-top:10px;">Copiar</button>
                     <div style="margin-top:10px;">Data: ${dataFormatada}</div>
                 </div>
             `,

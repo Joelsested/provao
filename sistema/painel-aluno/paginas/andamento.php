@@ -33,7 +33,7 @@ if(@$_SESSION['nivel'] != 'Aluno'){
 			<div class="modal-header">
 				<h4 class="modal-title"><span id="nome_aula_titulo"> </span> - Aulas <span id="aulas_aula"> </span>  </h4>
 				<span id="link-drive" class="text-muted"><small><small><a title="Assistir pelo Google Drive" id="link_drive_curso" href="" target="_blank"><i class="fa fa-link" aria-hidden="true"></i>
-				Assistir pelo Google Drive</a> (Ao Finalizar solicitar liberação do Certificado)</small></small></span>
+				Assistir pelo Google Drive</a> (Ao Finalizar solicitar liberaÃ§Ã£o do Certificado)</small></small></span>
 
 
 				<button id="btn-fechar-aula" type="button" class="close" data-dismiss="modal" aria-label="Close" style="margin-top: -20px">
@@ -105,7 +105,7 @@ if(@$_SESSION['nivel'] != 'Aluno'){
 				</a>
 
 				<a href="#" onclick="proximo()" class="cinza_escuro" id="btn-proximo">
-				<span style="margin-right:10px">Próximo<i class="fa fa-arrow-right" style="font-size:20px;margin-left:3px"></i>
+				<span style="margin-right:10px">PrÃ³ximo<i class="fa fa-arrow-right" style="font-size:20px;margin-left:3px"></i>
 				</span>
 				</a>
 
@@ -150,7 +150,7 @@ if(@$_SESSION['nivel'] != 'Aluno'){
 
 						<div class="col-md-6">						
 							<div class="form-group"> 
-								<label>Número da Aula <small>(Se Necessário)</small></label> 
+								<label>NÃºmero da Aula <small>(Se NecessÃ¡rio)</small></label> 
 								<input type="number" class="form-control" name="num_aula" id="num_aula"> 
 							</div>						
 						</div>
@@ -172,7 +172,7 @@ if(@$_SESSION['nivel'] != 'Aluno'){
 
 					<hr>
 				<div align="center" class="text-muted">
-					<small>Se preferir mande sua dúvida diretamente em nosso whatsapp <a href="http://api.whatsapp.com/send?1=pt_BR&phone=<?php echo $tel_whatsapp ?>" title="Chamar no Whatsapp" target="_blank"><i class="fa fa-whatsapp"></i><?php echo $tel_sistema ?></a></small>
+					<small>Se preferir mande sua dÃºvida diretamente em nosso whatsapp <a href="http://api.whatsapp.com/send?1=pt_BR&phone=<?php echo $tel_whatsapp ?>" title="Chamar no Whatsapp" target="_blank"><i class="fa fa-whatsapp"></i><?php echo $tel_sistema ?></a></small>
 				</div>
 					
 
@@ -290,7 +290,7 @@ if(@$_SESSION['nivel'] != 'Aluno'){
 				
 						<div class="col-md-12">						
 							<div class="form-group"> 
-								<label>Mensagem da Avaliação<small>(Max 500 Caracteres)</small></label> 
+								<label>Mensagem da AvaliaÃ§Ã£o<small>(Max 500 Caracteres)</small></label> 
 								<textarea maxlength="500" class="form-control" name="avaliacao" id="avaliacao"></textarea> 
 							</div>						
 						</div>
@@ -348,30 +348,10 @@ if(@$_SESSION['nivel'] != 'Aluno'){
 			</div>
 			
 			<div class="modal-body">
-				<form method="post" id="form-quest">
-
-					<div id="quest">
-
-					</div>
-					
-					
-					<input type="hidden" name="id_curso" id="id_curso_quest"> 
-					<input type="hidden" name="id_mat" id="id_mat_quest"> 
-					<small><div id="mensagem-quest" align="center" class="mt-3"></div></small>
-
-
-					<hr>
-				<div  class="modal-footer">
-					<button type="submit" class="btn btn-primary">Finalizar</button>
-				</div>
-					
-
-				
-
-
-			</form>
-				
-				
+				<div id="quest"></div>
+				<input type="hidden" id="id_curso_quest">
+				<input type="hidden" id="id_mat_quest">
+				<small><div id="mensagem-quest" align="center" class="mt-3"></div></small>
 			</div>
 			
 		</div>
@@ -475,8 +455,8 @@ if(@$_SESSION['nivel'] != 'Aluno'){
         	//alert(result)
         	if(result.trim() === 'Curso Finalizado'){
         	
-        			$('#nome_da_aula').text('Parabéns, você concluiu o Curso');
-        			$('#texto-finalizado').text('Agora você já pode emitir seu certificado e avaliar nosso curso!!');        		
+        			$('#nome_da_aula').text('ParabÃ©ns, vocÃª concluiu o Curso');
+        			$('#texto-finalizado').text('Agora vocÃª jÃ¡ pode emitir seu certificado e avaliar nosso curso!!');        		
         			
         		
         		document.getElementById('btn-anterior').style.display = 'none';
@@ -485,10 +465,10 @@ if(@$_SESSION['nivel'] != 'Aluno'){
         		$('#numero_da_aula').text('');
         		$('#nome_da_sessao').text('');
         		
-        	}else if(result.trim() === 'Aulas Concluídas'){
+        	}else if(result.trim() === 'Aulas ConcluÃ­das'){
 
-        		$('#nome_da_aula').text('Parabéns, você concluiu as aulas, agora vá para a avaliação final!');
-        			$('#texto-finalizado').text('Responda o questionário final para ser aprovado no curso e solicitar seu certificado!');
+        		$('#nome_da_aula').text('ParabÃ©ns, vocÃª concluiu as aulas, agora vÃ¡ para a avaliaÃ§Ã£o final!');
+        			$('#texto-finalizado').text('Responda o questionÃ¡rio final para ser aprovado no curso e solicitar seu certificado!');
 
         				document.getElementById('btn-anterior').style.display = 'none';
         		document.getElementById('btn-proximo').style.display = 'none';
@@ -640,7 +620,7 @@ function excluirPergunta(id){
         dataType: "text",
 
         success: function (mensagem) {            
-            if (mensagem.trim() == "Excluído com Sucesso") {                
+            if (mensagem.trim() == "ExcluÃ­do com Sucesso") {                
                 listarPerguntas(id_curso);                
             } else {
                     $('#mensagem-excluir').addClass('text-danger')
@@ -742,7 +722,7 @@ function excluirResposta(id){
         dataType: "text",
 
         success: function (mensagem) {            
-            if (mensagem.trim() == "Excluído com Sucesso") {                
+            if (mensagem.trim() == "ExcluÃ­do com Sucesso") {                
                 listarRespostas(id_pergunta);                
             } else {
                     $('#mensagem-resposta').addClass('text-danger')
@@ -862,62 +842,38 @@ $("#form-avaliar").submit(function () {
 		$('#id_curso_quest').val(curso);
 		$('#id_mat_quest').val(id);		
 		$('#modalQuest').modal('show');
-		listarQuest(curso);
+		listarQuest(curso, id);
 	}
 
-		function listarQuest(curso){
-    $.ajax({
-        url: 'paginas/' + pag + "/listar-quest.php",
-        method: 'POST',
-        data: {curso},
-        dataType: "html",
-
-        success:function(result){
-            $("#quest").html(result);
-           
-        }
-    });
-}
-
-
-	
-$("#form-quest").submit(function () {	
-	event.preventDefault();
-	var formData = new FormData(this);
-
-	$.ajax({
-		url: 'paginas/' + pag + "/resultado.php",
-		type: 'POST',
-		data: formData,
-
-		success: function (mensagem) {
-			var msg = mensagem.split('***');			
-			var nota = msg[1];
-            $('#mensagem-quest').text('');
-            $('#mensagem-quest').removeClass()
-            if (msg[0].trim() == "Aprovado") { 
-            		 alert('Parabéns, você foi aprovado com '+nota+'%, agora pode retirar seu certificado!');		                 
-                     $('#btn-fechar-quest').click();                    
-                     $('#mensagem-quest').text('');
-                     listarCursos()
-                 }else if(msg[0].trim() == "Reprovado"){
-                 	 alert('Você foi reprovado. sua nota foi de '+nota+'%, você pode refazer o questionário com atenção para tentar novamente!');		                 
-                     $('#btn-fechar-quest').click();                    
-                     $('#mensagem-quest').text('');
-                     listarCursos()
-
-                } else {
-                	$('#mensagem-quest').addClass('text-danger')
-                    $('#mensagem-quest').text(msg[0])
-                }
-
-            },
-
-            cache: false,
-            contentType: false,
-            processData: false,
-            
-        });
-
-});
+	function listarQuest(curso, id_mat){
+		var id_usu = "<?= (int) ($_SESSION['id'] ?? 0) ?>";
+		$.ajax({
+			url: 'paginas/cursos/listar-quest.php',
+			method: 'POST',
+			data: { curso, id_mat, id_usu },
+			dataType: "html",
+			cache: false,
+			success: function(result){
+				const html = (result || '').trim();
+				if (!html) {
+					$("#quest").html('<div class="alert alert-danger" style="margin: 15px;">NÃ£o foi possÃ­vel carregar o questionÃ¡rio.</div>');
+					return;
+				}
+				$("#quest").html(html);
+				$("#quest").find("script").each(function () {
+					if (this.src) {
+						var s = document.createElement('script');
+						s.src = this.src;
+						document.head.appendChild(s);
+					} else {
+						$.globalEval(this.text || this.textContent || this.innerHTML || '');
+					}
+				});
+			},
+			error: function (xhr) {
+				const msg = xhr && xhr.responseText ? xhr.responseText : 'Erro inesperado ao carregar o questionÃ¡rio.';
+				$("#quest").html('<div class="alert alert-danger" style="margin: 15px;">' + msg + '</div>');
+			}
+		});
+	}
 </script>

@@ -1,30 +1,73 @@
 <?php
 
 require_once("../../../conexao.php");
+require_once(__DIR__ . "/../../../../../helpers.php");
+@session_start();
 $hoje = date('Y-m-d');
 $mes_atual = Date('m');
 $ano_atual = Date('Y');
 $data_pgto_comissao = $ano_atual.'-'.$mes_atual.'-'.$dia_pgto_comissao;
 
-$forma_pgto = $_POST['forma_pgto'];
+$forma_pgto = strtoupper(trim((string) ($_POST['forma_pgto'] ?? '')));
 $subtotal = $_POST['valor'];
 $subtotal = str_replace(',', '.', $subtotal);
 $obs = $_POST['obs'];
 $cartao = $_POST['cartao'];
 $id_mat = $_POST['id_mat'];
+$nivel_usuario_logado = (string) ($_SESSION['nivel'] ?? '');
+
+$formasPermitidas = ['BOLETO', 'BOLETO_PARCELADO', 'CARTAO_DE_CREDITO', 'CARTAO_RECORRENTE'];
+if (!in_array($forma_pgto, $formasPermitidas, true)) {
+    $forma_pgto = 'BOLETO';
+}
+
+function idadeCompletaEmAnos(string $dataNascimento, ?DateTimeImmutable $hojeRef = null): int
+{
+    $dataNormalizada = function_exists('normalizeDate') ? normalizeDate($dataNascimento) : trim($dataNascimento);
+    if ($dataNormalizada === '' || $dataNormalizada === '0000-00-00') {
+        return -1;
+    }
+
+    $hoje = $hojeRef ?: new DateTimeImmutable('today');
+    try {
+        $nascimento = new DateTimeImmutable($dataNormalizada);
+    } catch (Throwable $e) {
+        return -1;
+    }
+
+    if ($nascimento > $hoje) {
+        return -1;
+    }
+
+    return (int) $nascimento->diff($hoje)->y;
+}
+
+function colunaExisteTabela(PDO $pdo, string $tabela, string $coluna): bool
+{
+    try {
+        $stmt = $pdo->prepare("SHOW COLUMNS FROM {$tabela} LIKE :coluna");
+        $stmt->execute([':coluna' => $coluna]);
+        return (bool) $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function garantirColunaLiberacaoMenor(PDO $pdo): void
+{
+    if (colunaExisteTabela($pdo, 'alunos', 'liberado_menor_18')) {
+        return;
+    }
+    try {
+        $pdo->exec("ALTER TABLE alunos ADD COLUMN liberado_menor_18 TINYINT(1) NOT NULL DEFAULT 0");
+    } catch (Throwable $e) {
+        // Mantem fluxo caso nao consiga alterar estrutura.
+    }
+}
 
 $total_recebido = $subtotal;
-
-if($forma_pgto == 'MP'){
-$total_recebido = $subtotal - ($subtotal * ($taxa_mp / 100));
-}
-
-if($forma_pgto == 'Boleto'){
-$total_recebido = $subtotal - $taxa_boleto;
-}
-
-if($forma_pgto == 'Paypal'){		
-	$total_recebido = $subtotal - ($subtotal * ($taxa_paypal / 100)); ;
+if ($forma_pgto === 'BOLETO' || $forma_pgto === 'BOLETO_PARCELADO') {
+    $total_recebido = $subtotal - $taxa_boleto;
 }
 
 
@@ -59,8 +102,21 @@ $stmtAluno = $pdo->prepare("SELECT * FROM alunos WHERE id = ?");
 $stmtAluno->execute([(int) $id_pessoa_aluno]);
 $res = $stmtAluno->fetchAll(PDO::FETCH_ASSOC);
 if(@count($res) > 0){
+    garantirColunaLiberacaoMenor($pdo);
 	$cartoes = $res[0]['cartao'];
 	$usuario_comissao = $res[0]['usuario'];
+    $nascimento_aluno = (string) ($res[0]['nascimento'] ?? '');
+    $liberado_menor = (int) ($res[0]['liberado_menor_18'] ?? 0) === 1;
+    $idade_aluno = idadeCompletaEmAnos($nascimento_aluno);
+    $eh_menor = ($idade_aluno >= 0 && $idade_aluno < 18);
+    if ($eh_menor && !$liberado_menor && $nivel_usuario_logado !== 'Administrador') {
+        echo 'Aluno menor de 18 anos. Só admin pode liberar matrículas para alunos menores.';
+        exit;
+    }
+    if ($eh_menor && $nivel_usuario_logado === 'Administrador' && !$liberado_menor) {
+        $stmtLiberacao = $pdo->prepare("UPDATE alunos SET liberado_menor_18 = 1 WHERE id = ?");
+        $stmtLiberacao->execute([(int) $id_pessoa_aluno]);
+    }
 }
 
 

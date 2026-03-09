@@ -46,6 +46,25 @@ $total_reg = count($res_query_alunos2);
 if ($total_reg > 0) {
 
 	echo <<<HTML
+<div class="row" style="margin-bottom:10px;">
+	<div class="col-sm-12" style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+		<div>
+			<label for="mostrar_meus_alunos_unico" style="margin-right:8px;">Mostrar</label>
+			<select id="mostrar_meus_alunos_unico" class="form-control" style="display:inline-block; width:90px;">
+				<option value="10" selected>10</option>
+				<option value="25">25</option>
+				<option value="50">50</option>
+				<option value="100">100</option>
+				<option value="-1">Todos</option>
+			</select>
+			<span style="margin-left:8px;">registros</span>
+		</div>
+		<div style="margin-left:auto;">
+			<label for="busca_meus_alunos_unica" style="margin-right:8px;">Buscar:</label>
+			<input type="text" id="busca_meus_alunos_unica" class="form-control" style="display:inline-block; width:280px;" placeholder="Buscar aluno...">
+		</div>
+	</div>
+</div>
 
 	<table class="table table-hover" id="tabela">
 
@@ -235,13 +254,16 @@ HTML;
 
 
 
+		$fotoLinha = trim((string)$foto);
+		$srcFoto = $fotoLinha !== '' ? "../painel-aluno/img/perfil/{$fotoLinha}" : "../painel-aluno/img/perfil/sem-perfil.jpg";
+
 		echo <<<HTML
 
 <tr class="{$classe_linha}"> 
 
 		<td>
 
-		<img src="../painel-aluno/img/perfil/{$foto}" width="27px" class="mr-2">
+		<img src="{$srcFoto}" width="27px" class="mr-2" onerror="this.onerror=null;this.src='../painel-aluno/img/perfil/sem-perfil.jpg';">
 
 		{$nome}	
 
@@ -384,7 +406,11 @@ HTML;
 
 <small><div align="center" id="mensagem-excluir"></div></small>
 
-</table>	
+</table>
+<div id="rodape_registros_meus_alunos" style="margin-top:8px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:nowrap; overflow-x:auto;">
+	<div id="resumo_registros_meus_alunos" style="color:#666; white-space:nowrap;"></div>
+	<div id="paginacao_registros_meus_alunos" style="white-space:nowrap;"></div>
+</div>
 
 HTML;
 
@@ -413,6 +439,147 @@ HTML;
 <script type="text/javascript">
 
 	$(document).ready(function () {
+		let dtApi = null;
+		let termoBuscaAtual = '';
+		let totalRegistrosTabela = $('#tabela tbody tr').length;
+		let paginaLocalAtual = 1;
+		let totalPaginasLocal = 1;
+
+		function normalizarTexto(valor) {
+			return (valor || '')
+				.toString()
+				.toLowerCase()
+				.normalize('NFD')
+				.replace(/[\u0300-\u036f]/g, '');
+		}
+
+		function aplicarBuscaLimiteLocal() {
+			const busca = normalizarTexto(termoBuscaAtual);
+			const limite = parseInt($('#mostrar_meus_alunos_unico').val() || '10', 10);
+			const linhasCorrespondentes = [];
+
+			$('#tabela tbody tr').each(function () {
+				const textoLinha = normalizarTexto($(this).text());
+				const corresponde = textoLinha.indexOf(busca) !== -1;
+				if (!corresponde) {
+					$(this).hide();
+					return;
+				}
+				linhasCorrespondentes.push($(this));
+			});
+
+			const totalFiltrado = linhasCorrespondentes.length;
+			if (limite === -1) {
+				paginaLocalAtual = 1;
+				totalPaginasLocal = 1;
+				linhasCorrespondentes.forEach(function ($linha) { $linha.show(); });
+				return { totalFiltrado: totalFiltrado, inicio: totalFiltrado ? 1 : 0, fim: totalFiltrado };
+			}
+
+			totalPaginasLocal = Math.max(1, Math.ceil(totalFiltrado / limite));
+			if (paginaLocalAtual > totalPaginasLocal) {
+				paginaLocalAtual = totalPaginasLocal;
+			}
+			if (paginaLocalAtual < 1) {
+				paginaLocalAtual = 1;
+			}
+
+			const inicioIndice = (paginaLocalAtual - 1) * limite;
+			const fimIndice = inicioIndice + limite;
+			linhasCorrespondentes.forEach(function ($linha, indice) {
+				if (indice >= inicioIndice && indice < fimIndice) {
+					$linha.show();
+				} else {
+					$linha.hide();
+				}
+			});
+
+			const inicio = totalFiltrado ? (inicioIndice + 1) : 0;
+			const fim = Math.min(fimIndice, totalFiltrado);
+			return { totalFiltrado: totalFiltrado, inicio: inicio, fim: fim };
+		}
+
+		function renderizarPaginacaoLocal(totalFiltrado) {
+			const $paginacao = $('#paginacao_registros_meus_alunos');
+			if (!$paginacao.length) {
+				return;
+			}
+
+			const limite = parseInt($('#mostrar_meus_alunos_unico').val() || '10', 10);
+			if (limite === -1 || totalFiltrado < 1) {
+				$paginacao.html('');
+				return;
+			}
+
+			let paginas = Math.max(1, Math.ceil(totalFiltrado / limite));
+			if (dtApi) {
+				const info = dtApi.page.info();
+				paginas = Math.max(1, (info && info.pages) ? info.pages : 1);
+				paginaLocalAtual = (info ? info.page : 0) + 1;
+			}
+
+			const inicioJanela = Math.max(1, paginaLocalAtual - 2);
+			const fimJanela = Math.min(paginas, inicioJanela + 4);
+			let html = '<ul class="pagination" style="margin:0;">';
+
+			if (paginaLocalAtual > 1) {
+				html += '<li><a href="#" data-page="' + (paginaLocalAtual - 1) + '">Anterior</a></li>';
+			} else {
+				html += '<li class="disabled"><span>Anterior</span></li>';
+			}
+
+			for (let i = inicioJanela; i <= fimJanela; i++) {
+				if (i === paginaLocalAtual) {
+					html += '<li class="active"><span>' + i + '</span></li>';
+				} else {
+					html += '<li><a href="#" data-page="' + i + '">' + i + '</a></li>';
+				}
+			}
+
+			if (paginaLocalAtual < paginas) {
+				html += '<li><a href="#" data-page="' + (paginaLocalAtual + 1) + '">Próximo</a></li>';
+			} else {
+				html += '<li class="disabled"><span>Próximo</span></li>';
+			}
+
+			html += '</ul>';
+			$paginacao.html(html);
+		}
+
+		function atualizarResumoRegistros() {
+			if (!$('#resumo_registros_meus_alunos').length) {
+				return;
+			}
+			if (dtApi) {
+				const info = dtApi.page.info();
+				const totalFiltrado = info ? info.recordsDisplay : 0;
+				const totalGeral = info ? info.recordsTotal : totalRegistrosTabela;
+				if (!totalFiltrado) {
+					$('#resumo_registros_meus_alunos').text('Nenhum aluno encontrado.');
+					renderizarPaginacaoLocal(0);
+					return;
+				}
+				const inicio = (info.start || 0) + 1;
+				const fim = info.end || totalFiltrado;
+				$('#resumo_registros_meus_alunos').text('Mostrando ' + inicio + ' até ' + fim + ' de ' + totalFiltrado + ' alunos' + (totalFiltrado !== totalGeral ? ' (total: ' + totalGeral + ')' : '') + '.');
+				renderizarPaginacaoLocal(totalFiltrado);
+				return;
+			}
+			const resultadoLocal = aplicarBuscaLimiteLocal();
+			const totalFiltradoLocal = resultadoLocal ? resultadoLocal.totalFiltrado : 0;
+			if (!totalFiltradoLocal) {
+				$('#resumo_registros_meus_alunos').text('Nenhum aluno encontrado.');
+				renderizarPaginacaoLocal(0);
+				return;
+			}
+			$('#resumo_registros_meus_alunos').text('Mostrando ' + resultadoLocal.inicio + ' até ' + resultadoLocal.fim + ' de ' + totalFiltradoLocal + ' alunos' + (totalFiltradoLocal !== totalRegistrosTabela ? ' (total: ' + totalRegistrosTabela + ')' : '') + '.');
+			renderizarPaginacaoLocal(totalFiltradoLocal);
+		}
+
+		function sincronizarPaginacaoRodape() {
+			$('#tabela_paginate').hide();
+		}
+
 		function iniciarTabelaAtendimentosNovo(tentativas) {
 			if (!$('#tabela').length) {
 				return;
@@ -431,15 +598,60 @@ HTML;
 				$('#tabela').DataTable().destroy();
 			}
 
-			$('#tabela').DataTable({
+			dtApi = $('#tabela').DataTable({
 				"ordering": false,
 				"stateSave": true,
 			});
-
-			$('#tabela_filter label input').focus();
+			$('#tabela_filter').hide();
+			$('#tabela_length').hide();
+			$('#tabela_info').hide();
+			sincronizarPaginacaoRodape();
+			dtApi.page.len(parseInt($('#mostrar_meus_alunos_unico').val() || '10', 10)).draw();
+			termoBuscaAtual = (dtApi.search() || '').toString();
+			$('#busca_meus_alunos_unica').val(termoBuscaAtual);
+			atualizarResumoRegistros();
+			$('#tabela').on('draw.dt', function () {
+				$('#tabela_info').hide();
+				sincronizarPaginacaoRodape();
+				atualizarResumoRegistros();
+			});
 		}
 
 		iniciarTabelaAtendimentosNovo(20);
+		aplicarBuscaLimiteLocal();
+		sincronizarPaginacaoRodape();
+		atualizarResumoRegistros();
+		$('#busca_meus_alunos_unica').on('input', function () {
+			termoBuscaAtual = $(this).val() || '';
+			paginaLocalAtual = 1;
+			if (dtApi) {
+				dtApi.search(termoBuscaAtual).draw();
+				atualizarResumoRegistros();
+				return;
+			}
+			aplicarBuscaLimiteLocal();
+			atualizarResumoRegistros();
+		});
+		$('#mostrar_meus_alunos_unico').on('change', function () {
+			const limite = parseInt($(this).val() || '10', 10);
+			paginaLocalAtual = 1;
+			if (dtApi) {
+				dtApi.page.len(limite).draw();
+				atualizarResumoRegistros();
+				return;
+			}
+			aplicarBuscaLimiteLocal();
+			atualizarResumoRegistros();
+		});
+		$(document).on('click', '#paginacao_registros_meus_alunos a[data-page]', function (e) {
+			e.preventDefault();
+			const novaPagina = parseInt($(this).attr('data-page') || '1', 10);
+			if (!Number.isNaN(novaPagina) && novaPagina >= 1) {
+				paginaLocalAtual = novaPagina;
+				atualizarResumoRegistros();
+			}
+		});
+		$('#busca_meus_alunos_unica').focus();
 	});
 
 	function editarAluno(data) {

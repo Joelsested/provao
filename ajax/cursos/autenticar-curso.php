@@ -5,7 +5,7 @@ $cache_limiter = session_cache_limiter();
 /* define o prazo do cache em 120 minutos */
 session_cache_expire(120);
 $cache_expire = session_cache_expire();
-/* inicia a sessão */
+/* inicia a sessÃ£o */
 require_once('../../sistema/conexao.php');
 require_once(__DIR__ . '/../../helpers.php');
 
@@ -37,7 +37,7 @@ function fetchBirth(PDO $pdo, string $nivel, $idPessoa): string {
 }
 
 if ($usuario === '' || $senha === '') {
-	echo 'Usuário ou senha não informados!';
+	echo 'UsuÃ¡rio ou senha nÃ£o informados!';
 	exit();
 }
 
@@ -55,14 +55,19 @@ if (@count($res) == 0 && $cpfDigits !== '') {
 	$res = $query->fetchAll(PDO::FETCH_ASSOC);
 }
 if (@count($res) == 0) {
-	echo 'Usuário não Cadastrado com este email ou CPF inserido!';
+	echo 'UsuÃ¡rio nÃ£o Cadastrado com este email ou CPF inserido!';
 	exit();
 }
 
 $user = $res[0];
 
-if ($user['ativo'] == 'Não') {
+if ($user['ativo'] == 'NÃ£o') {
 	echo "Seu Acesso foi desativado pelo Administrador!";
+	exit();
+}
+
+if (($user['nivel'] ?? '') === 'Vendedor') {
+	echo "Voce nao pode compra como vendedor, entrar como aluno";
 	exit();
 }
 
@@ -117,6 +122,7 @@ if ($_SESSION['nivel'] == 'Aluno') {
 	echo "Logado com Sucesso-" . $_SESSION['id'] . "-" . $csrfToken;
 }
 ?>
+
 
 
 

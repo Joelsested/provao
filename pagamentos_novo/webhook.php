@@ -1,4 +1,8 @@
 <?php
+http_response_code(410);
+echo 'Forma de pagamento desativada. Utilize somente o gateway EFY.';
+exit;
+
 
 ini_set('display_errors', 0);
 ini_set('display_startup_errors', 0);

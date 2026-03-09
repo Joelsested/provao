@@ -83,10 +83,10 @@ $data_mes = $ano_atual."-".$mes_atual."-01";
 							<div class="form-group"> 
 								<label>Forma PGTO</label> 
 								<select class="form-control" name="forma_pgto" id="forma_pgto" required>
-								<option value="Pix">Pix</option> 
-								<option value="Boleto">Boleto</option>
-								<option value="MP">MP</option>
-								<option value="Paypal">Paypal</option>
+								<option value="BOLETO">Boleto</option>
+								<option value="BOLETO_PARCELADO">Boleto Parcelado</option>
+								<option value="CARTAO_DE_CREDITO">Cartão de Crédito</option>
+								<option value="CARTAO_RECORRENTE">Cartão Recorrente</option>
 								</select>
 							</div>						
 						</div>

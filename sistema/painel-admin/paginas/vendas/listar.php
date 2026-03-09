@@ -107,6 +107,7 @@ for($i=0; $i < $total_reg; $i++){
 	$nome_professor = $res[$i]['nome_professor'];	
 	$subtotal = $res[$i]['subtotal'];	
 	$forma_pgto = $res[$i]['forma_pgto'];
+	$forma_pgto_norm = strtoupper((string) $forma_pgto);
 	$total_recebido = $res[$i]['total_recebido'];	
 	$data = $res[$i]['data'];
 	$obs = $res[$i]['obs'];	
@@ -141,12 +142,8 @@ for($i=0; $i < $total_reg; $i++){
 	$taxa_mpF = number_format($taxa_mp, 1, '.', '.');
 	$taxa_paypalF = number_format($taxa_paypal, 1, '.', '.');
 
-	if($forma_pgto == 'Boleto'){
+	if($forma_pgto_norm == 'BOLETO' || $forma_pgto_norm == 'BOLETO_PARCELADO'){
 		$desconto = '(R$ '.$taxa_boleto.')';
-	}else if($forma_pgto == 'MP'){
-		$desconto = '('.$taxa_mpF.')%';
-	}else if($forma_pgto == 'Paypal'){
-		$desconto = '('.$taxa_paypalF.')%';
 	}else{
 		$desconto = '';
 	}

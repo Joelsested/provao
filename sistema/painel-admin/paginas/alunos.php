@@ -9,6 +9,7 @@ $pag = 'alunos';
 $id_user = @$_SESSION['id'];
 $nivel_session = $_SESSION['nivel'] ?? '';
 $responsavelAutoLevels = ['Vendedor', 'Tutor', 'Tesoureiro', 'Parceiro'];
+$responsavelSelectableLevels = ['Vendedor', 'Tesoureiro', 'Parceiro'];
 $precisaEscolherResponsavel = in_array($nivel_session, ['Administrador', 'Secretario'], true) || !in_array($nivel_session, $responsavelAutoLevels, true);
 $responsaveis = [];
 function flag_professor_responsavel(PDO $pdo, array $usuario): int
@@ -31,16 +32,37 @@ function flag_professor_responsavel(PDO $pdo, array $usuario): int
 	}
 }
 if ($precisaEscolherResponsavel) {
-	$placeholders = implode(',', array_fill(0, count($responsavelAutoLevels), '?'));
+	$placeholders = implode(',', array_fill(0, count($responsavelSelectableLevels), '?'));
 	$stmtResponsaveis = $pdo->prepare("SELECT id, nome, nivel, id_pessoa FROM usuarios WHERE nivel IN ($placeholders) AND ativo = 'Sim' ORDER BY nome");
-	$stmtResponsaveis->execute($responsavelAutoLevels);
+	$stmtResponsaveis->execute($responsavelSelectableLevels);
 	$responsaveis = $stmtResponsaveis->fetchAll(PDO::FETCH_ASSOC);
+	if (in_array($nivel_session, ['Tutor', 'Secretario'], true) && $id_user > 0) {
+		$stmtAtendenteAtual = $pdo->prepare("SELECT id, nome, nivel, id_pessoa FROM usuarios WHERE id = :id AND nivel IN ('Tutor', 'Secretario') AND ativo = 'Sim' LIMIT 1");
+		$stmtAtendenteAtual->execute([':id' => (int) $id_user]);
+		$atendenteAtual = $stmtAtendenteAtual->fetch(PDO::FETCH_ASSOC);
+		if ($atendenteAtual) {
+			$responsaveis[] = $atendenteAtual;
+		}
+	}
 	foreach ($responsaveis as &$resp) {
 		$resp['professor'] = flag_professor_responsavel($pdo, $resp);
 	}
 	unset($resp);
-	$responsaveis = array_values(array_filter($responsaveis, function ($resp) {
-		return ($resp['nivel'] ?? '') !== 'Secretario';
+	$responsaveis = array_values(array_filter($responsaveis, function ($resp) use ($id_user) {
+		$nivelResp = (string) ($resp['nivel'] ?? '');
+		if ($nivelResp !== 'Secretario') {
+			return true;
+		}
+		return (int) ($resp['id'] ?? 0) === (int) $id_user;
+	}));
+	$idsResponsaveis = [];
+	$responsaveis = array_values(array_filter($responsaveis, function ($resp) use (&$idsResponsaveis) {
+		$idResp = (int) ($resp['id'] ?? 0);
+		if ($idResp <= 0 || isset($idsResponsaveis[$idResp])) {
+			return false;
+		}
+		$idsResponsaveis[$idResp] = true;
+		return true;
 	}));
 }
 $transferLevels = ['Tutor', 'Secretario'];

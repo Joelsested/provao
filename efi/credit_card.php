@@ -2,6 +2,7 @@
 
 require_once('../vendor/autoload.php');
 require_once("../sistema/conexao.php");
+require_once("../config/env.php");
 
 ini_set('display_errors', 0);
 ini_set('display_startup_errors', 0);
@@ -11,45 +12,106 @@ ini_set('display_startup_errors', 0);
 $id_aluno = $_GET['id_aluno'];
 $id = $_GET['id'];
 $nome_curso = $_GET['nome_curso'];
+$modoRecorrente = (($_GET['modo'] ?? '') === 'recorrente');
+$subscriptionIdRecorrente = (int) ($_GET['subscription_id'] ?? 0);
+$somenteRecorrencia = $modoRecorrente && $subscriptionIdRecorrente > 0;
 
+$sandboxRaw = strtolower((string) env('EFI_CARD_SANDBOX', env('EFI_SANDBOX', 'false')));
+$efiCardSandbox = in_array($sandboxRaw, ['1', 'true', 'yes', 'on', 'sim'], true);
+$efiEnvironment = $efiCardSandbox ? 'sandbox' : 'production';
 
-//BUSCA VALOR ACRESCIMO CARTAO
-$queryAcrescimoCartao = $pdo->query("SELECT acrescimo_cartao_credito FROM config");
-$resAcrescimoCartao = $queryAcrescimoCartao->fetchColumn();
+$defaultAccount = trim((string) env('EFI_CARD_ACCOUNT', ''));
+$accountByEnv = (string) env(
+    $efiCardSandbox ? 'EFI_CARD_ACCOUNT_HOMOLOG' : 'EFI_CARD_ACCOUNT_PROD',
+    $defaultAccount
+);
+
+// Importante: o token do cartao deve ser gerado com o identificador de conta da aplicacao
+// (não usar payee_code/wallet_id aqui).
+$efiCardAccount = trim($accountByEnv);
+$efiCardAccount = preg_replace('/\s+/', '', $efiCardAccount);
+if (preg_match('/^\d+$/', (string) $efiCardAccount)) {
+    $efiCardAccount = '';
+}
 
 
 
 //BUSCA DADOS DA MATRICULA
-$query = $pdo->prepare("SELECT * FROM matriculas where id = :id and aluno = :aluno");
-$query->execute([':id' => $id, ':aluno' => $id_aluno]);
+$query = $pdo->query("SELECT * FROM matriculas where id = '$id' and aluno = '$id_aluno' ");
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 
 $response = $res[0];
 
+// Regra de juros/taxas do cartao para empresa receber o valor integral do curso/pacote.
+$valorBase = (float) ($response['subtotal'] ?? 0);
+if ($valorBase <= 0) {
+    $valorBase = (float) ($response['valor'] ?? 0);
+}
+$valorLiquidoCurso = max($valorBase, 0);
+$parcelaRecorrenteAberta = null;
 
-// aplica desconto caso exista
-$valor = (float)$response['valor'];
-$desconto = !empty($response['valor_cupom']) ? (float)$response['valor_cupom'] : 0;
-$response['valor'] = $valor - $desconto;
-
-
-
-
-$valor = (int) $response['valor']; 
-$percentual = isset($resAcrescimoCartao) ? (float) $resAcrescimoCartao : 0; 
-
-
-
-if ($percentual > 0) {
-    
-    $valor += ceil($valor * ($percentual / 100));
-
+if ($somenteRecorrencia) {
+    try {
+        $stmtParcela = $pdo->prepare("
+            SELECT ep.numero_parcela, ep.valor_parcela, ep.status, ep.vencimento
+            FROM efi_assinaturas_cartao ea
+            INNER JOIN efi_assinaturas_cartao_parcelas ep ON ep.id_assinatura = ea.id
+            WHERE ea.id_matricula = :id_matricula
+              AND ea.subscription_id = :subscription_id
+              AND ep.status IN ('PENDENTE', 'ATRASADA')
+            ORDER BY ep.numero_parcela ASC
+            LIMIT 1
+        ");
+        $stmtParcela->execute([
+            ':id_matricula' => (int) $id,
+            ':subscription_id' => $subscriptionIdRecorrente,
+        ]);
+        $parcelaRecorrenteAberta = $stmtParcela->fetch(PDO::FETCH_ASSOC) ?: null;
+        if ($parcelaRecorrenteAberta) {
+            $valorLiquidoCurso = max((float) ($parcelaRecorrenteAberta['valor_parcela'] ?? 0), 0);
+        }
+    } catch (Throwable $e) {
+        $parcelaRecorrenteAberta = null;
+    }
 }
 
-$response['valor'] = $valor;
+$taxaFixaCartao = (float) env('EFI_CARD_FEE_FIXED', '0.29');
+$taxaPercentualCartao = ((float) env('EFI_CARD_FEE_PERCENT', '4.99')) / 100;
+$jurosMensalParcelado = ((float) env('EFI_CARD_INTEREST_MONTHLY', '1.99')) / 100;
+
+$calcularTotalCartaoCliente = static function (
+    float $valorLiquido,
+    int $parcelas,
+    float $taxaFixa,
+    float $taxaPercentual,
+    float $jurosMensal
+): float {
+    $parcelas = max(1, $parcelas);
+    $denominador = 1 - $taxaPercentual;
+    $baseBruta = $denominador > 0 ? (($valorLiquido + $taxaFixa) / $denominador) : $valorLiquido;
+    if ($parcelas > 1) {
+        $baseBruta *= pow(1 + $jurosMensal, $parcelas - 1);
+    }
+    return round(max($baseBruta, 0), 2);
+};
+
+// Valor inicial mostrado: 1x (cartao de credito padrao).
+$valorCheckout = $calcularTotalCartaoCliente(
+    $valorLiquidoCurso,
+    1,
+    $taxaFixaCartao,
+    $taxaPercentualCartao,
+    $jurosMensalParcelado
+);
+$valorCheckout = round($valorCheckout, 2);
+$valorCheckoutFmt = number_format($valorCheckout, 2, ',', '.');
 
 
 
+// echo '<pre>';
+// echo json_encode($res[0], JSON_PRETTY_PRINT);
+// echo '</pre>';
+// return;
 
 ?>
 
@@ -98,7 +160,6 @@ $response['valor'] = $valor;
 <body class="bg-gray-100 min-h-screen py-8">
     <div class="max-w-6xl mx-auto px-4">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
             <!-- Progress Bar -->
             <div class="lg:col-span-3 mb-4">
                 <div class="bg-white rounded-lg shadow-md p-6">
@@ -140,14 +201,14 @@ $response['valor'] = $valor;
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Valor:</span>
-                        <span class="font-medium text-green-600">R$ <?php echo $response['valor']; ?></span>
+                        <span id="valorResumoDisplay" class="font-medium text-green-600">R$ <?php echo $valorCheckoutFmt; ?></span>
                     </div>
 
                     <!-- Método de Pagamento Selecionado -->
                     <div id="paymentMethodSummary" class="hidden">
                         <hr class="my-3">
                         <div class="flex justify-between">
-                            <span class="text-gray-600">Método:</span>
+                            <span class="text-gray-600">M&eacute;todo:</span>
                             <span id="selectedMethodText" class="font-medium text-blue-600"></span>
                         </div>
                         <div id="paymentDetails" class="text-sm text-gray-500 mt-1"></div>
@@ -156,8 +217,13 @@ $response['valor'] = $valor;
                     <hr class="my-3">
                     <div class="flex justify-between text-lg font-semibold">
                         <span>Total:</span>
-                        <span class="text-green-600">R$ <?php echo $response['valor']; ?></span>
+                        <span id="totalResumoDisplay" class="text-green-600">R$ <?php echo $valorCheckoutFmt; ?></span>
                     </div>
+                    <?php if ($somenteRecorrencia): ?>
+                        <div class="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                            Regularização de recorrência: será cobrada a próxima parcela pendente/atrasada com o novo cartão.
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Indicador de Segurança -->
@@ -176,6 +242,7 @@ $response['valor'] = $valor;
             <div class="lg:col-span-2 bg-white rounded-lg shadow-md p-6">
                 <form id="wizardForm">
                     <input type="hidden" id="credit_card_token" name="credit_card_token">
+                    <input type="hidden" id="id_matricula" value="<?php echo (int) $id; ?>" name="id_matricula">
                     <input type="hidden" id="id_do_curso_pag" value="<?php echo $response['id_curso'] ?>"
                         name="id_do_curso_pag">
                     <input type="hidden" id="nome_curso_titulo" value="<?php echo $nome_curso ?>"
@@ -189,16 +256,16 @@ $response['valor'] = $valor;
 
                             <!-- Cartão de Crédito -->
                             <label
-                                class="payment-method-option flex items-center p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                                class="payment-method-option flex items-center p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors <?php echo $somenteRecorrencia ? 'opacity-50' : ''; ?>">
                                 <input type="radio" name="payment_method" value="credit_card"
-                                    class="w-4 h-4 text-efi-blue" checked>
+                                    class="w-4 h-4 text-efi-blue" <?php echo $somenteRecorrencia ? 'disabled' : 'checked'; ?>>
                                 <div class="ml-3 flex items-center flex-1">
                                     <div class="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
                                         <i class="fas fa-credit-card text-white"></i>
                                     </div>
                                     <div class="flex-1">
                                         <div class="font-medium text-gray-900">Cartão de crédito</div>
-                                        <div class="text-sm text-gray-500">Em até 12x • Aprovação em segundos</div>
+                                        <div class="text-sm text-gray-500">Em até 12x, aprovado em segundos</div>
                                     </div>
                                     <div class="flex space-x-1">
                                         <div>
@@ -218,7 +285,7 @@ $response['valor'] = $valor;
                             <label
                                 class="payment-method-option flex items-center p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                                 <input type="radio" name="payment_method" value="debit_card"
-                                    class="w-4 h-4 text-efi-blue">
+                                    class="w-4 h-4 text-efi-blue" <?php echo $somenteRecorrencia ? 'checked' : ''; ?>>
                                 <div class="ml-3 flex items-center flex-1">
                                     <div
                                         class="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center mr-3">
@@ -226,7 +293,7 @@ $response['valor'] = $valor;
                                     </div>
                                     <div class="flex-1">
                                         <div class="font-medium text-gray-900">Pagamento Recorrente</div>
-                                        <div class="text-sm text-gray-500">Pagamento recorrente em ate 6x - Aprovacao imediata
+                                        <div class="text-sm text-gray-500">Pagamento recorrente, aprovação imediata
                                         </div>
 
                                     </div>
@@ -293,9 +360,9 @@ $response['valor'] = $valor;
 
                         </div>
 
-                        <!-- Dados do Cartão (aparece apenas se necessário) -->
+                        <!-- Dados do cart&atilde;o) -->
                         <div id="cardDataSection" class="space-y-4 mt-6 hidden">
-                            <h3 class="text-lg font-medium text-gray-900 border-t pt-4">Dados do cartão</h3>
+                            <h3 class="text-lg font-medium text-gray-900 border-t pt-4">Dados do Cartão</h3>
 
                             <div class="relative">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Número do cartão *</label>
@@ -356,7 +423,7 @@ $response['valor'] = $valor;
                                         class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-efi-blue focus:border-transparent pr-10"
                                         placeholder="123" maxlength="4">
                                     <i class="fas fa-question-circle absolute right-3 top-10 text-gray-400 cursor-help"
-                                        title="Código de 3 ou 4 dígitos no verso do cartão"></i>
+                                        title="Código de 3 ou 4 digitos no verso do cartão"></i>
                                 </div>
                             </div>
 
@@ -393,7 +460,7 @@ $response['valor'] = $valor;
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Numero *</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Número *</label>
                                     <input type="text" name="number" required id="number"
                                         class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-efi-blue focus:border-transparent"
                                         placeholder="Número">
@@ -461,91 +528,6 @@ $response['valor'] = $valor;
                         </div>
                     </div>
 
-                    <!-- PIX QR Code Screen -->
-                    <div id="pixScreen" class="step-content hidden">
-                        <div class="text-center py-8">
-                            <h2 class="text-xl font-semibold text-gray-800 mb-2">Pagamento via PIX</h2>
-                            <p class="text-gray-600 mb-6">Escaneie o QR Code com seu app do banco</p>
-
-                            <!-- QR Code Container -->
-                            <div class="flex flex-col items-center mb-6">
-                                <div class="bg-white p-6 rounded-lg shadow-lg border-2 border-gray-200 mb-4">
-                                    <!-- <div id="qrcode" class="flex items-center justify-center w-64 h-64 bg-gray-50 rounded"></div> -->
-                                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRJgiYusr3xvjwvq0Me--mCxGUfnIdvdWa_0g&s"
-                                        alt="">
-                                </div>
-
-                                <!-- PIX Key/Code -->
-                                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 max-w-md w-full">
-                                    <p class="text-sm text-gray-600 mb-2">Chave PIX (Copia e Cola)</p>
-                                    <div class="flex items-center space-x-2">
-                                        <input type="text" id="pixKey" readonly
-                                            class="flex-1 px-3 py-2 text-xs font-mono bg-white border border-gray-300 rounded focus:ring-2 focus:ring-efi-blue"
-                                            value="00020126580014BR.GOV.BCB.PIX0136123e4567-e12b-12d1-a456-426614174000520400005303986540515990630472804">
-                                        <button type="button" id="copyPixKey"
-                                            class="px-3 py-2 bg-efi-blue text-white text-xs rounded hover:bg-efi-light-blue transition-colors"
-                                            title="Copiar">
-                                            <i class="fas fa-copy"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Timer and Status -->
-                            <div class="bg-teal-50 border border-teal-200 rounded-lg p-4 mb-6 max-w-md mx-auto">
-                                <div class="flex items-center justify-center mb-2">
-                                    <div class="w-3 h-3 bg-teal-500 rounded-full animate-pulse mr-2"></div>
-                                    <span class="text-sm font-medium text-teal-800">Aguardando pagamento...</span>
-                                </div>
-                                <div class="text-center">
-                                    <p class="text-xs text-teal-600 mb-2">Este PIX expira em:</p>
-                                    <div class="text-lg font-bold text-teal-800" id="pixTimer">15:00</div>
-                                </div>
-                            </div>
-
-                            <!-- Instructions -->
-                            <div class="text-left max-w-md mx-auto mb-6">
-                                <h3 class="font-semibold text-gray-800 mb-3 text-center">Como pagar:</h3>
-                                <ol class="space-y-2 text-sm text-gray-600">
-                                    <li class="flex items-start">
-                                        <span
-                                            class="bg-efi-blue text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mr-3 mt-0.5">1</span>
-                                        Abra o app do seu banco
-                                    </li>
-                                    <li class="flex items-start">
-                                        <span
-                                            class="bg-efi-blue text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mr-3 mt-0.5">2</span>
-                                        Escolha a opção PIX
-                                    </li>
-                                    <li class="flex items-start">
-                                        <span
-                                            class="bg-efi-blue text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mr-3 mt-0.5">3</span>
-                                        Escaneie o QR Code ou cole a chave
-                                    </li>
-                                    <li class="flex items-start">
-                                        <span
-                                            class="bg-efi-blue text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mr-3 mt-0.5">4</span>
-                                        Confirme o pagamento
-                                    </li>
-                                </ol>
-                            </div>
-
-                            <!-- Action Buttons -->
-                            <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                                <button type="button" id="checkPixPayment"
-                                    class="bg-teal-600 hover:bg-teal-700 text-white font-medium py-3 px-6 rounded-lg transition-colors">
-                                    <i class="fas fa-sync mr-2"></i>
-                                    Verificar Pagamento
-                                </button>
-                                <button type="button" id="cancelPix"
-                                    class="bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-3 px-6 rounded-lg transition-colors">
-                                    <i class="fas fa-times mr-2"></i>
-                                    Cancelar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Loading Screen -->
                     <div id="loadingScreen" class="step-content hidden text-center">
                         <div class="flex flex-col items-center justify-center py-12">
@@ -589,21 +571,32 @@ $response['valor'] = $valor;
                             <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 max-w-md w-full">
                                 <div class="text-sm space-y-2">
                                     <div class="flex justify-between">
-                                        <span class="text-gray-600">ID da transação:</span>
+                                        <span class="text-gray-600">Transa&ccedil;&atilde;o:</span>
                                         <span class="font-mono text-green-700" id="transactionId">TX-123456789</span>
                                     </div>
                                     <div class="flex justify-between">
-                                        <span class="text-gray-600">Valor pago:</span>
-                                        <span class="font-semibold text-green-700">R$ <?php echo $response['valor']; ?></span>
+                                        <span class="text-gray-600">M&eacute;todo:</span>
+                                        <span id="metodoPagoSucesso" class="font-semibold text-green-700">Cart&atilde;o</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Valor:</span>
+                                        <span id="valorPagoSucesso" class="font-semibold text-green-700">R$ <?php echo $valorCheckoutFmt; ?></span>
                                     </div>
                                 </div>
                             </div>
 
-                            <button type="button"
-                                class="bg-efi-blue hover:bg-efi-light-blue text-white font-medium py-3 px-8 rounded-lg transition-colors">
-                                <i class="fas fa-download mr-2"></i>
-                                Baixar Comprovante
-                            </button>
+                            <div class="flex flex-wrap items-center justify-center gap-3">
+                                <button type="button" id="downloadReceiptBtn"
+                                    class="bg-efi-blue hover:bg-efi-light-blue text-white font-medium py-3 px-8 rounded-lg transition-colors">
+                                    <i class="fas fa-download mr-2"></i>
+                                    Baixar Comprovante
+                                </button>
+                                <button type="button" id="closeCheckoutBtn"
+                                    class="bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-3 px-8 rounded-lg transition-colors">
+                                    <i class="fas fa-times mr-2"></i>
+                                    Fechar
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -626,7 +619,7 @@ $response['valor'] = $valor;
 
                             <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 max-w-md w-full">
                                 <div class="text-sm text-red-700">
-                                    <p id="errorMessage">Verifique os dados do cartão ou tente outro método de
+                                    <p id="errorMessage">Verifique os Dados do cartão de
                                         pagamento.</p>
                                 </div>
                             </div>
@@ -667,10 +660,10 @@ $response['valor'] = $valor;
             cepInput.value = value;
 
             if (value.length === 9) {
-                // CEP completo → busca
+                // CEP completo: buscar endereço
                 buscarCep(value.replace('-', ''));
             } else {
-                // CEP incompleto → limpa e esconde
+                // CEP incompleto: limpar e esconder
                 limparCampos();
             }
         });
@@ -717,14 +710,6 @@ $response['valor'] = $valor;
     <script>
 
         let cardBrand = null;
-
-        function getMaxInstallments() {
-            const selected = document.querySelector('input[name="payment_method"]:checked');
-            if (selected && selected.value === 'debit_card') {
-                return 6;
-            }
-            return 12;
-        }
 
         // Função para identificar a bandeira
         async function identifyBrand(cardNumber) {
@@ -785,57 +770,227 @@ $response['valor'] = $valor;
             }
         });
 
+        const efiEnvironment = <?php echo json_encode($efiEnvironment); ?>;
+        const efiCardAccount = <?php echo json_encode($efiCardAccount); ?>;
+        const checkoutSomenteRecorrencia = <?php echo $somenteRecorrencia ? 'true' : 'false'; ?>;
+        const checkoutSubscriptionId = <?php echo (int) $subscriptionIdRecorrente; ?>;
+        const efiCardAccountError = 'Conta EFI do cartão não configurada. Defina EFI_CARD_ACCOUNT_HOMOLOG/EFI_CARD_ACCOUNT_PROD (ou EFI_CARD_ACCOUNT) no .env.';
+        console.log('[EFI Checkout] Ambiente:', efiEnvironment, '| Conta:', efiCardAccount);
+
         // Função para buscar parcelas
-        async function getInstallments() {
-            const total = <?php echo json_encode($response['valor']); ?>;
-            const valorCentavos = Math.round(total * 100);
+        // Funcao para buscar parcelas
+        const valorLiquidoCurso = <?php echo json_encode($valorLiquidoCurso); ?>;
+        const taxaFixaCartao = <?php echo json_encode($taxaFixaCartao); ?>;
+        const taxaPercentualCartao = <?php echo json_encode($taxaPercentualCartao); ?>;
+        const jurosMensalParcelado = <?php echo json_encode($jurosMensalParcelado); ?>;
 
-            if (!cardBrand) return; // só continua se tiver bandeira
+        function formatarMoedaBR(valor) {
+            return Number(valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
 
-            try {
-                const installmentsResponse = await EfiPay.CreditCard
-                    .setAccount("09c6ec939c0ad967bf568d6f145a733d")
-                    .setEnvironment("production")
-                    .setBrand(cardBrand)
-                    .setTotal(valorCentavos)
-                    .getInstallments();
+        function calcularTotalClienteCartao(valorLiquido, parcelas) {
+            const p = Math.max(1, Number(parcelas || 1));
+            const den = 1 - Number(taxaPercentualCartao || 0);
+            const baseBruta = den > 0
+                ? ((Number(valorLiquido || 0) + Number(taxaFixaCartao || 0)) / den)
+                : Number(valorLiquido || 0);
+            const total = p > 1
+                ? baseBruta * Math.pow(1 + Number(jurosMensalParcelado || 0), p - 1)
+                : baseBruta;
+            return Math.max(0, Math.round(total * 100) / 100);
+        }
 
-                const select = document.getElementById('installments');
-                select.innerHTML = '';
+        function atualizarTotaisVisuais(total) {
+            const texto = `R$ ${formatarMoedaBR(total)}`;
+            const valorResumo = document.getElementById('valorResumoDisplay');
+            const totalResumo = document.getElementById('totalResumoDisplay');
+            const valorPago = document.getElementById('valorPagoSucesso');
+            if (valorResumo) valorResumo.textContent = texto;
+            if (totalResumo) totalResumo.textContent = texto;
+            if (valorPago) valorPago.textContent = texto;
+            formData.total_value = total;
+            formData.total_value_formatted = texto;
+        }
 
-                const maxInstallments = getMaxInstallments();
-                installmentsResponse.installments.forEach(installment => {
-                    if (installment.installment > maxInstallments) {
-                        return;
-                    }
-                    const valorReais = (installment.value / 100).toFixed(2).replace('.', ',');
-                    const option = document.createElement('option');
-                    option.value = installment.installment;
-                    option.text = `${installment.installment}x de R$ ${valorReais} ${installment.has_interest ? '(com juros)' : '(sem juros)'}`;
-                    select.appendChild(option);
-                });
-
-            } catch (error) {
-                console.error("Erro ao obter parcelas:", error);
+        function parseCurrencyToNumber(value) {
+            if (typeof value === 'number') {
+                return Number.isFinite(value) ? value : NaN;
             }
+
+            let s = String(value ?? '').trim();
+            if (!s) return NaN;
+
+            s = s.replace(/\s+/g, '').replace(/^R\$/i, '');
+
+            const hasComma = s.indexOf(',') !== -1;
+            const hasDot = s.indexOf('.') !== -1;
+
+            if (hasComma && hasDot) {
+                // Se a ultima virgula vier depois do ultimo ponto, assume formato BR: 1.234,56
+                if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
+                    s = s.replace(/\./g, '').replace(',', '.');
+                } else {
+                    // Formato EN: 1,234.56
+                    s = s.replace(/,/g, '');
+                }
+            } else if (hasComma) {
+                s = s.replace(',', '.');
+            }
+
+            return Number.parseFloat(s);
+        }
+
+        function extrairUrlComprovante(paymentData) {
+            if (!paymentData || typeof paymentData !== 'object') {
+                return '';
+            }
+
+            const candidatos = [
+                paymentData.transaction_receipt_url,
+                paymentData.receipt_url,
+                paymentData.url,
+                paymentData.link,
+                paymentData.pdf,
+                paymentData.links?.receipt,
+                paymentData.links?.pdf,
+                paymentData.data?.transaction_receipt_url,
+                paymentData.data?.receipt_url
+            ];
+
+            for (const c of candidatos) {
+                if (typeof c === 'string' && c.trim() !== '') {
+                    return c.trim();
+                }
+            }
+
+            return '';
+        }
+
+        function gerarComprovanteHtmlLocal() {
+            if (!ultimoPagamentoAprovado) {
+                return '';
+            }
+
+            const transacao = ultimoPagamentoAprovado.transactionId || 'N/A';
+            const metodo = ultimoPagamentoAprovado.metodo || 'Cartão';
+            const valor = ultimoPagamentoAprovado.valorFormatado || 'R$ 0,00';
+            const curso = (document.querySelector('input[name="nome_curso_titulo"]')?.value || '').trim();
+            const dataHora = ultimoPagamentoAprovado.dataHora || new Date().toLocaleString('pt-BR');
+
+            return `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Comprovante de Pagamento</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 32px; color: #222; }
+    h1 { margin: 0 0 16px; font-size: 22px; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; max-width: 640px; }
+    .row { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px 0; }
+    .row:last-child { border-bottom: 0; }
+    .label { color: #555; }
+    .value { font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>Comprovante de Pagamento</h1>
+  <div class="card">
+    <div class="row"><span class="label">Transação</span><span class="value">${transacao}</span></div>
+    <div class="row"><span class="label">Método</span><span class="value">${metodo}</span></div>
+    <div class="row"><span class="label">Curso/Pacote</span><span class="value">${curso || '-'}</span></div>
+    <div class="row"><span class="label">Valor</span><span class="value">${valor}</span></div>
+    <div class="row"><span class="label">Data/Hora</span><span class="value">${dataHora}</span></div>
+    <div class="row"><span class="label">Status</span><span class="value">PAGO</span></div>
+  </div>
+</body>
+</html>`;
+        }
+
+        async function getInstallments() {
+            const select = document.getElementById('installments');
+            if (checkoutSomenteRecorrencia) {
+                const totalRecorrencia = Number(valorLiquidoCurso || 0);
+                select.innerHTML = '';
+                const option = document.createElement('option');
+                option.value = '1';
+                option.dataset.total = String(totalRecorrencia);
+                option.text = `1x de R$ ${formatarMoedaBR(totalRecorrencia)} (regularização)`;
+                select.appendChild(option);
+                select.disabled = true;
+                atualizarTotaisVisuais(totalRecorrencia);
+                return;
+            }
+
+            select.disabled = false;
+            const isRecorrente = formData.payment_method === 'debit_card';
+            const minParcelas = isRecorrente ? 2 : 1;
+            const maxParcelas = isRecorrente ? 6 : 12;
+
+            select.innerHTML = '';
+
+            if (!Number.isFinite(valorLiquidoCurso) || valorLiquidoCurso <= 0) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.text = 'Valor inválido para calcular parcelas';
+                select.appendChild(option);
+                return;
+            }
+
+            for (let parcela = minParcelas; parcela <= maxParcelas; parcela++) {
+                const totalCliente = calcularTotalClienteCartao(valorLiquidoCurso, parcela);
+                const valorParcela = totalCliente / parcela;
+                const option = document.createElement('option');
+                option.value = String(parcela);
+                option.dataset.total = String(totalCliente);
+                option.text = `${parcela}x de R$ ${formatarMoedaBR(valorParcela)} (total R$ ${formatarMoedaBR(totalCliente)})`;
+                select.appendChild(option);
+            }
+
+            if (select.options.length > 0) {
+                select.selectedIndex = 0;
+                const totalInicial = parseCurrencyToNumber(select.options[0].dataset.total || '');
+                if (Number.isFinite(totalInicial)) {
+                    atualizarTotaisVisuais(totalInicial);
+                }
+            }
+        }
+
+        const installmentsSelect = document.getElementById('installments');
+        if (installmentsSelect) {
+            installmentsSelect.addEventListener('change', function () {
+                const selecionada = this.options[this.selectedIndex];
+                const totalSelecionado = parseCurrencyToNumber(selecionada?.dataset?.total || '');
+                if (Number.isFinite(totalSelecionado)) {
+                    atualizarTotaisVisuais(totalSelecionado);
+                }
+            });
         }
 
         async function generatePaymentToken(cardNumber, expiry, securityCode, cardholderName, cpf) {
             showStep('loading');
             const expirationMonth = expiry.split('/')[0];
             const expirationYear = expiry.split('/')[1];
+            const efiEnvironment = <?php echo json_encode($efiEnvironment); ?>;
+            const efiCardAccount = <?php echo json_encode($efiCardAccount); ?>;
+            const cardNumberDigits = (cardNumber || '').replace(/\D/g, '');
+            const securityCodeDigits = (securityCode || '').replace(/\D/g, '');
+            const cardholderNameNormalized = (cardholderName || '').replace(/\s+/g, ' ').trim();
+            if (!efiCardAccount) {
+                throw new Error(efiCardAccountError);
+            }
+
 
             try {
                 const result = await EfiPay.CreditCard
-                    .setAccount("09c6ec939c0ad967bf568d6f145a733d")
-                    .setEnvironment("production") // 'production' or 'sandbox'
+                    .setAccount(efiCardAccount)
+                    .setEnvironment(efiEnvironment) // 'production' or 'sandbox'
                     .setCreditCardData({
                         brand: cardBrand,
-                        number: cardNumber,
-                        cvv: securityCode,
+                        number: cardNumberDigits,
+                        cvv: securityCodeDigits,
                         expirationMonth: expirationMonth,
                         expirationYear: expirationYear,
-                        holderName: cardholderName,
+                        holderName: cardholderNameNormalized,
                         holderDocument: cpf.replace(/\D/g, ''),
                         reuse: false,
                     })
@@ -843,6 +998,9 @@ $response['valor'] = $valor;
 
                 const payment_token = result.payment_token;
                 const card_mask = result.card_mask;
+                if (!payment_token) {
+                    throw new Error('Não foi possível gerar o token do cartão.');
+                }
                 formData.payment_token = payment_token;
                 formData.card_mask = card_mask;
 
@@ -850,173 +1008,30 @@ $response['valor'] = $valor;
                 console.log("Código: ", error.code);
                 console.log("Nome: ", error.error);
                 console.log("Mensagem: ", error.error_description);
+                throw new Error(error?.error_description || 'Falha ao validar os dados do cartão.');
             }
         }
         // Estado global do wizard
         let currentStep = 1;
         let formData = {};
-        let pixTimer = null;
-        let pixTimeRemaining = 15 * 60; // 15 minutos em segundos
-        let pixCheckInterval = null;
-
+        let ultimoPagamentoAprovado = null;
+        const pagamentoPadrao = checkoutSomenteRecorrencia ? 'debit_card' : 'credit_card';
+        formData.efi_checkout_environment = <?php echo json_encode($efiEnvironment); ?>;
+        formData.efi_checkout_account = <?php echo json_encode($efiCardAccount); ?>;
+        formData.payment_method = pagamentoPadrao;
+        if (checkoutSomenteRecorrencia && checkoutSubscriptionId > 0) {
+            formData.recurring_subscription_id = checkoutSubscriptionId;
+            formData.recurring_mode = 'reprocess';
+        }
         // Elementos DOM
         const steps = {
             1: document.getElementById('step1'),
             2: document.getElementById('step2'),
             3: document.getElementById('step3'),
-            pix: document.getElementById('pixScreen'),
             loading: document.getElementById('loadingScreen'),
             success: document.getElementById('successScreen'),
             error: document.getElementById('errorScreen')
         };
-
-        // Função para gerar QR Code PIX (simulado)
-        function generatePixQRCode() {
-            const qrCodeElement = document.getElementById('qrcode');
-
-            // Limpar QR code anterior
-            qrCodeElement.innerHTML = '';
-
-            // Criar um QR code simples usando CSS (simulação)
-            const qrSize = 256;
-            const pixelSize = 8;
-            const qrGrid = qrSize / pixelSize;
-
-            qrCodeElement.style.width = qrSize + 'px';
-            qrCodeElement.style.height = qrSize + 'px';
-            qrCodeElement.style.position = 'relative';
-            qrCodeElement.style.backgroundColor = 'white';
-
-            // Gerar padrão de QR code simples (simulado)
-            for (let i = 0; i < qrGrid; i++) {
-                for (let j = 0; j < qrGrid; j++) {
-                    // Algoritmo simples para criar padrão QR-like
-                    const shouldFill = (i + j) % 3 === 0 ||
-                        (i % 4 === 0 && j % 4 === 0) ||
-                        (i < 7 && j < 7) ||
-                        (i < 7 && j > qrGrid - 8) ||
-                        (i > qrGrid - 8 && j < 7) ||
-                        (Math.abs(i - qrGrid / 2) < 2 && Math.abs(j - qrGrid / 2) < 2);
-
-                    if (shouldFill) {
-                        const pixel = document.createElement('div');
-                        pixel.style.position = 'absolute';
-                        pixel.style.left = (j * pixelSize) + 'px';
-                        pixel.style.top = (i * pixelSize) + 'px';
-                        pixel.style.width = pixelSize + 'px';
-                        pixel.style.height = pixelSize + 'px';
-                        pixel.style.backgroundColor = 'black';
-                        qrCodeElement.appendChild(pixel);
-                    }
-                }
-            }
-        }
-
-        // Timer do PIX
-        function startPixTimer() {
-            pixTimeRemaining = 15 * 60; // Reset para 15 minutos
-            const timerElement = document.getElementById('pixTimer');
-
-            pixTimer = setInterval(() => {
-                const minutes = Math.floor(pixTimeRemaining / 60);
-                const seconds = pixTimeRemaining % 60;
-                timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-                pixTimeRemaining--;
-
-                if (pixTimeRemaining < 0) {
-                    clearInterval(pixTimer);
-                    clearInterval(pixCheckInterval);
-
-                    // PIX expirado
-                    const errorMessages = document.getElementById('errorMessage');
-                    errorMessages.textContent = 'PIX expirado. Por favor, gere um novo PIX ou escolha outro método de pagamento.';
-                    showStep('error');
-                }
-
-                // Mudar cor quando restam menos de 5 minutos
-                if (pixTimeRemaining < 5 * 60) {
-                    timerElement.classList.add('text-red-600');
-                    timerElement.classList.remove('text-teal-800');
-                }
-            }, 1000);
-        }
-
-        // Verificar status do pagamento PIX
-        function checkPixPayment() {
-            // Simular verificação do pagamento PIX
-            // Na implementação real, você faria uma chamada para a API da EFI
-
-            // Simular 30% de chance de pagamento confirmado a cada verificação
-            const isPaid = Math.random() > 0.7;
-
-            if (isPaid) {
-                // Pagamento confirmado
-                clearInterval(pixTimer);
-                clearInterval(pixCheckInterval);
-
-                // Mostrar loading brevemente e depois sucesso
-                showStep('loading');
-                setTimeout(() => {
-                    document.getElementById('transactionId').textContent = `PIX-${Date.now()}`;
-                    showStep('success');
-                }, 2000);
-            } else {
-                // Criar efeito visual de verificação
-                const checkButton = document.getElementById('checkPixPayment');
-                const originalText = checkButton.innerHTML;
-
-                checkButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Verificando...';
-                checkButton.disabled = true;
-
-                setTimeout(() => {
-                    checkButton.innerHTML = originalText;
-                    checkButton.disabled = false;
-                }, 2000);
-            }
-        }
-
-        // Auto-verificação do PIX a cada 10 segundos
-        function startAutoPixCheck() {
-            pixCheckInterval = setInterval(() => {
-                // Verificação automática silenciosa
-                const isPaid = Math.random() > 0.85; // 15% de chance por verificação automática
-
-                if (isPaid) {
-                    clearInterval(pixTimer);
-                    clearInterval(pixCheckInterval);
-
-                    // Mostrar loading e depois sucesso
-                    showStep('loading');
-                    setTimeout(() => {
-                        document.getElementById('transactionId').textContent = `PIX-${Date.now()}`;
-                        showStep('success');
-                    }, 2000);
-                }
-            }, 10000); // Verificar a cada 10 segundos
-        }
-
-        // Copiar chave PIX
-        function copyPixKey() {
-            const pixKeyInput = document.getElementById('pixKey');
-            pixKeyInput.select();
-            pixKeyInput.setSelectionRange(0, 99999);
-
-            navigator.clipboard.writeText(pixKeyInput.value).then(() => {
-                const copyButton = document.getElementById('copyPixKey');
-                const originalIcon = copyButton.innerHTML;
-
-                copyButton.innerHTML = '<i class="fas fa-check"></i>';
-                copyButton.classList.remove('bg-efi-blue', 'hover:bg-efi-light-blue');
-                copyButton.classList.add('bg-green-600', 'hover:bg-green-700');
-
-                setTimeout(() => {
-                    copyButton.innerHTML = originalIcon;
-                    copyButton.classList.add('bg-efi-blue', 'hover:bg-efi-light-blue');
-                    copyButton.classList.remove('bg-green-600', 'hover:bg-green-700');
-                }, 2000);
-            });
-        }
 
         function cpfMask(value) {
             return value
@@ -1049,7 +1064,7 @@ $response['valor'] = $valor;
                 .replace(/(\d{2})(\d)/, '$1/$2');
         }
 
-        // Função para mostrar/esconder steps
+        // Função para mostrar/esconder etapas
         function showStep(stepNumber) {
             Object.values(steps).forEach(step => step.classList.add('hidden'));
 
@@ -1103,8 +1118,8 @@ $response['valor'] = $valor;
                 paymentMethodSummary.classList.remove('hidden');
 
                 const methods = {
-                    'credit_card': { text: 'Cartão de Crédito', detail: 'À vista ou parcelado em até 12x' },
-                    'debit_card': { text: 'Pagamento Recorrente', detail: 'Pagamento recorrente em ate 6x' },
+                    'credit_card': { text: 'Cartão de crédito', detail: 'À vista ou parcelado em até 12x' },
+                    'debit_card': { text: 'Pagamento Recorrente', detail: ' Pagamento recorrente' },
                 };
 
                 const method = methods[formData.payment_method];
@@ -1115,7 +1130,7 @@ $response['valor'] = $valor;
             }
         }
 
-        // Mostrar dados do cartão se necessário
+        // Mostrar Dados do cart&atilde;o
         function toggleCardData() {
             const cardDataSection = document.getElementById('cardDataSection');
             const needsCardData = ['credit_card', 'debit_card'].includes(formData.payment_method);
@@ -1152,15 +1167,13 @@ $response['valor'] = $valor;
 
             // Dados do pagamento
             const methods = {
-                'pix': 'PIX',
-                'credit_card': 'Cartão de Crédito',
-                'debit_card': 'Pagamento Recorrente',
-                'boleto': 'Boleto Bancário'
+                'credit_card': 'Cart&atilde;o de Cr&eacute;dito',
+                'debit_card': 'Pagamento Recorrente'
             };
 
             html += `
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h3 class="font-semibold text-blue-900 mb-3">Método de Pagamento</h3>
+                    <h3 class="font-semibold text-blue-900 mb-3">M&eacute;todo de Pagamento</h3>
                     <p class="text-blue-800">${methods[formData.payment_method]}</p>
                 </div>
 
@@ -1179,19 +1192,19 @@ $response['valor'] = $valor;
                 const cardNumber = formData.card_number ? formData.card_number.replace(/\d(?=\d{4})/g, '*') : '';
                 html += `
                     <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <h3 class="font-semibold text-yellow-900 mb-3">Dados do Cartão</h3>
+                        <h3 class="font-semibold text-yellow-900 mb-3">Dados do Cart&atilde;o</h3>
                         <div class="space-y-2 text-sm">
-                            <p><span class="font-medium">Cartão:</span> ${maskCardLast4(cardNumber)}</p>
-                            <p><span class="font-medium">Nome no cartão:</span> ${formData.cardholder_name}</p>
+                            <p><span class="font-medium">Cart&atilde;o:</span> ${maskCardLast4(cardNumber)}</p>
+                            <p><span class="font-medium">Nome no cart&atilde;o:</span> ${formData.cardholder_name}</p>
                             <p><span class="font-medium">Validade:</span> ${formData.expiry}</p>
-                            <p><span class="font-medium">Bandeira:</span> ${cardBrand || 'Não Encontrada'}</p>
+                            <p><span class="font-medium">Bandeira:</span> ${cardBrand || 'N&atilde;o Encontrada'}</p>
                         </div>
 
                          <div class="space-y-2 text-sm mt-3">
-                          <h3 class="font-semibold text-yellow-900 mb-3 text-base">Endereço do Cartão</h3>
+                          <h3 class="font-semibold text-yellow-900 mb-3 text-base">Endere&ccedil;o do Cart&atilde;o</h3>
                             <p><span class="font-medium">CEP:</span> ${formData.zipcode}</p>
-                            <p><span class="font-medium">Endereço:</span> ${formData.street}</p>
-                            <p><span class="font-medium">Número:</span> ${formData.number}</p>
+                            <p><span class="font-medium">Endere&ccedil;o:</span> ${formData.street}</p>
+                            <p><span class="font-medium">N&uacute;mero:</span> ${formData.number}</p>
                             <p><span class="font-medium">Bairro:</span> ${formData.neighborhood}</p>
                             <p><span class="font-medium">Cidade:</span> ${formData.city}</p>
                             <p><span class="font-medium">Estado:</span> ${formData.state}</p>
@@ -1205,12 +1218,12 @@ $response['valor'] = $valor;
                     <div class="space-y-2">
                         <div class="flex justify-between">
                             <span><?php echo $nome_curso; ?></span>
-                            <span>R$ <?php echo $response['valor']; ?></span>
+                            <span>${formData.total_value_formatted || 'R$ <?php echo $valorCheckoutFmt; ?>'}</span>
                         </div>
                         <hr class="border-green-200">
                         <div class="flex justify-between font-semibold">
                             <span>Total</span>
-                            <span>R$ <?php echo $response['valor']; ?></span>
+                            <span>${formData.total_value_formatted || 'R$ <?php echo $valorCheckoutFmt; ?>'}</span>
                         </div>
                         <hr class="border-green-200">
                         <div class="flex justify-between font-semibold">
@@ -1309,7 +1322,7 @@ $response['valor'] = $valor;
                     alert('Por favor, selecione um método de pagamento');
                     return;
                 }
-                // getInstallments();
+                getInstallments();
                 currentStep = 2;
                 toggleCardData();
                 showStep(2);
@@ -1345,31 +1358,38 @@ $response['valor'] = $valor;
                     return;
                 }
 
-                // Validar dados do cartão se necessário
+                // Validar Dados do cart&atilde;o
                 if (['credit_card', 'debit_card'].includes(formData.payment_method)) {
                     const cardNumber = document.querySelector('input[name="card_number"]').value;
                     const expiry = document.querySelector('input[name="expiry"]').value;
                     const securityCode = document.querySelector('input[name="security_code"]').value;
-                    const cardholderName = document.querySelector('input[name="cardholder_name"]').value;
+                    const cardholderInput = document.querySelector('input[name="cardholder_name"]');
+                    let cardholderName = (cardholderInput?.value || '').trim();
                     const id_do_curso_pag = document.querySelector('input[name="id_do_curso_pag"]').value;
                     const nome_curso_titulo = document.querySelector('input[name="nome_curso_titulo"]').value;
+                    const id_matricula = document.querySelector('input[name="id_matricula"]').value;
 
                     // Endereço do cartão
-                    const zipcode = document.querySelector('input[name="cep"]').value;
-                    const street = document.querySelector('input[name="address"]').value;
-                    const number = document.querySelector('input[name="number"]').value;
-                    const neighborhood = document.querySelector('input[name="neighborhood"]').value;
-                    const city = document.querySelector('input[name="city"]').value;
-                    const state = document.querySelector('input[name="state"]').value;
+                    const zipcode = (document.querySelector('input[name="cep"]').value || '').trim();
+                    const street = ((document.querySelector('input[name="address"]')?.value || document.querySelector('input[name="street"]')?.value || '') + '').trim();
+                    const number = (document.querySelector('input[name="number"]').value || '').trim();
+                    const neighborhood = (document.querySelector('input[name="neighborhood"]').value || '').trim();
+                    const city = (document.querySelector('input[name="city"]').value || '').trim();
+                    const state = (document.querySelector('input[name="state"]').value || '').trim().toUpperCase();
 
 
                     const select = document.querySelector('select[name="installments"]');
 
                     // Número de parcelas
                     const installments = select.value;
+                    if (!installments) {
+                        alert('Não há opções de parcelas para o limite operacional atual da conta.');
+                        return;
+                    }
 
                     // Texto completo da opção selecionada
                     const installments_value = select.options[select.selectedIndex].text;
+                    const installments_total = parseCurrencyToNumber(select.options[select.selectedIndex]?.dataset?.total || '');
 
                     if (!cardNumber || cardNumber.replace(/\D/g, '').length < 13) {
                         alert('Por favor, insira um número de cartão válido');
@@ -1386,21 +1406,68 @@ $response['valor'] = $valor;
                         return;
                     }
 
-                    if (!cardholderName) {
-                        alert('Por favor, insira o nome do portador do cartão');
+                    if (!zipcode || zipcode.replace(/\D/g, '').length !== 8) {
+                        alert('Por favor, informe um CEP válido com 8 dígitos');
                         return;
                     }
 
-                    // Salvar dados do cartão
+                    if (!street) {
+                        alert('Por favor, informe o endereço');
+                        return;
+                    }
+
+                    if (!number) {
+                        alert('Por favor, informe o número do endereço');
+                        return;
+                    }
+
+                    if (!neighborhood) {
+                        alert('Por favor, informe o bairro');
+                        return;
+                    }
+
+                    if (!city) {
+                        alert('Por favor, informe a cidade');
+                        return;
+                    }
+
+                    if (!state || state.length !== 2) {
+                        alert('Por favor, informe a UF com 2 letras (ex.: RO)');
+                        return;
+                    }
+
+                    if (!cardholderName) {
+                        const fallbackNome = (customerName || '').trim();
+                        if (fallbackNome) {
+                            cardholderName = fallbackNome;
+                            if (cardholderInput) cardholderInput.value = fallbackNome;
+                        } else {
+                            alert('Por favor, insira o nome do portador do cartão');
+                            return;
+                        }
+                    }
+
+                    const cardholderParts = cardholderName.split(/\s+/).filter(Boolean);
+                    if (cardholderParts.length < 2) {
+                        alert('O nome do titular do cartão deve ter nome e sobrenome');
+                        return;
+                    }
+
+                    // Salvar Dados do cart&atilde;o
                     formData.card_number = cardNumber;
                     formData.expiry = expiry;
                     formData.security_code = securityCode;
                     formData.cardholder_name = cardholderName;
                     formData.installments = installments;
                     formData.installments_value = installments_value;
+                    if (Number.isFinite(installments_total)) {
+                        formData.total_value = installments_total;
+                        formData.total_value_formatted = `R$ ${formatarMoedaBR(installments_total)}`;
+                    }
                     formData.id_do_curso = id_do_curso_pag;
+                    formData.id_matricula = id_matricula;
                     formData.nome_do_curso = nome_curso_titulo;
-                    formData.zipcode = zipcode;
+                    formData.zipcode = zipcode.replace(/\D/g, '');
                     formData.street = street;
                     formData.number = number;
                     formData.neighborhood = neighborhood;
@@ -1430,10 +1497,23 @@ $response['valor'] = $valor;
                 const cardNumber = document.querySelector('input[name="card_number"]').value;
                 const expiry = document.querySelector('input[name="expiry"]').value;
                 const securityCode = document.querySelector('input[name="security_code"]').value;
-                const cardholderName = document.querySelector('input[name="cardholder_name"]').value;
+                const cardholderName = (document.querySelector('input[name="cardholder_name"]').value || '').trim() || (document.querySelector('input[name="customer_name"]').value || '').trim();
                 const cpf = document.querySelector('input[name="cpf"]').value;
 
-                await generatePaymentToken(cardNumber, expiry, securityCode, cardholderName, cpf);
+                const cardholderParts = cardholderName.split(/\s+/).filter(Boolean);
+                if (cardholderParts.length < 2) {
+                    document.getElementById('errorMessage').textContent = 'Informe nome e sobrenome no titular do cartão.';
+                    showStep('error');
+                    return;
+                }
+
+                try {
+                    await generatePaymentToken(cardNumber, expiry, securityCode, cardholderName, cpf);
+                } catch (tokenError) {
+                    document.getElementById('errorMessage').textContent = tokenError.message || 'Falha ao validar os dados do cartão.';
+                    showStep('error');
+                    return;
+                }
 
 
                 // $.ajax({
@@ -1453,7 +1533,7 @@ $response['valor'] = $valor;
                 // });
 
                 $.ajax({
-                    url: '/efi/card_payment.php',
+                    url: 'card_payment.php',
                     type: 'POST',
                     contentType: 'application/json; charset=utf-8',
                     data: JSON.stringify(formData),
@@ -1465,42 +1545,57 @@ $response['valor'] = $valor;
                     success: function (response) {
                         // Aqui você decide com base na resposta da API
                         if (response.success) {
-                            document.getElementById('transactionId').textContent = 'TRANSACTION ID';
+                            const chargeId = response?.data?.charge_id || response?.data?.subscription_id || 'TRANSACTION ID';
+                            document.getElementById('transactionId').textContent = chargeId;
+                            const metodoSucesso = formData.payment_method === 'debit_card' ? 'Cartão recorrente' : 'Cartão de crédito';
+                            const metodoEl = document.getElementById('metodoPagoSucesso');
+                            if (metodoEl) {
+                                metodoEl.textContent = metodoSucesso;
+                            }
+                            ultimoPagamentoAprovado = {
+                                transactionId: String(chargeId),
+                                metodo: metodoSucesso,
+                                valorFormatado: formData.total_value_formatted || document.getElementById('valorPagoSucesso')?.textContent || '',
+                                dataHora: new Date().toLocaleString('pt-BR'),
+                                paymentData: response?.data?.payment_data || {}
+                            };
+                            try {
+                                if (window.parent && window.parent !== window) {
+                                    window.parent.postMessage({
+                                        type: 'efi-payment-success',
+                                        id_matricula: formData.id_matricula || null
+                                    }, '*');
+                                }
+                            } catch (e) {
+                            }
                             showStep('success');
                         } else {
-                            document.getElementById('errorMessage').textContent = 'Erro ao processar pagamento.';
+                            const detalhe = (response.detail || '').toString();
+                            const mensagem = (response.error || 'Erro ao processar pagamento.').toString();
+                            document.getElementById('errorMessage').textContent = detalhe ? `${mensagem} ${detalhe}` : mensagem;
                             showStep('error');
                         }
                     },
                     error: function (xhr, status, error) {
-                        document.getElementById('errorMessage').textContent = "Erro na requisição AJAX: " + error;
+                        const backendMessage = xhr?.responseJSON?.error || xhr?.responseJSON?.detail || '';
+                        document.getElementById('errorMessage').textContent = backendMessage || ("Erro na requisição AJAX: " + error);
                         showStep('error');
                     }
                 });
 
 
             });
-
-            // PIX Event Listeners
-            document.getElementById('copyPixKey').addEventListener('click', copyPixKey);
-
-            document.getElementById('checkPixPayment').addEventListener('click', checkPixPayment);
-
-            document.getElementById('cancelPix').addEventListener('click', function () {
-                clearInterval(pixTimer);
-                clearInterval(pixCheckInterval);
-                currentStep = 3;
-                showStep(3);
-            });
-
             // Botões de erro
             document.getElementById('retryPayment').addEventListener('click', function () {
-                // Limpar timers se existirem
-                clearInterval(pixTimer);
-                clearInterval(pixCheckInterval);
-
                 currentStep = 1;
                 formData = {};
+                formData.efi_checkout_environment = <?php echo json_encode($efiEnvironment); ?>;
+                formData.efi_checkout_account = <?php echo json_encode($efiCardAccount); ?>;
+                formData.payment_method = pagamentoPadrao;
+                if (checkoutSomenteRecorrencia && checkoutSubscriptionId > 0) {
+                    formData.recurring_subscription_id = checkoutSubscriptionId;
+                    formData.recurring_mode = 'reprocess';
+                }
                 showStep(1);
                 updatePaymentSummary();
 
@@ -1509,16 +1604,29 @@ $response['valor'] = $valor;
                 document.querySelectorAll('.payment-method-option').forEach(option => {
                     option.classList.remove('ring-2', 'ring-efi-blue', 'bg-blue-50');
                 });
-                document.querySelector('input[name="payment_method"][value="credit_card"]').checked = true;
+                const seletorPadrao = `input[name="payment_method"][value="${pagamentoPadrao}"]`;
+                const inputPadrao = document.querySelector(seletorPadrao);
+                if (inputPadrao) {
+                    inputPadrao.checked = true;
+                }
+                const defaultOption = inputPadrao?.closest('.payment-method-option');
+                if (defaultOption) {
+                    defaultOption.classList.add('ring-2', 'ring-efi-blue', 'bg-blue-50');
+                }
+                updatePaymentSummary();
+                getInstallments();
             });
 
             document.getElementById('changeMethod').addEventListener('click', function () {
-                // Limpar timers se existirem
-                clearInterval(pixTimer);
-                clearInterval(pixCheckInterval);
-
                 currentStep = 1;
                 formData = {};
+                formData.efi_checkout_environment = <?php echo json_encode($efiEnvironment); ?>;
+                formData.efi_checkout_account = <?php echo json_encode($efiCardAccount); ?>;
+                formData.payment_method = pagamentoPadrao;
+                if (checkoutSomenteRecorrencia && checkoutSubscriptionId > 0) {
+                    formData.recurring_subscription_id = checkoutSubscriptionId;
+                    formData.recurring_mode = 'reprocess';
+                }
                 showStep(1);
                 updatePaymentSummary();
 
@@ -1527,15 +1635,85 @@ $response['valor'] = $valor;
                 document.querySelectorAll('.payment-method-option').forEach(option => {
                     option.classList.remove('ring-2', 'ring-efi-blue', 'bg-blue-50');
                 });
-                document.querySelector('input[name="payment_method"][value="credit_card"]').checked = true;
+                const seletorPadrao = `input[name="payment_method"][value="${pagamentoPadrao}"]`;
+                const inputPadrao = document.querySelector(seletorPadrao);
+                if (inputPadrao) {
+                    inputPadrao.checked = true;
+                }
+                const defaultOption = inputPadrao?.closest('.payment-method-option');
+                if (defaultOption) {
+                    defaultOption.classList.add('ring-2', 'ring-efi-blue', 'bg-blue-50');
+                }
+                updatePaymentSummary();
+                getInstallments();
             });
 
+            const btnDownloadComprovante = document.getElementById('downloadReceiptBtn');
+            if (btnDownloadComprovante) {
+                btnDownloadComprovante.addEventListener('click', function () {
+                    if (!ultimoPagamentoAprovado) {
+                        alert('Comprovante indisponivel no momento.');
+                        return;
+                    }
+
+                    const urlComprovante = extrairUrlComprovante(ultimoPagamentoAprovado.paymentData);
+                    if (urlComprovante) {
+                        window.open(urlComprovante, '_blank');
+                        return;
+                    }
+
+                    const htmlComprovante = gerarComprovanteHtmlLocal();
+                    if (!htmlComprovante) {
+                        alert('Não foi possível gerar o comprovante.');
+                        return;
+                    }
+
+                    const blob = new Blob([htmlComprovante], { type: 'text/html;charset=utf-8' });
+                    const link = document.createElement('a');
+                    const tx = (ultimoPagamentoAprovado.transactionId || 'pagamento').replace(/[^a-zA-Z0-9_-]/g, '');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `comprovante-${tx}.html`;
+                    document.body.appendChild(link);
+                    link.click();
+                    setTimeout(() => {
+                        URL.revokeObjectURL(link.href);
+                        link.remove();
+                    }, 1000);
+                });
+            }
+
+            const btnFecharCheckout = document.getElementById('closeCheckoutBtn');
+            if (btnFecharCheckout) {
+                btnFecharCheckout.addEventListener('click', function () {
+                    try {
+                        if (window.parent && window.parent !== window && window.parent.Swal) {
+                            window.parent.Swal.close();
+                            return;
+                        }
+                    } catch (e) {
+                    }
+                    window.close();
+                });
+            }
+
             // Inicializar
-            formData.payment_method = 'credit_card';
+            formData.payment_method = pagamentoPadrao;
+            const inputInicial = document.querySelector(`input[name="payment_method"][value="${pagamentoPadrao}"]`);
+            if (inputInicial) {
+                inputInicial.checked = true;
+                const opcaoInicial = inputInicial.closest('.payment-method-option');
+                if (opcaoInicial) {
+                    opcaoInicial.classList.add('ring-2', 'ring-efi-blue', 'bg-blue-50');
+                }
+            }
             updatePaymentSummary();
+            getInstallments();
             showStep(1);
         });
     </script>
 </body>
 
 </html>
+
+
+

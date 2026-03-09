@@ -7,8 +7,6 @@ require_once('../../vendor/autoload.php');
 require_once("../conexao.php");
 require_once("../../config/env.php");
 
-$mp_enabled = filter_var(env('MP_ENABLED', 'false'), FILTER_VALIDATE_BOOLEAN);
-
 
 
 
@@ -16,9 +14,15 @@ $mp_enabled = filter_var(env('MP_ENABLED', 'false'), FILTER_VALIDATE_BOOLEAN);
 @session_start();
 
 $id_do_aluno = @$_SESSION['id'];
+$temRecorrenciaEfi = false;
+try {
+    $temAssinaturas = $pdo->query("SHOW TABLES LIKE 'efi_assinaturas_cartao'")->fetch(PDO::FETCH_NUM);
+    $temParcelas = $pdo->query("SHOW TABLES LIKE 'efi_assinaturas_cartao_parcelas'")->fetch(PDO::FETCH_NUM);
+    $temRecorrenciaEfi = (bool) $temAssinaturas && (bool) $temParcelas;
+} catch (Throwable $e) {
+    $temRecorrenciaEfi = false;
+}
 
-// $consulta_parcelas_boleto_parcelado = $pdo->query("SELECT parcelas_geradas_por_boleto.*, cursos.nome as curso FROM parcelas_geradas_por_boleto JOIN boletos_parcelados ON boletos_parcelados.id = parcelas_geradas_por_boleto.id_boleto_parcelado JOIN matriculas ON matriculas.id = boletos_parcelados.id_matricula JOIN cursos ON cursos.id = matriculas.id_curso WHERE matriculas.aluno = '$id_do_aluno'");
-// $resposta_consulta_boleto_parcelado = $consulta_parcelas_boleto_parcelado->fetchAll(PDO::FETCH_ASSOC);
 
 $stmt = $pdo->prepare("
     SELECT 
@@ -31,62 +35,6 @@ $stmt = $pdo->prepare("
 
 $stmt->execute(['id_aluno' => $id_do_aluno]);
 $resposta_consulta_boleto_parcelado = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// echo '<pre>';
-// echo json_encode($resposta_consulta_boleto_parcelado, JSON_PRETTY_PRINT);
-// echo '</pre>';
-// return;
-
-
-//  $consulta_matricula_pix_efi = $pdo->query("SELECT id FROM matriculas WHERE aluno = '$id_do_aluno'");
-
-//  $resposta_consulta_efi = $consulta_matricula_pix_efi->fetchAll(PDO::FETCH_ASSOC);
-
-// $pix_transactions = [];
-
-// foreach ($resposta_consulta_efi as $efi_pix) {
-//     $id = $efi_pix['id']; // Aqui você pega apenas o valor do ID
-
-//     $consulta_pagamentos_pix = $pdo->query("SELECT * FROM pagamentos_pix WHERE id_matricula = '$id'");
-//     $resposta_consulta_pagamentos_pix = $consulta_pagamentos_pix->fetchAll(PDO::FETCH_ASSOC);
-
-//     array_push($pix_transactions, $resposta_consulta_pagamentos_pix[0]);
-// }
-
-// echo '<pre>';
-// echo json_encode($resposta_consulta_boleto_parcelado, JSON_PRETTY_PRINT);
-// echo '</pre>';
-// return;
-
-
-// $consulta_matricula = $pdo->query("SELECT id, forma_pgto FROM matriculas WHERE aluno = '$id_do_aluno'");
-// $resposta_consulta = $consulta_matricula->fetchAll(PDO::FETCH_ASSOC);
-
-// $transactions = [];
-
-// foreach ($resposta_consulta as $matricula) {
-//     $id = $matricula['id'];
-//     $forma_pgto = $matricula['forma_pgto'];
-
-//     // Determina a tabela de consulta baseada na forma de pagamento
-//     if ($forma_pgto == 'PIX') {
-//         $tabela_pagamentos = 'pagamentos_pix';
-//     } elseif ($forma_pgto == 'BOLETO') {
-//         $tabela_pagamentos = 'pagamentos_boleto';
-//     } else {
-//         // Caso haja outras formas de pagamento ou valor nulo
-//         continue; // Pula para a próxima iteração
-//     }
-
-//     // Executa a consulta na tabela apropriada
-//     $consulta_pagamentos = $pdo->query("SELECT * FROM $tabela_pagamentos WHERE id_matricula = '$id'");
-//     $resposta_pagamentos = $consulta_pagamentos->fetchAll(PDO::FETCH_ASSOC);
-
-//     // Adiciona o resultado se houver dados
-//     if (!empty($resposta_pagamentos)) {
-//         array_push($transactions, $resposta_pagamentos[0]);
-//     }
-// }
 
 $consulta_matricula = $pdo->prepare("SELECT id, forma_pgto, pacote, id_curso FROM matriculas WHERE aluno = :aluno");
 $consulta_matricula->execute(['aluno' => $id_do_aluno]);
@@ -130,9 +78,7 @@ foreach ($resposta_consulta as $matricula) {
     }
 
     // Determina a tabela de consulta baseada na forma de pagamento
-    if ($forma_pgto == 'PIX') {
-        $tabela_pagamentos = 'pagamentos_pix';
-    } elseif ($forma_pgto == 'BOLETO') {
+    if ($forma_pgto == 'BOLETO' || $forma_pgto == 'BOLETO_PARCELADO') {
         $tabela_pagamentos = 'pagamentos_boleto';
     } else {
         // Caso haja outras formas de pagamento ou valor nulo
@@ -172,83 +118,6 @@ $resposta_consulta = $consulta_parcelas->fetchAll(PDO::FETCH_ASSOC);
 
 
 
-$consulta_matriculas = $pdo->prepare("
-
-    SELECT 
-
-        matriculas.*, 
-
-        cursos.nome AS nome_curso,
-
-        usuarios.nome AS nome_professor
-
-    FROM matriculas 
-
-    JOIN cursos ON cursos.id = matriculas.id_curso 
-
-    JOIN usuarios ON usuarios.id = matriculas.professor
-
-    WHERE matriculas.aluno = :aluno
-
-    AND matriculas.forma_pgto = 'MP'
-
-");
-
-
-
-$consulta_matriculas->execute(['aluno' => $id_do_aluno]);
-$resposta_consulta_matriculas = $consulta_matriculas->fetchAll(PDO::FETCH_ASSOC);
-
-
-
-
-// $consulta_matriculas_pix = $pdo->query("
-
-//     SELECT 
-
-//         matriculas.*, 
-
-//         cursos.nome AS nome_curso,
-
-//         usuarios.nome AS nome_professor
-
-//     FROM matriculas 
-
-//     JOIN cursos ON cursos.id = matriculas.id_curso 
-
-//     JOIN usuarios ON usuarios.id = matriculas.professor
-
-//     WHERE matriculas.aluno = '$id_do_aluno'
-
-//     AND matriculas.forma_pgto = 'PIX'
-
-// ");
-
-
-
-// $resposta_consulta_matriculas_pix = $consulta_matriculas_pix->fetchAll(PDO::FETCH_ASSOC);
-
-
-$consulta_matriculas_pix = $pdo->prepare("
-    SELECT 
-        matriculas.*, 
-        CASE 
-            WHEN matriculas.pacote = 'sim' THEN pacotes.nome 
-            ELSE cursos.nome 
-        END AS nome_curso,
-        usuarios.nome AS nome_professor
-    FROM matriculas 
-    LEFT JOIN cursos ON cursos.id = matriculas.id_curso 
-    LEFT JOIN pacotes ON pacotes.id = matriculas.id_curso 
-    JOIN usuarios ON usuarios.id = matriculas.professor
-    WHERE matriculas.aluno = :aluno
-    AND matriculas.forma_pgto = 'PIX'
-");
-
-$consulta_matriculas_pix->execute(['aluno' => $id_do_aluno]);
-$resposta_consulta_matriculas_pix = $consulta_matriculas_pix->fetchAll(PDO::FETCH_ASSOC);
-
-
 $consulta_matriculas_boleto = $pdo->prepare("
 
     SELECT 
@@ -278,6 +147,28 @@ $resposta_consulta_matriculas_boleto = $consulta_matriculas_boleto->fetchAll(PDO
 
 
 
+$selectRecorrenciaCartao = "1 AS quantidade_parcelas, 0 AS parcelas_pagas, 0 AS parcelas_pendentes, 0 AS subscription_id";
+$joinRecorrenciaCartao = "";
+if ($temRecorrenciaEfi) {
+    $selectRecorrenciaCartao = "
+        COALESCE(ea.quantidade_parcelas, 1) AS quantidade_parcelas,
+        COALESCE(ea.subscription_id, 0) AS subscription_id,
+        (
+            SELECT COUNT(*)
+            FROM efi_assinaturas_cartao_parcelas ep
+            WHERE ep.id_matricula = matriculas.id
+              AND ep.status = 'PAGA'
+        ) AS parcelas_pagas,
+        (
+            SELECT COUNT(*)
+            FROM efi_assinaturas_cartao_parcelas ep
+            WHERE ep.id_matricula = matriculas.id
+              AND ep.status IN ('PENDENTE', 'ATRASADA')
+        ) AS parcelas_pendentes
+    ";
+    $joinRecorrenciaCartao = "LEFT JOIN efi_assinaturas_cartao ea ON ea.id_matricula = matriculas.id";
+}
+
 $consulta_matriculas_cartao_p = $pdo->prepare("
 
     SELECT 
@@ -286,17 +177,19 @@ $consulta_matriculas_cartao_p = $pdo->prepare("
 
         pacotes.nome AS nome_curso,
 
-        usuarios.nome AS nome_professor
+        usuarios.nome AS nome_professor,
+        {$selectRecorrenciaCartao}
 
     FROM matriculas 
 
     JOIN pacotes ON pacotes.id = matriculas.id_curso 
 
     JOIN usuarios ON usuarios.id = matriculas.professor
+    {$joinRecorrenciaCartao}
 
     WHERE matriculas.aluno = :aluno
 
-    AND matriculas.forma_pgto = 'CARTAO_DE_CREDITO'
+    AND matriculas.forma_pgto IN ('CARTAO_DE_CREDITO', 'CARTAO_RECORRENTE')
 
 ");
 
@@ -316,17 +209,19 @@ $consulta_matriculas_cartao_c = $pdo->prepare("
 
         cursos.nome AS nome_curso,
 
-        usuarios.nome AS nome_professor
+        usuarios.nome AS nome_professor,
+        {$selectRecorrenciaCartao}
 
     FROM matriculas 
 
     JOIN cursos ON cursos.id = matriculas.id_curso 
 
     JOIN usuarios ON usuarios.id = matriculas.professor
+    {$joinRecorrenciaCartao}
 
     WHERE matriculas.aluno = :aluno
 
-    AND matriculas.forma_pgto = 'CARTAO_DE_CREDITO'
+    AND matriculas.forma_pgto IN ('CARTAO_DE_CREDITO', 'CARTAO_RECORRENTE')
 
 ");
 
@@ -348,44 +243,97 @@ if ($resposta_consulta_matriculas_cartao) {
     $cartao_transactions = $resposta_consulta_matriculas_cartao;
 }
 
+$parcelasRecorrenciaPorMatricula = [];
+if ($temRecorrenciaEfi) {
+    try {
+        $pdo->exec("
+            UPDATE efi_assinaturas_cartao_parcelas
+            SET status = 'ATRASADA',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE status = 'PENDENTE'
+              AND vencimento IS NOT NULL
+              AND vencimento < CURDATE()
+        ");
+    } catch (Throwable $e) {
+        // Nao interrompe a tela por falha de saneamento de status.
+    }
+
+    $idsMatriculasRecorrentes = [];
+    foreach ((array) $cartao_transactions as $registroRec) {
+        if (($registroRec['forma_pgto'] ?? '') === 'CARTAO_RECORRENTE') {
+            $idsMatriculasRecorrentes[] = (int) ($registroRec['id'] ?? 0);
+        }
+    }
+    $idsMatriculasRecorrentes = array_values(array_filter(array_unique($idsMatriculasRecorrentes)));
+
+    if (!empty($idsMatriculasRecorrentes)) {
+        $placeholders = implode(',', array_fill(0, count($idsMatriculasRecorrentes), '?'));
+        $stmtParcelasRec = $pdo->prepare("
+            SELECT
+                id_matricula,
+                numero_parcela,
+                valor_parcela,
+                vencimento,
+                status,
+                data_pagamento
+            FROM efi_assinaturas_cartao_parcelas
+            WHERE id_matricula IN ($placeholders)
+            ORDER BY id_matricula ASC, numero_parcela ASC
+        ");
+        $stmtParcelasRec->execute($idsMatriculasRecorrentes);
+        $linhasParcelasRec = $stmtParcelasRec->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($linhasParcelasRec as $linhaParcela) {
+            $idMatParcela = (int) ($linhaParcela['id_matricula'] ?? 0);
+            if ($idMatParcela <= 0) {
+                continue;
+            }
+            if (!isset($parcelasRecorrenciaPorMatricula[$idMatParcela])) {
+                $parcelasRecorrenciaPorMatricula[$idMatParcela] = [];
+            }
+            $parcelasRecorrenciaPorMatricula[$idMatParcela][] = $linhaParcela;
+        }
+    }
+}
 
 
-$pix_transactions = [];
+
 $boleto_transactions = [];
 
+// Regra bancaria do cartao: tarifa fixa + percentual + juros mensal por parcela.
+$taxaFixaCartao = (float) env('EFI_CARD_FEE_FIXED', '0.29');
+$taxaPercentualCartao = ((float) env('EFI_CARD_FEE_PERCENT', '4.99')) / 100;
+$jurosMensalParcelado = ((float) env('EFI_CARD_INTEREST_MONTHLY', '1.99')) / 100;
+
+$calcularTotalCartaoCliente = static function (
+    float $valorLiquido,
+    int $parcelas,
+    float $taxaFixa,
+    float $taxaPercentual,
+    float $jurosMensal
+): float {
+    $parcelas = max(1, $parcelas);
+    $denominador = 1 - $taxaPercentual;
+    $baseBruta = $denominador > 0 ? (($valorLiquido + $taxaFixa) / $denominador) : $valorLiquido;
+    if ($parcelas > 1) {
+        $baseBruta *= pow(1 + $jurosMensal, $parcelas - 1);
+    }
+    return round(max($baseBruta, 0), 2);
+};
 
 foreach ($transactions as $registro) {
-    $eh_pix = isset($registro['txid']);
     $eh_boleto = isset($registro['nosso_numero']);
 
-    if ($eh_pix) {
-        $pix_transactions[] = $registro;
-    } elseif ($eh_boleto) {
+    if ($eh_boleto) {
         $boleto_transactions[] = $registro;
     }
 }
 
 
-//BUSCA VALOR ACRESCIMO CARTAO
-$queryAcrescimoCartao = $pdo->query("SELECT acrescimo_cartao_credito FROM config");
-$resAcrescimoCartao = $queryAcrescimoCartao->fetchColumn();
-
 // echo json_encode($pix_transactions);
 // return;
 
 ?>
-
-
-
-<head>
-
-    <?php if ($mp_enabled) { ?>
-        <script src="https://sdk.mercadopago.com/js/v2"></script>
-    <?php } ?>
-
-
-
-</head>
 
 
 
@@ -448,98 +396,6 @@ $resAcrescimoCartao = $queryAcrescimoCartao->fetchColumn();
 <div class="bs-example widget-shadow margem-mobile">
 
 
-
-
-  
-
-    <!-- <h3>BOLETOS</h3>
-
-    <br>
-
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>ID Matrícula</th>
-                <th>Data</th>
-                <th>Identificador</th>
-                <th>Valor</th>
-                <th>Situação</th>
-                <th>Ação</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($transactions as $registro): ?>
-                <?php
-                // Determina o tipo de pagamento baseado nos campos disponíveis
-                $eh_pix = isset($registro['txid']);
-                $eh_boleto = isset($registro['nosso_numero']);
-
-                // Define campos específicos baseado no tipo
-                if ($eh_pix) {
-                    $data_campo = $registro['data_criacao'];
-                    $identificador = $registro['txid'];
-                    $tipo_pagamento = 'PIX';
-                } elseif ($eh_boleto) {
-                    $data_campo = $registro['criado_em'];
-                    $identificador = $registro['nosso_numero'];
-                    $tipo_pagamento = 'BOLETO';
-                } else {
-                    continue; // Pula registros sem tipo identificável
-                }
-                ?>
-                <tr>
-                    <td><?php echo $registro['id']; ?></td>
-                    <td style="width: 130px;"><?php echo $registro['id_matricula']; ?></td>
-                    <td><?php echo (new DateTime($data_campo))->format('d/m/Y'); ?></td>
-                    <td>
-                        <small><?php echo $tipo_pagamento; ?>:</small>
-                        <?php echo htmlspecialchars($identificador); ?>
-                    </td>
-                    <td><?php echo 'R$ ' . number_format($registro['valor'], 2, ',', '.'); ?></td>
-                    <td class="esc" style="text-transform: uppercase;">
-                        <?php echo $registro['status'] === '' ? 'pendente' : 'pago'; ?>
-                    </td>
-                    <td>
-                        <?php if ($registro['status'] === ''): ?>
-                            <?php if ($eh_pix): ?>
-
-
-
-                            <?php elseif ($eh_boleto): ?>
-                                <button
-                                    onclick="openBoleto('<?php echo htmlspecialchars($registro['url_boleto'], ENT_QUOTES); ?>')">
-                                    <i class="fa fa-file-pdf-o" aria-hidden="true"></i>
-                                    Pagar Boleto
-                                </button>
-                            <?php endif; ?>
-                        <?php elseif ($registro['status'] === 'paid'): ?>
-                            <button
-                                onclick="window.open('<?php echo htmlspecialchars($registro['url_boleto'], ENT_QUOTES); ?>', '_blank')">
-                                <i class="fa fa-file-pdf-o" aria-hidden="true"></i>
-                                Ver Detalhes
-                            </button>
-
-                        <?php elseif ($registro['status'] === 'vencido'): ?>
-                            <?php if ($eh_boleto): ?>
-                                <button type="button" onclick="gerarNovoBoleto(<?php echo $registro['id_matricula']; ?>)">
-                                    <i class="fa fa-refresh" aria-hidden="true"></i>
-                                    Gerar Novo
-                                </button>
-                            <?php else: ?>
-                                <span class="text-muted">
-                                    <i class="fa fa-clock-o" aria-hidden="true"></i>
-                                    Vencido
-                                </span>
-                            <?php endif; ?>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table> -->
-
-
     <div>
 
 
@@ -547,7 +403,7 @@ $resAcrescimoCartao = $queryAcrescimoCartao->fetchColumn();
         <?php if ($cartao_transactions !== null): ?>
             <div style="margin-top: 20px;">
 
-                <h3>Pagamentos Cartão de Crédito</h3>
+                <h3>Pagamentos Cartão EFY</h3>
             </div>
 
             <br>
@@ -559,6 +415,7 @@ $resAcrescimoCartao = $queryAcrescimoCartao->fetchColumn();
                         <th>Curso / Pacote</th>
                         <th>Data</th>
                         <th>Forma de pagamento</th>
+                        <th>Parcelas</th>
                         <th>Valor</th>
                         <th>Situação</th>
                         <th>Ação</th>
@@ -570,17 +427,79 @@ $resAcrescimoCartao = $queryAcrescimoCartao->fetchColumn();
                     
                     <?php
                     
-                    $valorA = (int) $registro['valor']; 
-                    $percentual = isset($resAcrescimoCartao) ? (float) $resAcrescimoCartao : 0; 
-                    
-                    if ($percentual > 0) {
-    
-    $valorA += ceil($valorA * ($percentual / 100));
+                    $valorBase = (float) ($registro['subtotal'] ?? 0);
+                    if ($valorBase <= 0) {
+                        $valorBase = (float) ($registro['valor'] ?? 0);
+                    }
+                    $valorComDesconto = max($valorBase, 0);
 
-}
-                    
-                    
-                    
+                    $parcelasTabela = 1;
+                    $ehRecorrenteLinha = (($registro['forma_pgto'] ?? '') === 'CARTAO_RECORRENTE');
+                    if ($ehRecorrenteLinha) {
+                        if (!empty($registro['quantidade_parcelas'])) {
+                            $parcelasTabela = (int) $registro['quantidade_parcelas'];
+                        } elseif (!empty($registro['qtd_parcelas_cartao'])) {
+                            $parcelasTabela = (int) $registro['qtd_parcelas_cartao'];
+                        } elseif (!empty($registro['qtd_parcelas'])) {
+                            $parcelasTabela = (int) $registro['qtd_parcelas'];
+                        } elseif (!empty($registro['parcelas'])) {
+                            $parcelasTabela = (int) $registro['parcelas'];
+                        }
+                    } else {
+                        if (!empty($registro['qtd_parcelas_cartao'])) {
+                            $parcelasTabela = (int) $registro['qtd_parcelas_cartao'];
+                        } elseif (!empty($registro['qtd_parcelas'])) {
+                            $parcelasTabela = (int) $registro['qtd_parcelas'];
+                        } elseif (!empty($registro['parcelas'])) {
+                            $parcelasTabela = (int) $registro['parcelas'];
+                        } elseif (!empty($registro['quantidade_parcelas'])) {
+                            $parcelasTabela = (int) $registro['quantidade_parcelas'];
+                        }
+                    }
+                    if ($parcelasTabela < 1) {
+                        $parcelasTabela = 1;
+                    }
+                    $valorTotalCartaoSalvo = (float) ($registro['valor_total_cartao'] ?? 0);
+                    if (!$ehRecorrenteLinha && $valorTotalCartaoSalvo > 0) {
+                        $valorFinalCartao = round($valorTotalCartaoSalvo, 2);
+                    } else {
+                        $valorFinalCartao = $calcularTotalCartaoCliente(
+                            $valorComDesconto,
+                            $parcelasTabela,
+                            $taxaFixaCartao,
+                            $taxaPercentualCartao,
+                            $jurosMensalParcelado
+                        );
+                    }
+                    $parcelasDetalhesLinha = $parcelasRecorrenciaPorMatricula[(int) ($registro['id'] ?? 0)] ?? [];
+                    $situacaoLinha = strtoupper(trim((string) ($registro['status'] ?? 'PENDENTE')));
+                    if ($ehRecorrenteLinha && !empty($parcelasDetalhesLinha)) {
+                        $temAtrasadaTmp = false;
+                        $temPendenteTmp = false;
+                        foreach ($parcelasDetalhesLinha as $parcelaTmp) {
+                            $stTmp = strtoupper((string) ($parcelaTmp['status'] ?? ''));
+                            if ($stTmp === 'ATRASADA') {
+                                $temAtrasadaTmp = true;
+                            } elseif ($stTmp === 'PENDENTE') {
+                                $temPendenteTmp = true;
+                            }
+                        }
+                        if ($temAtrasadaTmp) {
+                            $situacaoLinha = 'EM ATRASO';
+                        } elseif ($temPendenteTmp) {
+                            $situacaoLinha = 'ATIVA';
+                        } else {
+                            $situacaoLinha = 'CONCLUIDA';
+                        }
+                    } elseif (!$ehRecorrenteLinha) {
+                        $statusBaseCartao = strtoupper(trim((string) ($registro['status'] ?? '')));
+                        if ($statusBaseCartao !== 'AGUARDANDO') {
+                            $situacaoLinha = 'PAGO';
+                        }
+                    }
+                     
+                     
+                     
                     ?>
                         <tr>
                             <td><?php echo $registro['id']; ?></td>
@@ -589,32 +508,98 @@ $resAcrescimoCartao = $queryAcrescimoCartao->fetchColumn();
                             </td>
                             <td><?php echo (new DateTime($registro['data']))->format('d/m/Y'); ?></td>
                             <td style="max-width: 130px;">
-                                Cartão de crédito
+                                <?php echo ($registro['forma_pgto'] ?? '') === 'CARTAO_RECORRENTE' ? 'Cartão recorrente' : 'Cartão de crédito'; ?>
+                            </td>
+                            <td style="white-space: nowrap;">
+                                <?php
+                                $parcelasPagas = (int) ($registro['parcelas_pagas'] ?? 0);
+                                $parcelasPendentes = (int) ($registro['parcelas_pendentes'] ?? 0);
+                                if ($ehRecorrenteLinha) {
+                                    echo $parcelasPagas . '/' . $parcelasTabela . ' pagas';
+                                    if ($parcelasPendentes > 0) {
+                                        echo ' (' . $parcelasPendentes . ' pendentes)';
+                                    }
+                                    if (!empty($parcelasDetalhesLinha)) {
+                                        echo '<div style="margin-top:6px; font-size:12px; line-height:1.35;">';
+                                        foreach ($parcelasDetalhesLinha as $parcelaLinha) {
+                                            $statusParcela = strtoupper((string) ($parcelaLinha['status'] ?? 'PENDENTE'));
+                                            $statusCor = '#777';
+                                            if ($statusParcela === 'PAGA') {
+                                                $statusCor = '#1a7f37';
+                                            } elseif ($statusParcela === 'ATRASADA') {
+                                                $statusCor = '#b42318';
+                                            } elseif ($statusParcela === 'PENDENTE') {
+                                                $statusCor = '#b54708';
+                                            }
+                                            $numeroParcelaLinha = (int) ($parcelaLinha['numero_parcela'] ?? 0);
+                                            $valorParcelaLinha = number_format((float) ($parcelaLinha['valor_parcela'] ?? 0), 2, ',', '.');
+                                            $vencimentoParcelaLinha = (string) ($parcelaLinha['vencimento'] ?? '');
+                                            $vencimentoFmtLinha = $vencimentoParcelaLinha !== '' ? implode('/', array_reverse(explode('-', $vencimentoParcelaLinha))) : '-';
+                                            echo '<div>Parcela ' . $numeroParcelaLinha . ': R$ ' . $valorParcelaLinha . ' | Venc. ' . $vencimentoFmtLinha . ' | <b style="color:' . $statusCor . ';">' . $statusParcela . '</b></div>';
+                                        }
+                                        echo '</div>';
+                                    }
+                                } else {
+                                    $valorParcelaCredito = $parcelasTabela > 0 ? ($valorFinalCartao / $parcelasTabela) : $valorFinalCartao;
+                                    echo $parcelasTabela . 'x';
+                                    echo '<div style="margin-top:6px; font-size:12px; color:#555;">R$ ' . number_format($valorParcelaCredito, 2, ',', '.') . ' por parcela</div>';
+                                }
+                                ?>
                             </td>
                             <!--<td><?php echo 'R$ ' . number_format($registro['valor'], 2, ',', '.'); ?></td>-->
                             
                             <td>
-    <?php
-        $valor = $valorA;
-        $desconto = !empty($registro['valor_cupom']) ? (float)$registro['valor_cupom'] : 0;
-        $valor_final = $valor - $desconto;
-
-        echo 'R$ ' . number_format($valor_final, 2, ',', '.');
-    ?>
+    <?php echo 'R$ ' . number_format($valorFinalCartao, 2, ',', '.'); ?>
 </td>
                             
                             
                             
                             
-                            <td class="esc" style="text-transform: uppercase; max-width: 50px;">
-                                <?php echo $registro['status'] === '' ? 'pendente' : $registro['status']; ?>
+                            <td class="esc" style="text-transform: uppercase; max-width: 120px;">
+                                <?php echo htmlspecialchars($situacaoLinha, ENT_QUOTES, 'UTF-8'); ?>
                             </td>
                             <td>
-                                <button
-                                    onclick="realizarPagamentoCartao(<?php echo $registro['id']; ?>, <?php echo $id_do_aluno; ?>, '<?php echo $registro['nome_curso']; ?>')">
-                                    <i class="fa fa-file-pdf-o" aria-hidden="true"></i>
-                                    Realizar Pagamento
-                                </button>
+                                <?php
+                                $subscriptionIdLinha = (int) ($registro['subscription_id'] ?? 0);
+                                $temParcelaAbertaLinha = false;
+                                if (!empty($parcelasDetalhesLinha)) {
+                                    foreach ($parcelasDetalhesLinha as $parcelaLinhaAcao) {
+                                        $statusParcelaAcao = strtoupper((string) ($parcelaLinhaAcao['status'] ?? ''));
+                                        if (in_array($statusParcelaAcao, ['PENDENTE', 'ATRASADA'], true)) {
+                                            $temParcelaAbertaLinha = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if ($ehRecorrenteLinha) {
+                                    if ($subscriptionIdLinha > 0 && $temParcelaAbertaLinha) {
+                                        ?>
+                                        <button
+                                            onclick='realizarPagamentoRecorrente(<?php echo (int) $registro["id"]; ?>, <?php echo (int) $id_do_aluno; ?>, <?php echo json_encode((string) ($registro["nome_curso"] ?? ""), JSON_UNESCAPED_UNICODE); ?>, <?php echo $subscriptionIdLinha; ?>)'>
+                                            <i class="fa fa-credit-card" aria-hidden="true"></i>
+                                            Regularizar / Trocar cartão
+                                        </button>
+                                        <?php
+                                    } else {
+                                        echo '<button type="button" disabled><i class="fa fa-check" aria-hidden="true"></i> Sem parcela pendente</button>';
+                                    }
+                                } else {
+                                    ?>
+                                    <?php if ($situacaoLinha === 'PAGO') { ?>
+                                        <span style="color:#1a7f37; font-weight:600;">
+                                            <i class="fa fa-check" aria-hidden="true"></i>
+                                            Pagamento efetuado
+                                        </span>
+                                    <?php } else { ?>
+                                        <button
+                                            onclick='realizarPagamentoCartao(<?php echo (int) $registro["id"]; ?>, <?php echo (int) $id_do_aluno; ?>, <?php echo json_encode((string) ($registro["nome_curso"] ?? ""), JSON_UNESCAPED_UNICODE); ?>)'>
+                                            <i class="fa fa-file-pdf-o" aria-hidden="true"></i>
+                                            Realizar Pagamento
+                                        </button>
+                                    <?php } ?>
+                                    <?php
+                                }
+                                ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -940,12 +925,35 @@ $resAcrescimoCartao = $queryAcrescimoCartao->fetchColumn();
 
 <script>
 
+    window.addEventListener('message', function (event) {
+        const data = event && event.data ? event.data : null;
+        if (!data || data.type !== 'efi-payment-success') {
+            return;
+        }
+        setTimeout(function () {
+            window.location.reload();
+        }, 700);
+    });
+
     function realizarPagamentoCartao(id, id_aluno, nome_curso) {
-       
+        const nomeSeguro = encodeURIComponent(nome_curso || '');
+        const url = `<?php echo $url_sistema ?>efi/credit_card.php?id=${id}&id_aluno=${id_aluno}&nome_curso=${nomeSeguro}`;
 
         Swal.fire({
             title: 'Realizar Pagamento',
-            html: `<iframe src="<?php echo $url_sistema ?>efi/credit_card.php?id=${id}&id_aluno=${id_aluno}&nome_curso=${nome_curso}" width="100%" height="600px" style="border: none; background: #fff;"></iframe>`,
+            html: `<iframe src="${url}" width="100%" height="600px" style="border: none; background: #fff;"></iframe>`,
+            width: '80%',
+            showCloseButton: true,
+            showConfirmButton: false
+        });
+    }
+
+    function realizarPagamentoRecorrente(id, id_aluno, nome_curso, subscription_id) {
+        const nomeSeguro = encodeURIComponent(nome_curso || '');
+        const url = `<?php echo $url_sistema ?>efi/credit_card.php?id=${id}&id_aluno=${id_aluno}&nome_curso=${nomeSeguro}&modo=recorrente&subscription_id=${subscription_id}`;
+        Swal.fire({
+            title: 'Regularizar Parcela / Trocar Cartao',
+            html: `<iframe src="${url}" width="100%" height="600px" style="border: none; background: #fff;"></iframe>`,
             width: '80%',
             showCloseButton: true,
             showConfirmButton: false
@@ -1088,7 +1096,7 @@ $resAcrescimoCartao = $queryAcrescimoCartao->fetchColumn();
         codigoInput.select();
         codigoInput.setSelectionRange(0, 99999);
         document.execCommand("copy");
-        alert("Código PIX copiado para a área de transferência!");
+        alert("Código copiado para a área de transferência!");
     }
 </script>
 
@@ -1175,11 +1183,7 @@ $resAcrescimoCartao = $queryAcrescimoCartao->fetchColumn();
 
 
 
-    // Inicializa o MercadoPago
-    const mpEnabled = <?php echo $mp_enabled ? 'true' : 'false'; ?>;
-    const mpPublicKey = '<?php echo $mp_enabled ? env('MP_PUBLIC_KEY', '') : ''; ?>';
-    const mp = (mpEnabled && mpPublicKey !== '') ? new MercadoPago(mpPublicKey, { locale: 'pt' }) : null;
-    const bricksBuilder = mp ? mp.bricks() : null;
+    const bricksBuilder = null;
 
 
 

@@ -1,4 +1,8 @@
-<?php include('../cartao/ApiConfig.php');
+<?php
+http_response_code(410);
+echo 'Forma de pagamento desativada. Utilize somente o gateway EFY.';
+exit;
+ include('../cartao/ApiConfig.php');
 require_once("../../sistema/conexao.php");
 
 $id_do_curso_pag = $_POST['id'];

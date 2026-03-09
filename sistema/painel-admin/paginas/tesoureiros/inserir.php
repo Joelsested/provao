@@ -120,7 +120,7 @@ if ($id == "") {
     $query->bindValue(":id", (int) $id, PDO::PARAM_INT);
     $query->execute();
 
-    $query = $pdo->prepare("UPDATE usuarios SET wallet_id = :wallet_id, nome = :nome, usuario = :email, cpf = :cpf, foto = :foto WHERE id_pessoa = :id_pessoa and nivel = 'tesoureiro'");
+    $query = $pdo->prepare("UPDATE usuarios SET wallet_id = :wallet_id, nome = :nome, usuario = :email, cpf = :cpf, foto = :foto WHERE id_pessoa = :id_pessoa and nivel = 'Tesoureiro'");
 
     $query->bindValue(":nome", "$nome");
     $query->bindValue(":email", "$email");

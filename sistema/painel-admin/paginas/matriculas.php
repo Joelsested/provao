@@ -43,10 +43,10 @@ if(@$_SESSION['nivel'] != 'Administrador'  and @$_SESSION['nivel'] != 'Secretari
 							<div class="form-group"> 
 								<label>Forma PGTO</label> 
 									<select class="form-control sel13" name="forma_pgto" style="width:100%;">	
-										<option value="Pix">Pix</option>
-										<option value="MP">MP</option>
-										<option value="Boleto">Boleto</option>
-										<option value="Paypal">Paypal</option>
+										<option value="BOLETO">Boleto</option>
+										<option value="BOLETO_PARCELADO">Boleto Parcelado</option>
+										<option value="CARTAO_DE_CREDITO">Cartão de Crédito</option>
+										<option value="CARTAO_RECORRENTE">Cartão Recorrente</option>
 										<option value="">Outra</option>
 									</select> 
 							</div>						

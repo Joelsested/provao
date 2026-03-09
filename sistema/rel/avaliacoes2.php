@@ -1,308 +1,109 @@
-<?php 
-$id = $_GET['id'];
-$curso = $_GET['curso'];
+<?php
+$id = (int) ($_GET['id'] ?? 0);
+$curso = (int) ($_GET['curso'] ?? 0);
 include('../conexao.php');
 
-
-
-
-
-$query = $pdo->prepare("SELECT * from usuarios where id = :id order by id desc ");
+$nome = 'Aluno';
+$id_aluno = 0;
+$query = $pdo->prepare("SELECT id, nome FROM usuarios WHERE id = :id ORDER BY id DESC");
 $query->execute([':id' => $id]);
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
-$total_reg = count($res);
-$nome = $res[0]['nome'];
-$id_aluno = $res[0]['id'];	
+if (count($res) > 0) {
+    $nome = $res[0]['nome'];
+    $id_aluno = (int) $res[0]['id'];
+}
 
-setlocale(LC_TIME, 'pt_BR', 'pt_BR.utf-8', 'pt_BR.utf-8', 'portuguese');
+setlocale(LC_TIME, 'pt_BR', 'pt_BR.utf-8', 'portuguese');
 date_default_timezone_set('America/Porto_Velho');
 $data_hoje = utf8_encode(strftime('%A, %d de %B de %Y', strtotime('today')));
 
+$nome_curso = '';
+$nota = 'sem Nota';
+$respostas = [];
 
+if ($id_aluno > 0 && $curso > 0) {
+    $queryMat = $pdo->prepare("SELECT id_curso, nota FROM matriculas WHERE aluno = :aluno AND id_curso = :curso ORDER BY id DESC LIMIT 1");
+    $queryMat->execute([':aluno' => $id_aluno, ':curso' => $curso]);
+    $mat = $queryMat->fetch(PDO::FETCH_ASSOC);
+
+    if ($mat) {
+        $notaBruta = $mat['nota'];
+        if ($notaBruta !== null && $notaBruta !== '') {
+            $nota = number_format((float) $notaBruta, 2, '.', '');
+        }
+
+        $queryCurso = $pdo->prepare("SELECT nome FROM cursos WHERE id = :id ORDER BY id DESC");
+        $queryCurso->execute([':id' => (int) $mat['id_curso']]);
+        $cursoRow = $queryCurso->fetch(PDO::FETCH_ASSOC);
+        $nome_curso = $cursoRow['nome'] ?? '';
+
+        $queryResp = $pdo->prepare("SELECT numeracao, letra FROM perguntas_respostas WHERE id_curso = :id_curso AND id_aluno = :id_aluno ORDER BY numeracao ASC, id ASC");
+        $queryResp->execute([':id_curso' => (int) $mat['id_curso'], ':id_aluno' => $id_aluno]);
+        $respostas = $queryResp->fetchAll(PDO::FETCH_ASSOC);
+    }
+}
 ?>
-
 <!DOCTYPE html>
 <html>
 <head>
-	<title>Relatório de Avaliações</title>	
-
-	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-wEmeIV1mKuiNpC+IOBjI7aAzPcEZeedi5yW5f2yOq55WWLwNGmvvx4Um1vskeMj0" crossorigin="anonymous">
-
-	<style>
-
-		@page {
-			margin: 0px;
-
-		}
-
-		body{
-			margin-top:0px;
-			font-family:Times, "Times New Roman", Georgia, serif;
-		}		
-
-			.footer {
-				margin-top:20px;
-				width:100%;
-				background-color: #ebebeb;
-				padding:5px;
-				position:absolute;
-				bottom:0;
-			}
-
-		
-
-		.cabecalho {    
-			padding:10px;
-			margin-bottom:30px;
-			width:100%;
-			font-family:Times, "Times New Roman", Georgia, serif;
-		}
-
-		.titulo_cab{
-			color:#0340a3;
-			font-size:17px;
-		}
-
-		
-		
-		.titulo{
-			margin:0;
-			font-size:28px;
-			font-family:Arial, Helvetica, sans-serif;
-			color:#6e6d6d;
-
-		}
-
-		.subtitulo{
-			margin:0;
-			font-size:12px;
-			font-family:Arial, Helvetica, sans-serif;
-			color:#6e6d6d;
-		}
-
-
-
-		hr{
-			margin:8px;
-			padding:0px;
-		}
-
-
-		
-		.area-cab{
-			
-			display:block;
-			width:100%;
-			height:10px;
-
-		}
-
-		
-		.coluna{
-			margin: 0px;
-			float:left;
-			height:30px;
-		}
-
-		.area-tab{
-			
-			display:block;
-			width:100%;
-			height:30px;
-
-		}
-
-
-		.imagem {
-			width: 200px;
-			position:absolute;
-			right:20px;
-			top:10px;
-		}
-
-		.titulo_img {
-			position: absolute;
-			margin-top: 10px;
-			margin-left: 10px;
-
-		}
-
-		.data_img {
-			position: absolute;
-			margin-top: 40px;
-			margin-left: 10px;
-			border-bottom:1px solid #000;
-			font-size: 10px;
-		}
-
-		.endereco {
-			position: absolute;
-			margin-top: 50px;
-			margin-left: 10px;
-			border-bottom:1px solid #000;
-			font-size: 10px;
-		}
-
-		.verde{
-			color:green;
-		}
-		
-
-	</style>
-
-
+    <title>Relatorio de Avaliacoes</title>
+    <style>
+        @page { margin: 0; }
+        body { margin: 0; font-family: Times, "Times New Roman", Georgia, serif; }
+        .cabecalho { padding: 10px; margin-bottom: 20px; width: 100%; border-bottom: solid 1px #0340a3; }
+        .titulo_img { position: absolute; margin-top: 10px; margin-left: 10px; color: #0340a3; font-size: 20px; }
+        .data_img { position: absolute; margin-top: 45px; margin-left: 10px; border-bottom: 1px solid #000; font-size: 10px; }
+        .imagem { width: 200px; position: absolute; right: 20px; top: 10px; }
+        .conteudo { padding: 10px 20px 40px; }
+        .curso { text-align: center; font-size: 34px; margin: 10px 0 8px; }
+        .resp-wrap { text-align: center; margin: 8px 0; }
+        .tabela-respostas { border-collapse: collapse; border: 1px solid black; width: 85px; margin: auto; }
+        .tabela-respostas td { border: 1px solid black; text-align: left; padding: 2px 4px; font-size: 28px; }
+        .tabela-nota { border-collapse: collapse; border: 1px solid black; width: 120px; margin: 10px auto 0; }
+        .tabela-nota td { border: 1px solid black; text-align: center; padding: 3px 6px; font-size: 36px; }
+        .sem-respostas { text-align: center; font-size: 16px; margin-top: 12px; }
+        .footer { margin-top: 20px; width: 100%; background-color: #ebebeb; padding: 5px; position: absolute; bottom: 0; text-align: center; }
+        .footer span { font-size: 10px; }
+    </style>
 </head>
-<body>	
+<body>
+    <div class="titulo_img"><u>GABARITO <?php echo $nome; ?></u></div>
+    <div class="data_img"><?php echo mb_strtoupper($data_hoje); ?></div>
+    <img class="imagem" src="<?php echo $url_sistema; ?>/sistema/img/logo_rel.jpg" width="200" height="47">
+    <br><br><br>
+    <div class="cabecalho"></div>
 
+    <div class="conteudo">
+        <?php if ($id_aluno > 0 && $curso > 0) { ?>
+            <div class="curso"><?php echo $nome_curso !== '' ? $nome_curso : 'Curso'; ?></div>
 
+            <?php if (count($respostas) > 0) { ?>
+                <div class="resp-wrap">
+                    <table class="tabela-respostas">
+                        <?php foreach ($respostas as $resp) { ?>
+                            <tr>
+                                <td><?php echo str_pad((string) ((int) ($resp['numeracao'] ?? 0)), 2, '0', STR_PAD_LEFT); ?></td>
+                                <td><?php echo htmlspecialchars((string) ($resp['letra'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                            </tr>
+                        <?php } ?>
+                    </table>
+                </div>
+            <?php } else { ?>
+                <div class="sem-respostas">Sem respostas registradas para este curso.</div>
+            <?php } ?>
 
-<div class="titulo_cab titulo_img"><u>GABARITO <?php echo $nome  ?>  </u></div>	
-	<div class="data_img"><?php echo mb_strtoupper($data_hoje) ?></div>
+            <table class="tabela-nota">
+                <tr>
+                    <td><?php echo $nota; ?></td>
+                </tr>
+            </table>
+        <?php } else { ?>
+            <div class="sem-respostas">Ainda nao ha gabarito para este aluno/curso.</div>
+        <?php } ?>
+    </div>
 
-	<img class="imagem" src="<?php echo $url_sistema ?>/sistema/img/logo_rel.jpg" width="200px" height="47">
-
-	
-	<br><br><br>
-	<div class="cabecalho" style="border-bottom: solid 1px #0340a3">
-	</div>
-
-	<div class="mx-2" style="padding-top:10px ">
-
-		
-
-		<br>
-
-		<?php 
-		
-
-		$query = $pdo->prepare("SELECT * from matriculas where aluno = :aluno and id_curso = :id_curso order by id desc ");
-		$query->execute([':aluno' => $id_aluno, ':id_curso' => $curso]);
-		$res = $query->fetchAll(PDO::FETCH_ASSOC);
-		$total_reg = count($res);
-		if($total_reg > 0){
-			?>
-
-				<?php 
-					for($i=0; $i < $total_reg; $i++){
-	
-	
-	$nota = @$res[$i]['nota'];
-	$curso = @$res[$i]['id_curso'];	
-	$pacote = @$res[$i]['id_pacote'];
-
-	
-
-
-$queryPacote = $pdo->prepare("SELECT * FROM pacotes WHERE id = :id ORDER BY id DESC");
-$queryPacote->execute([':id' => $pacote]);
-    $resPacote = $queryPacote->fetchAll(PDO::FETCH_ASSOC);
-    $nome_pacote = @$resPacote[0]['nome']; 
-
-    // Consulta para obter detalhes do curso
-    $queryCurso = $pdo->prepare("SELECT * FROM cursos WHERE id = :id ORDER BY id DESC");
-    $queryCurso->execute([':id' => $curso]);
-    $resCurso = $queryCurso->fetchAll(PDO::FETCH_ASSOC);
-    $nome_curso = @$resCurso[0]['nome']; 
-
-    
-	
-	
-	if ($nota == '') {
-		$nota = 'sem Nota';
-	}
-
-
-
-
-
-				 ?>
-
-
-		
-						
-						<div class="linha-cab">				
-							
-								<div  style="text-align: center; font-size: 20px;"><?php echo @$nome_curso ?></div>
-							
-<?php $query9 = $pdo->prepare("SELECT * from perguntas_respostas where id_curso = :id_curso and id_aluno = :id_aluno ORDER BY numeracao ASC");
-	$query9->execute([':id_curso' => $curso, ':id_aluno' => $id_aluno]);
-	$res9 = $query9->fetchAll(PDO::FETCH_ASSOC);
-
-
-	 foreach ($res9 as $pergunta_resposta) {
-        $pergunta = $pergunta_resposta['pergunta'];
-        $resposta = $pergunta_resposta['resposta'];
-        $letra = $pergunta_resposta['letra'];
-        $numeracao = $pergunta_resposta['numeracao'];
-        $correta = $pergunta_resposta['correta'];
-
-
-if ($correta == 'Sim') {
-	$cor = '#adfc03';
-}else{
-	$cor = '#fc0356';
-}
-   
-
-	 ?>							<div style="text-align:center">
-							<table style="border-collapse: collapse; border: 1px solid black; width:50px;margin: auto; ">
-}
-    <tr>
-        <td style="border: 1px solid black; text-align: left;" >0<?php echo$numeracao?></td>
-        <td style="border: 1px solid black; text-align: left; "><?php echo $letra?></td>
-    </tr>
-
-</table>
-
-
-</div>
-							
-							<?php } ?>
-
-			<table style="border-collapse: collapse; border: 1px solid black; width:50px;margin: auto;  ">
-    <tr>
-        <td style="border: 1px solid black; text-align: left;" ><?php echo$nota?></td>
-       
-    </tr>
-    
-</table>				
-							
-													
-
-						</div>
-				
-					
-
-				<?php } ?>
-
-			</small>
-
-
-
-		</div>
-
-
-		
-
-	<?php }else{
-		echo '<div style="margin:8px"><small><small>Ainda Não a Gabarito!</small></small></div>';
-	} ?>
-
-
-
-
-
-	
-
-
-
-	<div class="footer"  align="center">
-		<span style="font-size:10px"><?php echo $nome_sistema ?> Whatsapp: <?php echo $tel_sistema ?></span> 
-	</div>
-
-
-
-
-	</body>
-
-	</html>
+    <div class="footer">
+        <span><?php echo $nome_sistema; ?> Whatsapp: <?php echo $tel_sistema; ?></span>
+    </div>
+</body>
+</html>

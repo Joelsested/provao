@@ -16,7 +16,7 @@ if ($id > 0) {
 
 	$stmt = $pdo->prepare("DELETE FROM $tabela WHERE id = ?");
 	$stmt->execute([$id]);
-	$stmt = $pdo->prepare("DELETE FROM usuarios WHERE id_pessoa = ? AND nivel = 'secretario'");
+	$stmt = $pdo->prepare("DELETE FROM usuarios WHERE id_pessoa = ? AND nivel = 'Secretario'");
 	$stmt->execute([$id]);
 }
 

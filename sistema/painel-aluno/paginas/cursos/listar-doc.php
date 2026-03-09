@@ -19,6 +19,7 @@ if($total_reg_m > 0){
 	
 	$arquivo = @$res_m[$i_m]['arquivo'];
 	$descricao = @$res_m[$i_m]['descricao'];	
+	$arquivo_url = rawurlencode((string) $arquivo);
 
 	
 
@@ -35,7 +36,7 @@ echo <<<HTML
 	
 	
 
-	<th style="width:30%">acoes</th>
+	<th style="width:30%">Clique no ícone e baixe o arquivo.</th>
 
 	</tr> 
 	</thead> 
@@ -53,7 +54,7 @@ echo <<<HTML
 		<td>
 		
 
-		<a class="" href="$url_sistema/sistema/painel-admin/img/arquivos/$arquivo" target="_blank" ><i class="fa  fa-file-pdf-o" style="display: inline-block;" title="Arquivos do Curso"></i></a>
+		<a class="" href="$url_sistema/sistema/painel-aluno/paginas/cursos/abrir-apostila.php?arquivo={$arquivo_url}&download=1" target="_blank" ><i class="fa  fa-file-pdf-o" style="display: inline-block;" title="Baixar Gabarito"></i></a>
 
 
 

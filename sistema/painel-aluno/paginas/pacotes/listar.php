@@ -1,9 +1,31 @@
 <?php
 require_once("../../../conexao.php");
+require_once("../../../../config/env.php");
 $tabela = 'matriculas';
 
 @session_start();
 $id_usuario = $_SESSION['id'];
+
+// Regra bancaria do cartao para exibir o valor final ao aluno.
+$taxaFixaCartao = (float) env('EFI_CARD_FEE_FIXED', '0.29');
+$taxaPercentualCartao = ((float) env('EFI_CARD_FEE_PERCENT', '4.99')) / 100;
+$jurosMensalParcelado = ((float) env('EFI_CARD_INTEREST_MONTHLY', '1.99')) / 100;
+
+$calcularTotalCartaoCliente = static function (
+    float $valorLiquido,
+    int $parcelas,
+    float $taxaFixa,
+    float $taxaPercentual,
+    float $jurosMensal
+): float {
+    $parcelas = max(1, $parcelas);
+    $denominador = 1 - $taxaPercentual;
+    $baseBruta = $denominador > 0 ? (($valorLiquido + $taxaFixa) / $denominador) : $valorLiquido;
+    if ($parcelas > 1) {
+        $baseBruta *= pow(1 + $jurosMensal, $parcelas - 1);
+    }
+    return round(max($baseBruta, 0), 2);
+};
 
 
 echo <<<HTML
@@ -18,8 +40,8 @@ $matriculas = [];
 foreach ($res as $matricula) {
     $id_matricula = $matricula['id'];
 
-    // Agora busca os pagamentos referentes a essa matrícula
-    $stmt = $pdo->prepare("SELECT * FROM pagamentos_pix WHERE id_matricula = :id_matricula");
+    // Fluxo EFY: pagamento listado apenas por boletos no módulo de parcelas.
+    $stmt = $pdo->prepare("SELECT * FROM pagamentos_boleto WHERE id_matricula = :id_matricula");
     $stmt->bindParam(':id_matricula', $id_matricula);
     $stmt->execute();
     $pagamentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -47,7 +69,6 @@ if ($total_reg > 0) {
 	<thead> 
 	<tr> 
 	<th>Curso</th>
-	<th class="esc">Professor</th> 
 	<th class="esc">Cursos</th> 	
 	<th class="esc">Valor</th> 	
     <th class="esc">Forma de Pagamento</th> 
@@ -149,8 +170,26 @@ HTML;
 
 
 
+        // Valor exibido parte do subtotal (ja com cupom aplicado) e da forma de pagamento.
+        $valorBaseCalc = (float) $valor;
+        if ($valorBaseCalc <= 0) {
+            $valorBaseCalc = (float) ($res[$i]['valor'] ?? 0);
+        }
+        $formaPgtoMat = strtoupper(trim((string) ($matriculas[$i]['forma_pgto'] ?? '')));
+        if ($formaPgtoMat === 'CARTAO_DE_CREDITO') {
+            $valorExibido = $calcularTotalCartaoCliente(
+                max($valorBaseCalc, 0),
+                1,
+                $taxaFixaCartao,
+                $taxaPercentualCartao,
+                $jurosMensalParcelado
+            );
+        } else {
+            $valorExibido = round(max($valorBaseCalc, 0), 2);
+        }
+
         //FORMATAR VALORES
-        $valorF = number_format($valor, 2, ',', '.');
+        $valorF = number_format($valorExibido, 2, ',', '.');
         $dataF = implode('/', array_reverse(explode('-', $data)));
         
         
@@ -202,10 +241,9 @@ HTML;
 		
 
 		</td> 		
-		<td class="esc">{$nome_professor}</td>		
 		<td class="esc">$cursos</td>
 		
-		<td class="esc">R$ {$valor} </td>
+		<td class="esc">R$ {$valorF} </td>
         <td class="esc">
             <span style="font-size:10px">{$matriculas[$i]['forma_pgto']}</span>
         <button class="{$ocultar_pagar}" onclick="pagarCurso('AGUARDANDO', '{$id_do_curso}', '{$id}', '{$nome_curso}');"  type="submit" style="background-color: transparent;  border:none!important;">
@@ -632,6 +670,15 @@ HTML;
 
 <script>
     function pagarCurso(forma_pgto, id_curso, id, nome_curso) {
+        const bloqueadoComoVendedor = <?php echo (($_SESSION['nivel'] ?? '') === 'Vendedor') ? 'true' : 'false'; ?>;
+        if (bloqueadoComoVendedor) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Atencao',
+                text: 'Você não pode comprar como vendedor. Entre como aluno.'
+            });
+            return;
+        }
 
         forma_pgto = forma_pgto.toUpperCase();
 

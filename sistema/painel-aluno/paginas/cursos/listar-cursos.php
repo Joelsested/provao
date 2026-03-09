@@ -1,9 +1,31 @@
 <?php
 require_once("../../../conexao.php");
+require_once("../../../../config/env.php");
 $tabela = 'matriculas';
 
 @session_start();
 $id_usuario = $_SESSION['id'];
+
+// Regra bancaria do cartao para exibir o valor final ao aluno.
+$taxaFixaCartao = (float) env('EFI_CARD_FEE_FIXED', '0.29');
+$taxaPercentualCartao = ((float) env('EFI_CARD_FEE_PERCENT', '4.99')) / 100;
+$jurosMensalParcelado = ((float) env('EFI_CARD_INTEREST_MONTHLY', '1.99')) / 100;
+
+$calcularTotalCartaoCliente = static function (
+    float $valorLiquido,
+    int $parcelas,
+    float $taxaFixa,
+    float $taxaPercentual,
+    float $jurosMensal
+): float {
+    $parcelas = max(1, $parcelas);
+    $denominador = 1 - $taxaPercentual;
+    $baseBruta = $denominador > 0 ? (($valorLiquido + $taxaFixa) / $denominador) : $valorLiquido;
+    if ($parcelas > 1) {
+        $baseBruta *= pow(1 + $jurosMensal, $parcelas - 1);
+    }
+    return round(max($baseBruta, 0), 2);
+};
 
 $id_pacote = '%' . @$_POST['id'] . '%';
 
@@ -19,32 +41,14 @@ $matriculas = [];
 
 foreach ($res as $matricula) {
     $id_matricula = $matricula['id'];
-    $forma_pgto = $matricula['forma_pgto']; // Assumindo que este campo existe
-
-    // Busca os pagamentos baseado na forma de pagamento
-    if ($forma_pgto == 'PIX') {
-        $stmt = $pdo->prepare("SELECT * FROM pagamentos_pix WHERE id_matricula = :id_matricula");
-    } elseif ($forma_pgto == 'BOLETO') {
-        $stmt = $pdo->prepare("SELECT * FROM pagamentos_boleto WHERE id_matricula = :id_matricula");
-    } else {
-        // Se não houver forma de pagamento definida, tenta PIX primeiro
-        $stmt = $pdo->prepare("SELECT * FROM pagamentos_pix WHERE id_matricula = :id_matricula");
-    }
-
+    $forma_pgto = $matricula['forma_pgto'];
+    $stmt = $pdo->prepare("SELECT * FROM pagamentos_boleto WHERE id_matricula = :id_matricula");
     $stmt->bindParam(':id_matricula', $id_matricula);
     $stmt->execute();
     $pagamentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Se não encontrou em PIX e não era especificamente PIX, tenta BOLETO
-    if (empty($pagamentos) && $forma_pgto != 'PIX') {
-        $stmt = $pdo->prepare("SELECT * FROM pagamentos_boleto WHERE id_matricula = :id_matricula");
-        $stmt->bindParam(':id_matricula', $id_matricula);
-        $stmt->execute();
-        $pagamentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
     $matricula['pagamentos'] = $pagamentos;
-    $matricula['tipo_pagamento'] = !empty($pagamentos) ? (isset($pagamentos[0]['txid']) ? 'PIX' : 'BOLETO') : 'NENHUM';
+    $matricula['tipo_pagamento'] = !empty($pagamentos) ? 'BOLETO' : 'NENHUM';
 
     array_push($matriculas, $matricula);
 }
@@ -56,17 +60,14 @@ if ($total_reg > 0) {
 	<thead> 
 	<tr> 
 	<th>Curso</th>
-	<th class="esc">Professor</th> 
 	<th class="esc">Aulas</th> 
 	<th class="esc">Progresso</th> 
 	<th class="esc">Valor</th> 	
-    <th class="esc">Forma de Pagamento</th> 	
-    <th class="esc">Cupom</th> 	
-	<th class="esc">Data</th>
-	<th class="esc">Status</th> 	
-	<th>Ações</th>
-	</tr> 
-	</thead> 
+    <th class="esc">Data de Matr&iacute;cula</th> 	
+	<th class="esc">A&ccedil;&otilde;es</th>
+	<th class="esc">Status</th>
+	<th class="esc">Nota</th>
+	</tr> </thead> 
 	<tbody>
 HTML;
 
@@ -85,7 +86,7 @@ HTML;
         $boleto = $res[$i]['boleto'];
         $nota = $res[$i]['nota'];
 
-        // Verificar se existem pagamentos e definir variáveis com valores padrão
+        // Verificar se existem pagamentos e definir variaveis com valores padrao
         $qrcode = '';
         $texto_copia_cola = '';
         $valorC = '';
@@ -99,13 +100,7 @@ HTML;
         if (!empty($matriculas[$i]['pagamentos']) && isset($matriculas[$i]['pagamentos'][0])) {
             $pagamento = $matriculas[$i]['pagamentos'][0];
 
-            if ($tipo_pagamento == 'PIX') {
-                $qrcode = $pagamento['qrcode_url'] ?? '';
-                $texto_copia_cola = $pagamento['texto_copia_cola'] ?? '';
-                $valorC = $pagamento['valor'] ?? '';
-                $data_criacao = $pagamento['data_criacao'] ?? '';
-                $statusC = $pagamento['status'] ?? '';
-            } elseif ($tipo_pagamento == 'BOLETO') {
+            if ($tipo_pagamento == 'BOLETO') {
                 $url_boleto = $pagamento['url_boleto'] ?? '';
                 $linha_digitavel = $pagamento['linha_digitavel'] ?? '';
                 $nosso_numero = $pagamento['nosso_numero'] ?? '';
@@ -126,10 +121,6 @@ HTML;
             $tab = 'cursos';
             $link = 'curso-de-';
         }
-
-        // Remover esta query que estava incorreta
-        // $queryPix = $pdo->query("SELECT * FROM pagamentos_pix where id = '$curso'");
-        // $resPix = $queryPix->fetchAll(PDO::FETCH_ASSOC);
 
         $query2 = $pdo->prepare("SELECT * FROM {$tab} WHERE id = :id");
         $query2->execute(['id' => $curso]);
@@ -157,6 +148,35 @@ HTML;
         $query2->execute(['curso' => $curso]);
         $res2 = $query2->fetchAll(PDO::FETCH_ASSOC);
         $aulas = @count($res2);
+        $queryVideo = $pdo->prepare("SELECT COUNT(*) FROM aulas WHERE curso = :curso AND TRIM(IFNULL(link, '')) <> ''");
+        $queryVideo->execute(['curso' => $curso]);
+        $temVideoCurso = ((int) $queryVideo->fetchColumn()) > 0;
+        $iconeVideoHtml = $temVideoCurso ? '<small><i class="fa fa-video-camera text-dark"></i></small>' : '';
+        $queryPrimeiraAula = $pdo->prepare("SELECT id FROM aulas WHERE curso = :curso ORDER BY COALESCE(NULLIF(sequencia_aula, 0), 999999), COALESCE(NULLIF(num_aula, 0), 999999), id ASC LIMIT 1");
+        $queryPrimeiraAula->execute(['curso' => $curso]);
+        $idPrimeiraAula = (int) ($queryPrimeiraAula->fetchColumn() ?: 0);
+        $queryTemApostila = $pdo->prepare("SELECT COUNT(*) FROM aulas WHERE curso = :curso AND TRIM(IFNULL(apostila, '')) <> ''");
+        $queryTemApostila->execute(['curso' => $curso]);
+        $temApostilaCurso = ((int) $queryTemApostila->fetchColumn()) > 0;
+        $queryTemGabarito = $pdo->prepare("SELECT COUNT(*) FROM arquivos_cursos WHERE curso = :curso AND TRIM(IFNULL(arquivo, '')) <> ''");
+        $queryTemGabarito->execute(['curso' => $curso]);
+        $temGabaritoCurso = ((int) $queryTemGabarito->fetchColumn()) > 0;
+        $queryAulaPendente = $pdo->prepare("
+            SELECT id
+            FROM aulas
+            WHERE curso = :curso
+              AND COALESCE(NULLIF(sequencia_aula, 0), NULLIF(num_aula, 0), id) > :concluidas
+            ORDER BY COALESCE(NULLIF(sequencia_aula, 0), 999999), COALESCE(NULLIF(num_aula, 0), 999999), id ASC
+            LIMIT 1
+        ");
+        $queryAulaPendente->execute([
+            ':curso' => $curso,
+            ':concluidas' => (int) $aulas_concluidas
+        ]);
+        $idAulaPendente = (int) ($queryAulaPendente->fetchColumn() ?: 0);
+        if ($idAulaPendente <= 0) {
+            $idAulaPendente = $idPrimeiraAula;
+        }
 
         //verificar se o curso j? foi avaliado
         $query2 = $pdo->prepare("SELECT * FROM avaliacoes WHERE curso = :curso AND aluno = :aluno");
@@ -189,6 +209,7 @@ HTML;
             $ocultar_pagar = '';
             $classe_progress = '';
             $icones_finalizados = 'ocultar';
+            $statusTexto = 'Em andamento';
         } else if ($status == 'Finalizado') {
             $excluir = 'ocultar';
             $icone = 'fa-square';
@@ -198,6 +219,7 @@ HTML;
             $ocultar_pagar = 'ocultar';
             $classe_progress = '#015e23';
             $icones_finalizados = '';
+            $statusTexto = 'Finalizada';
         } else {
             $excluir = 'ocultar';
             $icone = 'fa-square';
@@ -207,6 +229,7 @@ HTML;
             $ocultar_pagar = 'ocultar';
             $classe_progress = '';
             $icones_finalizados = 'ocultar';
+            $statusTexto = 'Em andamento';
         }
 
         if ($nota >= 60) {
@@ -215,8 +238,26 @@ HTML;
             $ocul = 'ocultar';
         }
 
+        // Valor exibido parte do subtotal (ja com cupom aplicado) e da forma de pagamento.
+        $valorBaseCalc = (float) $valor;
+        if ($valorBaseCalc <= 0) {
+            $valorBaseCalc = (float) ($res[$i]['valor'] ?? 0);
+        }
+        $formaPgtoMat = strtoupper(trim((string) ($matriculas[$i]['forma_pgto'] ?? '')));
+        if ($formaPgtoMat === 'CARTAO_DE_CREDITO') {
+            $valorExibido = $calcularTotalCartaoCliente(
+                max($valorBaseCalc, 0),
+                1,
+                $taxaFixaCartao,
+                $taxaPercentualCartao,
+                $jurosMensalParcelado
+            );
+        } else {
+            $valorExibido = round(max($valorBaseCalc, 0), 2);
+        }
+
         //FORMATAR VALORES
-        $valorF = number_format($valor, 2, ',', '.');
+        $valorF = number_format($valorExibido, 2, ',', '.');
         $dataF = implode('/', array_reverse(explode('-', $data)));
 
         $classe_quest = 'ocultar';
@@ -241,6 +282,29 @@ HTML;
                 $classe_quest = '';
             }
         }
+        $nomeCursoJs = addslashes((string) $nome_curso);
+        $idMatJs = (int) $id;
+        $idCursoJs = (int) $id_do_curso;
+        $classePrincipal = "{$classe_nome} {$ocultar_aulas}";
+        $urlApostilaCurso = rtrim((string) $url_sistema, '/') . '/sistema/painel-aluno/paginas/cursos/abrir-apostila-curso.php?curso=' . $idCursoJs;
+        $urlAvaliacaoCurso = rtrim((string) $url_sistema, '/') . '/sistema/rel/avaliacoes_class2.php?id=' . (int) $id_usuario . '&id_curso=' . (int) $curso;
+        $podeAcessarConteudoJs = ($status === 'Aguardando') ? 'false' : 'true';
+        $temVideoCursoJs = $temVideoCurso ? 'true' : 'false';
+        $temApostilaCursoJs = $temApostilaCurso ? 'true' : 'false';
+        $temGabaritoCursoJs = $temGabaritoCurso ? 'true' : 'false';
+        $podeProvaCursoJs = ($classe_quest === '') ? 'true' : 'false';
+        $mediaAprovacao = isset($media_config) ? (float) $media_config : 60.0;
+        $notaPercentual = is_numeric($nota) ? (float) $nota : 0.0;
+        $notaEscala10 = $notaPercentual / 10;
+        $notaDisciplinaTexto = $nota !== '' ? number_format($notaEscala10, 1, ',', '.') : '-';
+        $provaAprovadaJs = ($notaPercentual >= $mediaAprovacao) ? 'true' : 'false';
+        $notaPercentualAttr = number_format($notaPercentual, 2, '.', '');
+        $notaEscala10Attr = number_format($notaEscala10, 1, '.', '');
+        $mediaAprovacaoAttr = number_format($mediaAprovacao, 2, '.', '');
+        $nomeCursoAttr = htmlspecialchars((string) $nome_curso, ENT_QUOTES, 'UTF-8');
+        $linkCursoAttr = htmlspecialchars((string) $link, ENT_QUOTES, 'UTF-8');
+        $urlApostilaCursoAttr = htmlspecialchars((string) $urlApostilaCurso, ENT_QUOTES, 'UTF-8');
+        $urlAvaliacaoCursoAttr = htmlspecialchars((string) $urlAvaliacaoCurso, ENT_QUOTES, 'UTF-8');
 
         if ($nota <= $media_config and $nota != "") {
             $classe_nota = '';
@@ -264,9 +328,9 @@ HTML;
         echo <<<HTML
 <tr> 
 		<td>		
-		<a href="#" onclick="abrirAulas('{$id}', '{$nome_curso}', '{$aulas}', '{$id_do_curso}', '{$link}')" class="{$classe_nome} $ocultar_aulas">	
+		<a href="javascript:void(0);" class="{$classePrincipal}">	
 		{$nome_curso}
-		<small><i class="fa fa-video-camera text-dark"></i>	</small>
+		{$iconeVideoHtml}
 		</a>
 
 			
@@ -292,106 +356,20 @@ HTML;
 		
 
 		</td> 		
-		<td class="esc">{$nome_professor}</td>		
 		<td class="esc">{$aulas_concluidas} / {$aulas}</td>
 		<td class="esc">
 			<div class="progress" style="height:15px; ">
   				<div class="progress-bar" role="progressbar" style="width: {$porcentagemAulas}%; background: {$classe_progress}" aria-valuenow="{$porcentagemAulas}" aria-valuemin="0" aria-valuemax="100">{$porcentagemAulasF}%</div>
 			</div>
 		</td>
-		<td class="esc">R$ {$valor} </td>
-        <td class="{$ocultar_pagar}">
-            <span style="font-size:10px">{$matriculas[$i]['forma_pgto']}</span>
-        <button onclick="pagarCurso('AGUARDANDO', '{$id_do_curso}', '{$id}', '{$nome_curso}');"  type="submit" style="background-color: transparent;  border:none!important;">
-                <i class="fa fa-money text-danger" ></i>
-                <span class="text-danger" style="margin-left:2px">Alterar</span>
-            </button>
-
-        </td>
-        <td class="{$ocultar_pagar} ">
-        
-            <button class="{$classe_cupom}" onclick="aplicarCupom('{$id_do_curso}');"  type="submit" style="background-color: transparent;  border:none!important;">
-                <i class="fa fa-money text-primary" ></i>
-                <span class="text-primary" style="margin-left:2px">Aplicar Cupom</span>
-            </button>
-
-            <span class="text-primary {$classe_cupom2}" style="margin-left:2px">{$valor_cupom}</span>
-
-        </td>
-		<td class="esc">{$dataF}</td>
+		<td class="esc">R$ {$valorF} </td>
+        <td class="esc">{$dataF}</td>
+		<td class="esc"><button type="button" class="btn btn-xs btn-primary" onclick="abrirModalAcoesCursoPorBotao(this)" data-id-mat="{$idMatJs}" data-id-curso="{$idCursoJs}" data-nome-curso="{$nomeCursoAttr}" data-total-aulas="{$aulas}" data-aulas-concluidas="{$aulas_concluidas}" data-id-primeira-aula="{$idPrimeiraAula}" data-id-aula-pendente="{$idAulaPendente}" data-link-curso="{$linkCursoAttr}" data-url-apostila="{$urlApostilaCursoAttr}" data-url-avaliacoes="{$urlAvaliacaoCursoAttr}" data-pode-acessar="{$podeAcessarConteudoJs}" data-tem-video="{$temVideoCursoJs}" data-tem-apostila="{$temApostilaCursoJs}" data-tem-gabarito="{$temGabaritoCursoJs}" data-pode-prova="{$podeProvaCursoJs}" data-prova-aprovada="{$provaAprovadaJs}" data-nota-percentual="{$notaPercentualAttr}" data-nota-escala10="{$notaEscala10Attr}" data-media-aprovacao="{$mediaAprovacaoAttr}">
+			A&ccedil;&otilde;es</button></td>
 		<td class="esc">
-
-		<i class="fa {$icone} $classe_square"></i>
-
-
-		</td>				
-		<td >
-
-
-		
-		
-		
-
-		<li class="dropdown head-dpdn2" style="display: inline-block;">
-		<a href="#" onclick="listardoc('{$curso}')" class="dropdown-toggle" title="Arquivos do aluno" data-toggle="dropdown" aria-expanded="false"><big><i class="fa fa-file-pdf-o text-success"></i></big></a>
-
-		<ul class="dropdown-menu" style="margin-left:-230px;">
-		<li>
-		<div  id="listar-docfin_{$curso}">
-		
-		</div>
-		</li>										
-		</ul>
-		</li>
-
-
-
-
-		
-
-
-
-		<form method="post" action="../rel/rel_certificado.php" target="_blank" class="{$icones_finalizados}" style="display: inline-block;">
-
-	<big>
-	
-		<!-- <a class='{$ocul}' href="https://{$url_sistema}/sistema/rel/avaliacoes_class2.php?id={$id_usuario}&id_curso={$curso}" target="_blank" title="Avaliações do aluno">
-		<small><span class="fa fa-file-pdf-o text-danger" ></span></small>
-		</a> -->
-
-		<a class='{$ocul}' href="javascript:void(0);" onclick="modalAvaliacao('{$url_sistema}/sistema/rel/avaliacoes_class2.php?id={$id_usuario}&id_curso={$curso}')" title="Avaliações do aluno">
-    	<small><span class="fa fa-file-pdf-o text-danger"></span></small>
-		</a>
-	
-	</big>
-		
-
-		<big><a class="{$icones_finalizados} {$ocultar_avaliar}" href="#" onclick="avaliar('{$curso}', '{$nome_curso}')" title="Avaliar Curso"><i class="fa fa-star amarelo"></i></a></big>
-
-		
-
-		</form>
-
-		
-		<big><a class="{$classe_quest}" href="#" onclick="questionario('{$curso}', '{$nome_curso}', '{$id}')" title="Iniciar Questionário"><i class="fa fa-question-circle-o verde"></i></a></big>
-
-		<small><span class="text-danger {$classe_nota}">Nota: {$nota}%</span></small>
-
-
-		<li class="dropdown head-dpdn2 {$excluir}" style="display: flex">
-		<a href="#" class="dropdown-toggle {$excluir}" data-toggle="dropdown" aria-expanded="false"><big><i class="fa fa-trash-o text-danger"></i></big></a>
-
-		<ul class="dropdown-menu" style="margin-left:-230px;">
-		<li>
-		<div class="notification_desc2">
-		<p>Confirmar Exclusão? <a href="#" onclick="excluir(this)" data-id="{$id}"><span class="text-danger">Sim</span></a></p>
-		</div>
-		</li>										
-		</ul>
-		</li>
-
-
+		{$statusTexto}
 		</td>
+		<td class="esc">{$notaDisciplinaTexto}</td>
 </tr>
 HTML;
 
@@ -404,7 +382,7 @@ HTML;
 HTML;
 
 } else {
-    echo 'Não possui nenhum curso matriculado!';
+    echo 'N&atilde;o possui nenhum curso matriculado!';
 }
 echo <<<HTML
 </small>
@@ -413,7 +391,7 @@ HTML;
 
 ?>
 <style>
-    /* Customização do SweetAlert2 */
+    /* Customizacao do SweetAlert2
     .financial-modal .swal2-popup {
         background: linear-gradient(135deg, #1a2035 0%, #121625 100%);
         border-radius: 16px;
@@ -462,7 +440,7 @@ HTML;
         margin: 1.5rem auto 0.5rem;
     }
 
-    /* Conteúdo do Modal */
+    /* Conteudo do Modal */
     .matricula-card {
         background-color: transparent;
         color: #fff;
@@ -637,7 +615,7 @@ HTML;
         margin-bottom: 0.5rem;
     }
 
-    /* Animações */
+    /* Animacoes */
     @keyframes fadeInUp {
         from {
             opacity: 0;
@@ -682,7 +660,7 @@ HTML;
                     <div class="col-sm-9 esquerda-mobile-input-botao">
                         <div class="form-group">
                             <input type="text" name="cupom" id="cupom" class="form-control" required
-                                placeholder="Código do Cupom">
+                                placeholder="Codigo do Cupom">
                         </div>
                     </div>
                     <div class="col-sm-3 direita-mobile-input-botao" style="margin-left:-20px">
@@ -698,7 +676,7 @@ HTML;
             width: '600px'
         });
 
-        // Capturar envio do formulário dentro do Swal
+        // Capturar envio do formulario dentro do Swal
         document.getElementById('cupom-desconto').addEventListener('submit', function (e) {
             e.preventDefault();
 
@@ -718,7 +696,7 @@ HTML;
                             icon: 'success',
                             title: 'Cupom aplicado!',
                             text: mensagem[0] + ' - Desconto ativado!',
-                            confirmButtonText: 'Atualizar página'
+                            confirmButtonText: 'Atualizar pagina'
                         }).then(() => {
                             location.reload();
                         });
@@ -750,17 +728,26 @@ HTML;
 
 <script>
     function pagarCurso(forma_pgto, id_curso, id, nome_curso) {
+        const bloqueadoComoVendedor = <?php echo (($_SESSION['nivel'] ?? '') === 'Vendedor') ? 'true' : 'false'; ?>;
+        if (bloqueadoComoVendedor) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Atencao',
+                text: 'Você não pode comprar como vendedor. Entre como aluno.'
+            });
+            return;
+        }
 
         forma_pgto = forma_pgto.toUpperCase();
 
         const showPaymentModal = () => {
             Swal.fire({
                 title: 'Escolha a forma de pagamento',
-                showDenyButton: true, // terceiro botão
+                showDenyButton: true, // terceiro botao
                 showCancelButton: true,
                 confirmButtonText: 'Boleto',
                 denyButtonText: 'Boleto Parcelado',
-                cancelButtonText: 'Cartão de Crédito',
+                cancelButtonText: 'Cartao de Credito',
                 allowOutsideClick: true,
                 allowEscapeKey: true
             }).then((result) => {
@@ -815,7 +802,7 @@ HTML;
                     id: id, 
                     nome_do_curso: nome_curso, 
                     quantidadeParcelas: parcelas,
-                    pacote: 'Não'
+                    pacote: 'Nao'
                 },
                 dataType: "json"
             }).done(function (response) {
@@ -884,7 +871,7 @@ HTML;
         codigoInput.select();
         codigoInput.setSelectionRange(0, 99999);
         document.execCommand("copy");
-        alert("Código PIX copiado para a área de transferência!");
+        alert("Codigo copiado para a area de transferencia!");
     }
 
 </script>
@@ -895,14 +882,15 @@ HTML;
         const normalizedHref = href.replace(/([^:]\/)\/+/g, '$1');
         Swal.fire({
             title: 'Visualizar Arquivo',
-            html: `<iframe src="${normalizedHref}" width="100%" height="400px" style="border: none;"></iframe>`,
-            width: '80%',
+            html: `<iframe src="${normalizedHref}" style="width:100%; height:78vh; border:none;"></iframe>`,
+            width: '86%',
             showCloseButton: true,
             showConfirmButton: false
         });
 
     }
 </script>
+
 
 
 

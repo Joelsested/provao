@@ -54,11 +54,15 @@ $nome = post_value(['nome'], $currentAluno['nome'] ?? '');
 $cpf = post_value(['cpf'], $currentAluno['cpf'] ?? '');
 $cpfDigits = digitsOnly($cpf);
 $email = post_value(['email'], $currentAluno['email'] ?? '');
+$emailNorm = function_exists('mb_strtolower') ? mb_strtolower(trim((string) $email), 'UTF-8') : strtolower(trim((string) $email));
+$currentEmailNorm = function_exists('mb_strtolower') ? mb_strtolower(trim((string) ($currentAluno['email'] ?? '')), 'UTF-8') : strtolower(trim((string) ($currentAluno['email'] ?? '')));
+$emailUnchanged = ($id !== '' && $emailNorm !== '' && $emailNorm === $currentEmailNorm);
 $telefone = post_value(['telefone'], $currentAluno['telefone'] ?? '');
 $rg = post_value(['rg', 'rg_usu'], $currentAluno['rg'] ?? '');
 $orgao_expedidor = post_value(['orgao_expedidor', 'expedidor_usu'], $currentAluno['orgao_expedidor'] ?? '');
 $expedicao = post_value(['expedicao', 'expedicao_usu'], $currentAluno['expedicao'] ?? '');
 $nascimento = post_value(['nascimento', 'nascimento_usu'], $currentAluno['nascimento'] ?? '');
+$nascimento = normalizeDate($nascimento);
 $cep = post_value(['cep', 'cep_usu'], $currentAluno['cep'] ?? '');
 $sexo = post_value(['sexo', 'sexo_usu'], $currentAluno['sexo'] ?? '');
 $endereco = post_value(['endereco', 'endereco_usu'], $currentAluno['endereco'] ?? '');
@@ -80,12 +84,14 @@ $dataTransferenciaAtendente = post_value(['data_transferencia_atendente'], '');
 $dataTransferenciaNorm = normalizeDate($dataTransferenciaAtendente);
 $isAdmin = ($_SESSION['nivel'] ?? '') === 'Administrador';
 $isSecretario = ($_SESSION['nivel'] ?? '') === 'Secretario';
+$adminOverrideTroca = $isAdmin && getConfigAdminOverrideTrocaAtendente($pdo);
 $allowedLevels = ['Vendedor', 'Tutor', 'Secretario', 'Tesoureiro'];
 $userNivel = $_SESSION['nivel'] ?? '';
 $allowedAtendenteLevels = ['Tutor', 'Secretario'];
 $currentResponsavelId = null;
 $currentResponsavelCadastro = null;
 $currentAtendenteNivel = '';
+$atendenteMudouEdicao = false;
 
 if ($id !== "") {
     $stmtAtual = $pdo->prepare("SELECT usuario, responsavel_id FROM $tabela WHERE id = :id");
@@ -121,6 +127,24 @@ if (trim($nascimento) === '') {
     echo 'Informe a data de nascimento.';
     exit();
 }
+
+$hojeRef = new DateTimeImmutable('today');
+try {
+    $nascimentoObj = new DateTimeImmutable($nascimento);
+} catch (Throwable $e) {
+    echo 'Data de nascimento inválida.';
+    exit();
+}
+if ($nascimentoObj > $hojeRef) {
+    echo 'Data de nascimento inválida.';
+    exit();
+}
+$idadeAluno = (int) $nascimentoObj->diff($hojeRef)->y;
+if ($idadeAluno < 18) {
+    echo 'Aluno menor de idade. Só admin pode liberar matrículas para alunos menores.';
+    exit();
+}
+
 if ($cpfDigits === '') {
     echo 'CPF invalido!';
     exit();
@@ -153,6 +177,11 @@ $responsavel = $stmtResp->fetch(PDO::FETCH_ASSOC);
 if (!$responsavel) {
     echo 'Responsavel invalido.';
     exit();
+}
+$nivelResponsavelSelecionado = (string) ($responsavel['nivel'] ?? '');
+if (in_array($nivelResponsavelSelecionado, ['Tutor', 'Secretario'], true) && (int) ($responsavel['id'] ?? 0) !== (int) $id_user) {
+	echo 'Atendente so pode ser responsavel quando faz a propria matricula.';
+	exit();
 }
 if ($id === "") {
     $dataMatriculaRef = date('Y-m-d');
@@ -199,15 +228,48 @@ if ($responsavel['nivel'] === 'Vendedor') {
 $responsavelProfessor = responsavelEhProfessor($pdo, $responsavel);
 if ($responsavelProfessor) {
 	if ((int) $atendenteId <= 0) {
-		echo 'Responsável com Professor marcado exige atendente ativo (Tutor ou Secretário).';
+		echo 'Responsavel com Professor marcado exige atendente ativo (Tutor ou Secretario).';
 		exit();
 	}
 	$stmtNivelDest = $pdo->prepare("SELECT nivel FROM usuarios WHERE id = :id AND ativo = 'Sim' LIMIT 1");
 	$stmtNivelDest->execute([':id' => (int) $atendenteId]);
 	$nivelDestino = (string) ($stmtNivelDest->fetchColumn() ?: '');
 	if (!in_array($nivelDestino, $allowedAtendenteLevels, true)) {
-		echo 'Atendente inválido para responsável com Professor marcado. Use Tutor ou Secretário ativo.';
+		echo 'Atendente invalido para responsavel com Professor marcado. Use Tutor ou Secretario ativo.';
 		exit();
+	}
+}
+
+if ($id !== "") {
+	$atendenteAtual = (int) ($currentResponsavelId ?? 0);
+	$atendenteNovo = (int) ($atendenteId ?? 0);
+	$atendenteMudouEdicao = ($atendenteNovo > 0 && $atendenteNovo !== $atendenteAtual);
+
+	if ($atendenteMudouEdicao) {
+		if (!$responsavelProfessor && !$adminOverrideTroca) {
+			echo 'Responsavel sem Professor nao permite trocar atendente.';
+			exit();
+		}
+
+		if ($dataTransferenciaAtendente !== '' && $dataTransferenciaNorm === '') {
+			echo 'Data de transferencia invalida.';
+			exit();
+		}
+
+		$dataTransferenciaNorm = $dataTransferenciaNorm !== '' ? $dataTransferenciaNorm : date('Y-m-d');
+		$dataMatricula = normalizeDate((string) ($currentAluno['data'] ?? ''));
+		if ($dataMatricula !== '' && $dataTransferenciaNorm < $dataMatricula) {
+			echo 'Data de transferencia nao pode ser anterior a data de matricula.';
+			exit();
+		}
+
+		if (!$adminOverrideTroca) {
+			$bloqueioTroca = podeTrocarAtendente($pdo, (int) $id, $atendenteNovo, $dataTransferenciaNorm);
+			if (!empty($bloqueioTroca['bloqueado'])) {
+				echo (string) ($bloqueioTroca['mensagem'] ?? 'Troca bloqueada por regra de comissao.');
+				exit();
+			}
+		}
 	}
 }
 
@@ -218,22 +280,28 @@ if ($senha === '') {
 }
 $senha_crip = md5($senha);
 
-//validar email duplicado
-$query = $pdo->prepare("SELECT * FROM $tabela where email = :email");
-$query->execute([':email' => $email]);
-$res = $query->fetchAll(PDO::FETCH_ASSOC);
-$total_reg = @count($res);
-if($total_reg > 0 and $res[0]['id'] != $id){
-	echo 'Email ja Cadastrado, escolha Outro!';
-	exit();
-}
+if (!$emailUnchanged) {
+	// validar email duplicado na tabela de alunos, ignorando o proprio registro em edicao
+	$stmtEmailAluno = $pdo->prepare("SELECT id FROM $tabela WHERE email = :email AND id <> :id LIMIT 1");
+	$stmtEmailAluno->execute([
+		':email' => $email,
+		':id' => (int) $id,
+	]);
+	if ($stmtEmailAluno->fetch(PDO::FETCH_ASSOC)) {
+		echo 'Email ja Cadastrado, escolha Outro!';
+		exit();
+	}
 
-$stmtUsuarioEmail = $pdo->prepare("SELECT id, id_pessoa, nivel FROM usuarios WHERE usuario = :email LIMIT 1");
-$stmtUsuarioEmail->execute([':email' => $email]);
-$usuarioEmail = $stmtUsuarioEmail->fetch(PDO::FETCH_ASSOC);
-if ($usuarioEmail && !($usuarioEmail['nivel'] === 'Aluno' && (int) $usuarioEmail['id_pessoa'] === (int) $id)) {
-	echo 'Email ja Cadastrado, escolha Outro!';
-	exit();
+	// validar email duplicado na tabela usuarios para outra pessoa/nível
+	$stmtUsuarioEmail = $pdo->prepare("SELECT id FROM usuarios WHERE usuario = :email AND (nivel <> 'Aluno' OR id_pessoa <> :id_pessoa) LIMIT 1");
+	$stmtUsuarioEmail->execute([
+		':email' => $email,
+		':id_pessoa' => (int) $id,
+	]);
+	if ($stmtUsuarioEmail->fetch(PDO::FETCH_ASSOC)) {
+		echo 'Email ja Cadastrado, escolha Outro!';
+		exit();
+	}
 }
 
 //validar cpf duplicado
@@ -407,7 +475,9 @@ $paramsUpdate = [
 	':id' => $id,
 ];
 if ($hasTransferCol) {
-	$paramsUpdate[':data_transferencia_atendente'] = (($isAdmin || $isSecretario) && $transferirResponsavelId && $dataTransferenciaNorm !== '') ? $dataTransferenciaNorm : ($currentAluno['data_transferencia_atendente'] ?? null);
+	$paramsUpdate[':data_transferencia_atendente'] = (($isAdmin || $isSecretario) && $atendenteMudouEdicao)
+		? $dataTransferenciaNorm
+		: ($currentAluno['data_transferencia_atendente'] ?? null);
 }
 if ($hasResponsavelCol) {
 	$paramsUpdate[':responsavel_id'] = $responsavelSelecionadoId;
@@ -431,7 +501,7 @@ if ($cpfDigits !== '') {
 }
 }
 
-if ($isAdmin && $id !== "" && $transferirResponsavelId && (int) $currentResponsavelId !== (int) $responsavelId) {
+if (($isAdmin || $isSecretario) && $id !== "" && $atendenteMudouEdicao) {
 	try {
 		$pdo->exec("CREATE TABLE IF NOT EXISTS transferencias_atendentes (
 			id int(11) NOT NULL AUTO_INCREMENT,
@@ -448,7 +518,7 @@ if ($isAdmin && $id !== "" && $transferirResponsavelId && (int) $currentResponsa
 		$stmtLog->execute([
 			':aluno_id' => (int) $id,
 			':anterior' => (int) $currentResponsavelId,
-			':novo' => (int) $responsavelId,
+			':novo' => (int) $atendenteId,
 			':motivo' => 'Transferencia via edicao',
 			':admin_id' => (int) ($_SESSION['id'] ?? 0),
 		]);
@@ -460,7 +530,7 @@ if ($isAdmin && $id !== "" && $transferirResponsavelId && (int) $currentResponsa
 		$pdo,
 		(int) $id,
 		(int) $currentResponsavelId,
-		(int) $responsavelId,
+		(int) $atendenteId,
 		'Transferencia via edicao',
 		'edicao',
 		(int) ($_SESSION['id'] ?? 0),
@@ -472,17 +542,3 @@ if ($isAdmin && $id !== "" && $transferirResponsavelId && (int) $currentResponsa
 
 
 echo 'Salvo com Sucesso';
-
- ?>
-
-if (($isAdmin || $isSecretario) && $id !== "" && $transferirResponsavelId && $dataTransferenciaAtendente !== '' && $dataTransferenciaNorm === '') {
-	echo 'Data de transferencia invalida.';
-	exit();
-}
-if (($isAdmin || $isSecretario) && $id !== "" && $transferirResponsavelId && $dataTransferenciaNorm !== '') {
-	$dataMatricula = normalizeDate((string) ($currentAluno['data'] ?? ''));
-	if ($dataMatricula !== '' && $dataTransferenciaNorm < $dataMatricula) {
-		echo 'Data de transferencia nao pode ser anterior a data de matricula.';
-		exit();
-	}
-}

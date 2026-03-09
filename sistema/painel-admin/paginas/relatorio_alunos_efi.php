@@ -9,8 +9,7 @@ $id_user = @$_SESSION['id'];
 $config = [
     'client_id' => $options['clientId'],
     'client_secret' => $options['clientSecret'],
-    'certificate_path' => $options['certificate'], // Apenas para PIX
-    'chave_pix' => $options['pixKey'] ?? '', // Sua chave PIX
+    'certificate_path' => $options['certificate'],
     'sandbox' => $options['sandbox'] // true para teste, false para produção
 ];
 $boletoPayment = new EFIBoletoPayment(

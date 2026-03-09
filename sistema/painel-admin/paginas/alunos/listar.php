@@ -7,6 +7,59 @@ $tabela = 'alunos';
 @session_start();
 
 $id_user = $_SESSION['id'];
+$nivel_usuario = $_SESSION['nivel'] ?? '';
+
+$niveisComAcessoPagina = ['Administrador', 'Secretario', 'Tesoureiro', 'Tutor', 'Parceiro', 'Professor', 'Vendedor'];
+$niveisVisaoTotal = ['Administrador', 'Secretario', 'Tesoureiro'];
+$niveisVisaoFiltrada = ['Professor', 'Tutor', 'Parceiro', 'Vendedor'];
+
+if (!in_array($nivel_usuario, $niveisComAcessoPagina, true)) {
+	echo 'Sem permissao para visualizar alunos.';
+	return;
+}
+
+function colunaExisteTabelaLocal(PDO $pdo, string $tabela, string $coluna): bool
+{
+	try {
+		$stmt = $pdo->prepare("SHOW COLUMNS FROM {$tabela} LIKE :coluna");
+		$stmt->execute([':coluna' => $coluna]);
+		return (bool) $stmt->fetch(PDO::FETCH_ASSOC);
+	} catch (Throwable $e) {
+		return false;
+	}
+}
+
+function garantirColunaLiberacaoMenorLocal(PDO $pdo): void
+{
+	if (colunaExisteTabelaLocal($pdo, 'alunos', 'liberado_menor_18')) {
+		return;
+	}
+	try {
+		$pdo->exec("ALTER TABLE alunos ADD COLUMN liberado_menor_18 TINYINT(1) NOT NULL DEFAULT 0");
+	} catch (Throwable $e) {
+		// Nao interrompe a listagem por falha de estrutura.
+	}
+}
+
+function idadeCompletaAnosLocal(string $dataNascimento, ?DateTimeImmutable $hojeRef = null): int
+{
+	$dataNormalizada = function_exists('normalizeDate') ? normalizeDate($dataNascimento) : trim($dataNascimento);
+	if ($dataNormalizada === '' || $dataNormalizada === '0000-00-00') {
+		return -1;
+	}
+	$hoje = $hojeRef ?: new DateTimeImmutable('today');
+	try {
+		$nascimento = new DateTimeImmutable($dataNormalizada);
+	} catch (Throwable $e) {
+		return -1;
+	}
+	if ($nascimento > $hoje) {
+		return -1;
+	}
+	return (int) $nascimento->diff($hoje)->y;
+}
+
+garantirColunaLiberacaoMenorLocal($pdo);
 
 
 
@@ -30,9 +83,9 @@ if (@$_SESSION['nivel'] != 'Secretario' and @$_SESSION['nivel'] != 'Administrado
 	$ocultar2 = '';
 }
 
-if (@$_SESSION['nivel'] == 'Professor' || @$_SESSION['nivel'] == 'Tutor' || @$_SESSION['nivel'] == 'Parceiro' || @$_SESSION['nivel'] == 'Vendedor') {
+if (in_array($nivel_usuario, $niveisVisaoFiltrada, true)) {
 
-	$nivelUsuario = @$_SESSION['nivel'];
+	$nivelUsuario = $nivel_usuario;
 	$hasResponsavelId = function_exists('tableHasColumn') ? tableHasColumn($pdo, $tabela, 'responsavel_id') : false;
 
 	if ($nivelUsuario == 'Vendedor' && $hasResponsavelId) {
@@ -44,7 +97,7 @@ if (@$_SESSION['nivel'] == 'Professor' || @$_SESSION['nivel'] == 'Tutor' || @$_S
 	$query->execute([':usuario' => $id_user]);
 	$res = $query->fetchAll(PDO::FETCH_ASSOC);
 	$total_reg = @count($res);
-} else {
+} elseif (in_array($nivel_usuario, $niveisVisaoTotal, true)) {
 	$query = $pdo->prepare("SELECT * FROM $tabela ORDER BY id desc");
 	$query->execute();
 	$res = $query->fetchAll(PDO::FETCH_ASSOC);
@@ -69,6 +122,9 @@ if (@$_SESSION['nivel'] == 'Professor' || @$_SESSION['nivel'] == 'Tutor' || @$_S
 	
 
 
+} else {
+	$res = [];
+	$total_reg = 0;
 }
 if ($total_reg > 0) {
 	echo <<<HTML
@@ -201,6 +257,31 @@ HTML;
 		$alunoJson = json_encode($alunoPayload, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
 		$alunoJsonAttr = htmlspecialchars($alunoJson, ENT_QUOTES, 'UTF-8');
 		$nome_js = addslashes($nome);
+		$idadeAluno = idadeCompletaAnosLocal((string) $nascimento);
+		$ehMenor = ($idadeAluno >= 0 && $idadeAluno < 18);
+		$liberadoMenor = (int) ($res[$i]['liberado_menor_18'] ?? 0) === 1;
+		$blocoMenorAdmin = '';
+		if ($nivel_usuario === 'Administrador' && $ehMenor) {
+			if ($liberadoMenor) {
+				$blocoMenorAdmin = <<<HTML
+            <div class="col-md-4 text-center mb-3">
+              <button type="button" class="btn btn-success btn-block" disabled>
+                <i class="fa fa-check"></i><br>
+                Menor já liberado
+              </button>
+            </div>
+HTML;
+			} else {
+				$blocoMenorAdmin = <<<HTML
+            <div class="col-md-4 text-center mb-3">
+              <a href="#" onclick="liberarMenorAluno('{$id}', '#actionsModal{$id}'); return false;" class="btn btn-warning btn-block">
+                <i class="fa fa-unlock"></i><br>
+                Liberar menor de 18
+              </a>
+            </div>
+HTML;
+			}
+		}
 
 
 
@@ -232,10 +313,13 @@ HTML;
 
 
 
+		$fotoLinha = trim((string)$foto);
+		$srcFoto = $fotoLinha !== '' ? "../painel-aluno/img/perfil/{$fotoLinha}" : "../painel-aluno/img/perfil/sem-perfil.jpg";
+
 		echo <<<HTML
 <tr class="{$classe_linha}"> 
 		<td>
-		<img src="../painel-aluno/img/perfil/{$foto}" width=30px" height="30px" class="mr-2">
+		<img src="{$srcFoto}" width="30px" height="30px" class="mr-2" onerror="this.onerror=null;this.src='../painel-aluno/img/perfil/sem-perfil.jpg';">
 		{$nome}	
 		</td> 
 		<td class="esc">
@@ -486,6 +570,7 @@ HTML;
                 Matriculado(a) Fundamental
               </a>
             </div>
+            {$blocoMenorAdmin}
           </div>
         </div>
         <div class="modal-footer">
@@ -504,7 +589,11 @@ HTML;
 	echo <<<HTML
 </tbody>
 <small><div align="center" id="mensagem-excluir"></div></small>
-</table>	
+</table>
+<div id="rodape_registros_alunos" style="margin-top:8px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:nowrap; overflow-x:auto;">
+    <div id="resumo_registros_alunos" style="color:#666; white-space:nowrap;"></div>
+    <div id="paginacao_registros_alunos" style="white-space:nowrap;"></div>
+</div>
 
 
 
@@ -527,6 +616,9 @@ HTML;
 $(document).ready(function () {
     let dtApi = null;
     let termoBuscaAtual = '';
+    let totalRegistrosTabela = $('#tabela tbody tr').length;
+    let paginaLocalAtual = 1;
+    let totalPaginasLocal = 1;
 
     function normalizarTexto(valor) {
         return (valor || '')
@@ -539,7 +631,7 @@ $(document).ready(function () {
     function aplicarBuscaLimiteLocal() {
         const busca = normalizarTexto(termoBuscaAtual);
         const limite = parseInt($('#mostrar_alunos_unico').val() || '10', 10);
-        let exibidos = 0;
+        const linhasCorrespondentes = [];
 
         $('#tabela tbody tr').each(function () {
             const textoLinha = normalizarTexto($(this).text());
@@ -548,13 +640,112 @@ $(document).ready(function () {
                 $(this).hide();
                 return;
             }
-            if (limite === -1 || exibidos < limite) {
-                $(this).show();
-                exibidos++;
+            linhasCorrespondentes.push($(this));
+        });
+
+        const totalFiltrado = linhasCorrespondentes.length;
+        if (limite === -1) {
+            paginaLocalAtual = 1;
+            totalPaginasLocal = 1;
+            linhasCorrespondentes.forEach(function ($linha) { $linha.show(); });
+            return { totalFiltrado: totalFiltrado, inicio: totalFiltrado ? 1 : 0, fim: totalFiltrado };
+        }
+
+        totalPaginasLocal = Math.max(1, Math.ceil(totalFiltrado / limite));
+        if (paginaLocalAtual > totalPaginasLocal) {
+            paginaLocalAtual = totalPaginasLocal;
+        }
+        if (paginaLocalAtual < 1) {
+            paginaLocalAtual = 1;
+        }
+
+        const inicioIndice = (paginaLocalAtual - 1) * limite;
+        const fimIndice = inicioIndice + limite;
+
+        linhasCorrespondentes.forEach(function ($linha, indice) {
+            if (indice >= inicioIndice && indice < fimIndice) {
+                $linha.show();
             } else {
-                $(this).hide();
+                $linha.hide();
             }
         });
+
+        const inicio = totalFiltrado ? (inicioIndice + 1) : 0;
+        const fim = Math.min(fimIndice, totalFiltrado);
+        return { totalFiltrado: totalFiltrado, inicio: inicio, fim: fim };
+    }
+
+    function renderizarPaginacaoLocal(totalFiltrado) {
+        const $paginacao = $('#paginacao_registros_alunos');
+        if (!$paginacao.length) {
+            return;
+        }
+
+        const limite = parseInt($('#mostrar_alunos_unico').val() || '10', 10);
+        if (dtApi || limite === -1 || totalFiltrado <= limite) {
+            $paginacao.html('');
+            return;
+        }
+
+        const paginas = Math.max(1, Math.ceil(totalFiltrado / limite));
+        const inicioJanela = Math.max(1, paginaLocalAtual - 2);
+        const fimJanela = Math.min(paginas, inicioJanela + 4);
+        let html = '<ul class="pagination" style="margin:0;">';
+
+        if (paginaLocalAtual > 1) {
+            html += '<li><a href="#" data-page="' + (paginaLocalAtual - 1) + '">Anterior</a></li>';
+        } else {
+            html += '<li class="disabled"><span>Anterior</span></li>';
+        }
+
+        for (let i = inicioJanela; i <= fimJanela; i++) {
+            if (i === paginaLocalAtual) {
+                html += '<li class="active"><span>' + i + '</span></li>';
+            } else {
+                html += '<li><a href="#" data-page="' + i + '">' + i + '</a></li>';
+            }
+        }
+
+        if (paginaLocalAtual < paginas) {
+            html += '<li><a href="#" data-page="' + (paginaLocalAtual + 1) + '">Próximo</a></li>';
+        } else {
+            html += '<li class="disabled"><span>Próximo</span></li>';
+        }
+
+        html += '</ul>';
+        $paginacao.html(html);
+    }
+
+    function atualizarResumoRegistros() {
+        if (!$('#resumo_registros_alunos').length) {
+            return;
+        }
+
+        if (dtApi) {
+            const info = dtApi.page.info();
+            const totalFiltrado = info ? info.recordsDisplay : 0;
+            const totalGeral = info ? info.recordsTotal : totalRegistrosTabela;
+            if (!totalFiltrado) {
+                $('#resumo_registros_alunos').text('Nenhum aluno encontrado.');
+                renderizarPaginacaoLocal(0);
+                return;
+            }
+            const inicio = (info.start || 0) + 1;
+            const fim = info.end || totalFiltrado;
+            $('#resumo_registros_alunos').text('Mostrando ' + inicio + ' até ' + fim + ' de ' + totalFiltrado + ' alunos' + (totalFiltrado !== totalGeral ? ' (total: ' + totalGeral + ')' : '') + '.');
+            renderizarPaginacaoLocal(totalFiltrado);
+            return;
+        }
+
+        const resultadoLocal = aplicarBuscaLimiteLocal();
+        const totalFiltradoLocal = resultadoLocal ? resultadoLocal.totalFiltrado : 0;
+        if (!totalFiltradoLocal) {
+            $('#resumo_registros_alunos').text('Nenhum aluno encontrado.');
+            renderizarPaginacaoLocal(0);
+            return;
+        }
+        $('#resumo_registros_alunos').text('Mostrando ' + resultadoLocal.inicio + ' até ' + resultadoLocal.fim + ' de ' + totalFiltradoLocal + ' alunos' + (totalFiltradoLocal !== totalRegistrosTabela ? ' (total: ' + totalRegistrosTabela + ')' : '') + '.');
+        renderizarPaginacaoLocal(totalFiltradoLocal);
     }
 
     function iniciarTabelaAlunos(tentativas) {
@@ -578,6 +769,19 @@ $(document).ready(function () {
         dtApi = $('#tabela').DataTable({
             ordering: false,
             stateSave: true,
+            stateLoadParams: function (settings, data) {
+                // Evita ficar preso em filtro salvo (ex.: apos troca de responsavel).
+                if (data && data.search) {
+                    data.search.search = '';
+                }
+                if (data && Array.isArray(data.columns)) {
+                    data.columns.forEach(function (col) {
+                        if (col && col.search) {
+                            col.search.search = '';
+                        }
+                    });
+                }
+            },
             search: {
                 smart: false
             },
@@ -600,29 +804,51 @@ $(document).ready(function () {
         });
         $('#tabela_filter').hide();
         $('#tabela_length').hide();
+        $('#tabela_info').hide();
         dtApi.page.len(parseInt($('#mostrar_alunos_unico').val() || '10', 10)).draw();
+        termoBuscaAtual = (dtApi.search() || '').toString();
+        $('#busca_alunos_unica').val(termoBuscaAtual);
+        atualizarResumoRegistros();
+        $('#tabela').on('draw.dt', function () {
+            $('#tabela_info').hide();
+            atualizarResumoRegistros();
+        });
     }
 
     $('#busca_alunos_unica').on('input', function () {
         termoBuscaAtual = $(this).val() || '';
+        paginaLocalAtual = 1;
         if (dtApi) {
             dtApi.search(termoBuscaAtual).draw();
+            atualizarResumoRegistros();
             return;
         }
-        aplicarBuscaLimiteLocal();
+        atualizarResumoRegistros();
     });
 
     $('#mostrar_alunos_unico').on('change', function () {
         const limite = parseInt($(this).val() || '10', 10);
+        paginaLocalAtual = 1;
         if (dtApi) {
             dtApi.page.len(limite).draw();
+            atualizarResumoRegistros();
             return;
         }
-        aplicarBuscaLimiteLocal();
+        atualizarResumoRegistros();
+    });
+
+    $(document).on('click', '#paginacao_registros_alunos a[data-page]', function (e) {
+        e.preventDefault();
+        const novaPagina = parseInt($(this).attr('data-page') || '1', 10);
+        if (!Number.isNaN(novaPagina) && novaPagina >= 1) {
+            paginaLocalAtual = novaPagina;
+            atualizarResumoRegistros();
+        }
     });
 
     iniciarTabelaAlunos(20);
     aplicarBuscaLimiteLocal();
+    atualizarResumoRegistros();
     $('#busca_alunos_unica').focus();
 });
 </script>
@@ -643,6 +869,47 @@ $(document).ready(function () {
 				}
 				excluir(id);
 			}
+		});
+	}
+
+	function liberarMenorAluno(id, modalId) {
+		Swal.fire({
+			title: 'Liberar matrícula de menor?',
+			text: 'Esta ação permite matrícula para aluno menor de 18 anos. Apenas admin pode liberar.',
+			icon: 'warning',
+			showCancelButton: true,
+			confirmButtonText: 'Liberar',
+			cancelButtonText: 'Cancelar'
+		}).then((result) => {
+			if (!result.isConfirmed) {
+				return;
+			}
+
+			$.ajax({
+				url: 'paginas/alunos/liberar-menor.php',
+				method: 'POST',
+				dataType: 'json',
+				data: { id: id },
+				success: function (resp) {
+					if (resp && resp.status === 'success') {
+						if (modalId) {
+							$(modalId).modal('hide');
+						}
+						Swal.fire('Sucesso', resp.message || 'Liberação realizada.', 'success').then(() => {
+							if (typeof listar === 'function') {
+								listar();
+							} else {
+								location.reload();
+							}
+						});
+					} else {
+						Swal.fire('Atenção', (resp && resp.message) ? resp.message : 'Não foi possível liberar o aluno.', 'warning');
+					}
+				},
+				error: function () {
+					Swal.fire('Erro', 'Falha na comunicação com o servidor.', 'error');
+				}
+			});
 		});
 	}
 </script>
@@ -1398,9 +1665,10 @@ function gerarDeclaracaoMedioAluno(id) {
 				
 				<div class="spinner"></div>
 			</div>
-			<iframe id="pdf-iframe" src="${normalizedHref}" width="100%" height="500px" style="border: none; display: none;" onload="hideLoading()"></iframe>
+			<iframe id="pdf-iframe" src="${normalizedHref}" width="100%" style="height: 78vh; min-height: 620px; border: none; display: none;" onload="hideLoading()"></iframe>
 		`,
 			width: '80%',
+			padding: '0.6rem',
 			showCloseButton: true,
 			showConfirmButton: false,
 			didOpen: () => {

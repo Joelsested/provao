@@ -1,28 +1,53 @@
 <?php
 require_once("../../../conexao.php");
+require_once(__DIR__ . '/../../aluno_context.php');
 $tabela = 'aulas';
 @session_start();
-$id_aluno = $_POST['id_usu'];
+$id_aluno = isset($_SESSION['id']) ? (int) $_SESSION['id'] : 0;
+if ($id_aluno <= 0 && isset($_POST['id_usu'])) {
+  $id_aluno = (int) $_POST['id_usu'];
+}
 
-$id_do_curso_pag = $_POST['id'];
-$id_mat = $_POST['id_mat'];
+$id_do_curso_pag = (int) ($_POST['id'] ?? 0);
+$id_mat = (int) ($_POST['id_mat'] ?? 0);
+$alunoContextoIds = aluno_context_ids($pdo);
 
+function montarUrlApostila($arquivo, $urlSistema)
+{
+  $arquivo = trim((string) $arquivo);
+  if ($arquivo === '') {
+    return '';
+  }
+  if (preg_match('#^https?://#i', $arquivo)) {
+    return $arquivo;
+  }
+  return rtrim($urlSistema, '/') . '/sistema/painel-aluno/paginas/cursos/abrir-apostila.php?arquivo=' . rawurlencode($arquivo);
+}
 
-//verificar se o aluno está matriculado no curso
-$query_m = $pdo->prepare("SELECT * FROM matriculas WHERE id_curso = :curso AND aluno = :aluno AND status != 'Aguardando'");
-$query_m->execute(['curso' => $id_do_curso_pag, 'aluno' => $id_aluno]);
-$res_m = $query_m->fetchAll(PDO::FETCH_ASSOC);
+// Usa a matricula clicada como fonte de verdade para evitar divergencia no id_curso vindo do front
+$paramsMatricula = [':id' => $id_mat];
+$whereAlunoMatricula = aluno_context_bind_in('aluno', $alunoContextoIds, $paramsMatricula, 'aluno_mat');
+$query_m = $pdo->prepare("SELECT * FROM matriculas WHERE id = :id AND {$whereAlunoMatricula} LIMIT 1");
+$query_m->execute($paramsMatricula);
+$matricula = $query_m->fetch(PDO::FETCH_ASSOC);
 
-if (@count($res_m) == 0) {
+if (!$matricula && $id_do_curso_pag > 0) {
+  // fallback para fluxos antigos
+  $paramsFallback = [':curso' => $id_do_curso_pag];
+  $whereAlunoFallback = aluno_context_bind_in('aluno', $alunoContextoIds, $paramsFallback, 'aluno_fb');
+  $query_m = $pdo->prepare("SELECT * FROM matriculas WHERE id_curso = :curso AND {$whereAlunoFallback} AND status != 'Aguardando' ORDER BY id desc LIMIT 1");
+  $query_m->execute($paramsFallback);
+  $matricula = $query_m->fetch(PDO::FETCH_ASSOC);
+}
+
+if (!$matricula || ($matricula['status'] ?? '') === 'Aguardando') {
+  @error_log("LISTAR_AULAS_BLOQUEADO usuario={$id_aluno} curso_post={$id_do_curso_pag} id_mat={$id_mat} sessao=" . session_id());
   echo 'Você não está matriculado neste curso!';
   exit();
 }
 
-
-$query_m = $pdo->prepare("SELECT * FROM matriculas WHERE id = :id ORDER BY id asc");
-$query_m->execute(['id' => $id_mat]);
-$res_m = $query_m->fetchAll(PDO::FETCH_ASSOC);
-$total_aulas_conc = $res_m[0]['aulas_concluidas'];
+$id_do_curso_pag = (int) $matricula['id_curso'];
+$total_aulas_conc = (int) $matricula['aulas_concluidas'];
 
 
 $query_m = $pdo->prepare("SELECT * FROM cursos WHERE id = :id");
@@ -68,6 +93,7 @@ if ($total_reg_m > 0) {
         $link = $res[$i]['link'];
         $seq_aula = $res[$i]['sequencia_aula'];
         $apostila = $res[$i]['apostila'];
+        $url_apostila = montarUrlApostila($apostila, $url_sistema);
 
 
 
@@ -100,7 +126,9 @@ if ($total_reg_m > 0) {
 				<span class="{$cor_aula}">Aula {$num_aula} - {$nome_aula}</span>
 				</small>
 				</a>
-					<a class="{$esconder}" href="$url_sistema/sistema/painel-admin/img/arquivos/$apostila" target="_blank" ><i class="fa  fa-file-pdf-o" style="display: inline-block;" title="apostila"></i></a>
+					<button class="{$esconder}" type="button" onclick='verApostila("{$url_apostila}")' style="margin-left: 10px;">
+          <i class="fa  fa-file-pdf-o" style="display: inline-block;" title="apostila"></i>
+        </button>
 				<span class="{$ocultar_span}">
 				<small>
 				<i class="fa fa-video-camera {$cor_aula}" style="margin-right: 2px"></i>
@@ -144,6 +172,7 @@ HTML;
       $num_aula = $res[$i]['num_aula'];
       $link = $res[$i]['link'];
       $apostila = $res[$i]['apostila'];
+      $url_apostila = montarUrlApostila($apostila, $url_sistema);
 
 
 
@@ -183,7 +212,7 @@ HTML;
 				<!-- <a class="{$esconder}" href="$url_sistema/sistema/painel-admin/img/arquivos/$apostila" target="_blank" ><i class="fa  fa-file-pdf-o" style="display: inline-block;" title="apostila"></i></a> -->
 				<!-- <a class="{$esconder}" href="https://google.com" target="_blank" ><i class="fa  fa-file-pdf-o" style="display: inline-block;" title="apostila"></i></a> -->
         
-        <button class="{$esconder}" onclick='verApostila("<?php echo $apostila ?>");' style="margin-left: 10px;">
+        <button class="{$esconder}" type="button" onclick='verApostila("{$url_apostila}")' style="margin-left: 10px;">
         <i class="fa  fa-file-pdf-o" style="display: inline-block;" title="apostila"></i>
         </button>
 				<span class="{$ocultar_span}">
@@ -211,19 +240,15 @@ HTML;
 
 <script>
 
-  function verApostila(apostila) {
-    const path = apostila.replace(/<\?php echo\s*|\s*\?>/g, '');
-
-    const file = `/sistema/painel-admin/img/arquivos/${path}`
-
-    console.log(file);
-    Swal.fire({
-      title: 'Visualizar Aula',
-      html: `<iframe src="${file}" width="100%" height="500px" style="border: none;"></iframe>`,
-      width: '100%',
-      showCloseButton: true,
-      showConfirmButton: false
-    });
+  function verApostila(file) {
+    if (!file) {
+      return;
+    }
+    var novaAba = window.open(file, '_blank');
+    if (!novaAba) {
+      window.location.href = file;
+    }
   }
 
 </script>
+

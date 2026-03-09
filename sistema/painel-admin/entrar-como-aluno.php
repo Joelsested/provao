@@ -82,13 +82,21 @@ function sincronizarDadosAlunoDoVendedor(
     $stmtUpdAluno = $pdo->prepare($sqlAluno);
     $stmtUpdAluno->execute($paramsAluno);
 
-    $stmtUpdUsuario = $pdo->prepare("UPDATE usuarios SET nome = :nome, cpf = :cpf, foto = :foto WHERE id = :id AND nivel = 'Aluno'");
-    $stmtUpdUsuario->execute([
+    $emailAluno = trim((string) ($dadosAluno['email'] ?? ''));
+    $sqlUsuario = "UPDATE usuarios SET nome = :nome, cpf = :cpf, foto = :foto";
+    $paramsUsuario = [
         ':nome' => (string) ($dadosAluno['nome'] ?? ''),
         ':cpf' => (string) ($dadosAluno['cpf'] ?? ''),
         ':foto' => (string) ($dadosAluno['foto'] ?? 'sem-perfil.jpg'),
         ':id' => $usuarioAlunoId
-    ]);
+    ];
+    if ($emailAluno !== '') {
+        $sqlUsuario .= ", usuario = :usuario";
+        $paramsUsuario[':usuario'] = $emailAluno;
+    }
+    $sqlUsuario .= " WHERE id = :id AND nivel = 'Aluno'";
+    $stmtUpdUsuario = $pdo->prepare($sqlUsuario);
+    $stmtUpdUsuario->execute($paramsUsuario);
 }
 
 function buscarOuCriarAlunoDoVendedor(PDO $pdo, int $usuarioVendedorId, array $vendedor, int $idPessoaVendedor): int
@@ -139,6 +147,11 @@ function buscarOuCriarAlunoDoVendedor(PDO $pdo, int $usuarioVendedorId, array $v
             'telefone' => $telefoneAluno,
             'foto' => $fotoAluno
         ], $temResponsavelCol);
+        if (function_exists('salvarVinculoVendedorAluno')) {
+            salvarVinculoVendedorAluno($pdo, $usuarioVendedorId, $usuarioAlunoId);
+        } elseif (function_exists('tentarVinculoVendedorAlunoPorCpf')) {
+            tentarVinculoVendedorAlunoPorCpf($pdo, $cpfDigits);
+        }
         return $usuarioAlunoId;
     }
 
@@ -249,6 +262,12 @@ function buscarOuCriarAlunoDoVendedor(PDO $pdo, int $usuarioVendedorId, array $v
             throw new Exception('Falha ao criar usuario aluno.');
         }
 
+        if (function_exists('salvarVinculoVendedorAluno')) {
+            salvarVinculoVendedorAluno($pdo, $usuarioVendedorId, $usuarioAlunoId);
+        } elseif (function_exists('tentarVinculoVendedorAlunoPorCpf')) {
+            tentarVinculoVendedorAlunoPorCpf($pdo, $cpfDigits);
+        }
+
         $pdo->commit();
         return $usuarioAlunoId;
     } catch (Exception $e) {
@@ -345,6 +364,9 @@ $stmtAluno->execute([':id' => $usuarioAlunoId]);
 $aluno = $stmtAluno->fetch(PDO::FETCH_ASSOC) ?: [];
 if (($aluno['nivel'] ?? '') !== 'Aluno' || ($aluno['ativo'] ?? '') !== 'Sim') {
     sairComMensagem('Conta de aluno invalida ou inativa.');
+}
+if (function_exists('salvarVinculoVendedorAluno')) {
+    salvarVinculoVendedorAluno($pdo, $usuarioVendedorId, $usuarioAlunoId);
 }
 
 $_SESSION['switch_back_id'] = $usuarioSessao;

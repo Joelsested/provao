@@ -2109,6 +2109,15 @@ document.getElementById("paymentForm").addEventListener("submit", function (e) {
 
 
 	function pagamento(id, nome, valor, modal) {
+		const vendedorLogado = <?php echo ($nivel == "Vendedor") ? 'true' : 'false'; ?>;
+		if (vendedorLogado) {
+			Swal.fire({
+				icon: 'warning',
+				title: 'Atencao',
+				text: 'Voce nao pode compra como vendedor, entrar como aluno'
+			});
+			return;
+		}
 
 		$('#nome_curso_' + modal).text(nome);
 
@@ -2312,6 +2321,15 @@ $("#form-cadastro").submit(function (event) {
 
 
 	function pagamento(id, nome, valor, modal) {
+		const vendedorLogado = <?php echo ($nivel == "Vendedor") ? 'true' : 'false'; ?>;
+		if (vendedorLogado) {
+			Swal.fire({
+				icon: 'warning',
+				title: 'Atencao',
+				text: 'Voce nao pode compra como vendedor, entrar como aluno'
+			});
+			return;
+		}
 
 		$('#nome_curso_' + modal).text(nome);
 
@@ -2494,14 +2512,14 @@ $("#form-login").submit(function () {
 		success: function (mensagem) {
 			$('#msg-login2').text('');
 			$('#msg-login2').removeClass()
-			mensagem = mensagem.split('-');
+			var partes = (mensagem || '').split('-');
 
 
-			if (mensagem[0].trim() == "Logado com Sucesso") {
+			if (partes[0].trim() == "Logado com Sucesso") {
 
 
 				$('#btn-fechar-login').click();
-				$('#id_do_aluno').val(mensagem[1])
+				$('#id_do_aluno').val(partes[1])
 				pagamento(id, nome, valor, modal)
 
 
@@ -2509,7 +2527,7 @@ $("#form-login").submit(function () {
 
 
 				$('#msg-login2').addClass('text-danger')
-				$('#msg-login2').text(mensagem)
+				$('#msg-login2').text(partes.join('-'))
 			}
 
 

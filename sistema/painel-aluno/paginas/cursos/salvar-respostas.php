@@ -47,7 +47,7 @@ $total_reg = @count($res);
 
 if ($total_reg > 0) {
 
-	$query = $pdo->prepare("UPDATE {$tabela} SET pergunta = :pergunta, id_curso = :curso, id_aluno = :aluno, resposta = :resposta, letra = :letra, numeracao = :numeracao, correta = :correta WHERE pergunta = :pergunta");
+	$query = $pdo->prepare("UPDATE {$tabela} SET pergunta = :pergunta, id_curso = :curso, id_aluno = :aluno, resposta = :resposta, letra = :letra, numeracao = :numeracao, correta = :correta WHERE pergunta = :pergunta AND id_curso = :curso AND id_aluno = :aluno");
 
 } else {
 	$query = $pdo->prepare("INSERT INTO {$tabela} SET pergunta = :pergunta, id_curso = :curso, id_aluno = :aluno, resposta = :resposta, letra = :letra, numeracao = :numeracao, correta = :correta");
