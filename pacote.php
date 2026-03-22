@@ -1,24 +1,17 @@
 <?php
 require_once("sistema/conexao.php");
-require_once('pgtos/cartao/ApiConfig.php');
 // include('active_gateway.php');
 ?>
 
 <body>
 
-	<?php if (!empty($mp_enabled)) { ?>
-		<script src="https://sdk.mercadopago.com/js/v2"></script>
-	<?php } ?>
 	<script src="sistema/painel-admin/js/sweetalert2.js"></script>
 </body>
 
 <script>
 
-	const mpEnabled = <?php echo !empty($mp_enabled) ? 'true' : 'false'; ?>;
+	const mpEnabled = false;
 	let mp = null;
-	if (mpEnabled && "<?php echo $public_key ?>" !== "") {
-		mp = new MercadoPago("<?php echo $public_key ?>");
-	}
 
 </script>
 
@@ -351,7 +344,7 @@ require_once("cabecalho.php");
 
 
 
-			<a href="https://www.youtube.com/watcháv=dHvkSxQcNkY" title="Dúvidas? Clique aqui para assitir o vídeo"
+			<a href="https://www.youtube.com/watch?v=dHvkSxQcNkY" title="Dúvidas? Clique aqui para assistir o vídeo"
 				target="_blank"><i style="margin-left:3px; color:#b00404"
 					class="fa fa-question-circle text-danger ml-2 "></i></a>
 
@@ -1225,7 +1218,7 @@ require_once("cabecalho.php");
 
 									<label class="form-check-label" for="exampleCheck1"><small>Aceitar <a href="termos"
 												target="_blank">Termos e Condições</a> e <a href="politica"
-												target="_blank">Politíca de Privacidade</a></small></label>
+												target="_blank">Política de Privacidade</a></small></label>
 
 								</div>
 
@@ -1791,7 +1784,7 @@ require_once("cabecalho.php");
 
 
 
-				<form action="pgtos/boleto/index.php" method="post" target="_blank">
+					<form action="efi/index.php" method="get" target="_blank">
 
 					<div class="row">
 
@@ -1801,8 +1794,8 @@ require_once("cabecalho.php");
 
 							<div class="form-group" align="center">
 
-								<input type="text" name="cpf" id="cpf" class="form-control" required="required"
-									style="width:80%" placeholder="CPF Válido">
+									<input type="text" name="cpf" id="cpf" class="form-control"
+										style="width:80%" placeholder="CPF Válido">
 
 							</div>
 
@@ -1825,8 +1818,11 @@ require_once("cabecalho.php");
 
 
 
-					<input type="hidden" name="id" value="<?php echo $id_do_curso_pag ?>">
-					<input type="hidden" name="pacote" value="Sim">
+						<input type="hidden" name="formaDePagamento" value="BOLETO">
+						<input type="hidden" name="quantidadeParcelas" value="1">
+						<input type="hidden" name="id_do_curso" value="<?php echo $id_do_curso_pag ?>">
+						<input type="hidden" name="nome_do_curso" value="<?php echo htmlspecialchars($nome_do_curso_pag, ENT_QUOTES, 'UTF-8'); ?>">
+						<input type="hidden" name="pacote" value="Sim">
 
 
 
@@ -2057,7 +2053,7 @@ document.getElementById("paymentForm").addEventListener("submit", function (e) {
 
 		const form = this;
 
-		// 👉 Criando campos extras dinamicamente
+		// Criando campos extras dinamicamente
 		const extraData = {
 			tokenSeguranca: "TOKEN"
 		};
@@ -2073,7 +2069,7 @@ document.getElementById("paymentForm").addEventListener("submit", function (e) {
 			input.value = extraData[key];
 		}
 
-		// 👉 Pegar valores de todos os campos do formulário
+		// Pegar valores de todos os campos do formulário
 		const formData = new FormData(form);
 		const values = {};
 		formData.forEach((value, key) => {
@@ -2728,47 +2724,10 @@ $('.toggle-password').on('click', function () {
 
 <script type="text/javascript">
 
-	function listarBotaoMP() {
-
-		if (!mpEnabled) {
+		function listarBotaoMP() {
 			$("#listar-btn-mp").html('');
 			return;
 		}
-		var id = '<?= $id_do_curso_pag ?>';
-
-		var nome = '<?= $nome_do_curso_pag ?>';
-
-		var aluno = $('#id_do_aluno').val();
-
-		var pacote = 'Sim';
-
-
-
-
-
-		$.ajax({
-
-			url: "ajax/cursos/listar-btn-mp.php",
-
-			method: 'POST',
-
-			data: { id, nome, aluno, pacote },
-
-			dataType: "html",
-
-
-
-			success: function (result) {
-
-				$("#listar-btn-mp").html(result);
-
-
-
-			}
-
-		});
-
-	}
 
 </script>
 
@@ -2954,7 +2913,7 @@ if (@$_POST['painel_aluno'] == 'sim') {
 
 			} else if (selectedPayment.value === "cartao_de_credito") {
 
-				form.action = "pagamentos_novo/index.php";
+				form.action = "efi/card_payment.php";
 
 			}
 
@@ -2998,12 +2957,12 @@ if (@$_POST['painel_aluno'] == 'sim') {
 			const quantidade = parseInt(parcelasSelect.value);
 			if (quantidade === 1) {
 				const valorPorParcela = (valorCurso / quantidade).toFixed(2);
-				valorParceladoDiv.innerHTML = `A parcela ficará em <span style="color:#ff8800; font-zize: 16px; font-weight: bold;">R$ ${valorPorParcela.replace('.', ',')}</span>`;
+				valorParceladoDiv.innerHTML = `A parcela ficará em <span style="color:#ff8800; font-size: 16px; font-weight: bold;">R$ ${valorPorParcela.replace('.', ',')}</span>`;
 				valorParceladoDiv.style.display = 'block';
 			}
 			if (quantidade >= 2) {
 				const valorPorParcela = (valorCurso / quantidade).toFixed(2);
-				valorParceladoDiv.innerHTML = `Cada parcela ficará em <span style="color:#ff8800; font-zize: 16px; font-weight: bold;">R$ ${valorPorParcela.replace('.', ',')}</span>`;
+				valorParceladoDiv.innerHTML = `Cada parcela ficará em <span style="color:#ff8800; font-size: 16px; font-weight: bold;">R$ ${valorPorParcela.replace('.', ',')}</span>`;
 				valorParceladoDiv.style.display = 'block';
 			}
 		}
@@ -3012,6 +2971,7 @@ if (@$_POST['painel_aluno'] == 'sim') {
 	// Eventos
 	document.getElementById('quantidadeDeParcelas').addEventListener('change', atualizarValorParcelado);
 </script>
+
 
 
 

@@ -1,24 +1,17 @@
 <?php
 require_once("sistema/conexao.php");
-require_once('pgtos/cartao/ApiConfig.php');
 ?>
 
 <body>
 
-	<?php if (!empty($mp_enabled)) { ?>
-		<script src="https://sdk.mercadopago.com/js/v2"></script>
-	<?php } ?>
 	<script src="sistema/painel-admin/js/sweetalert2.js"></script>
 
 </body>
 
 <script>
 
-	const mpEnabled = <?php echo !empty($mp_enabled) ? 'true' : 'false'; ?>;
+	const mpEnabled = false;
 	let mp = null;
-	if (mpEnabled && "<?php echo $public_key ?>" !== "") {
-		mp = new MercadoPago("<?php echo $public_key ?>");
-	}
 
 </script>
 
@@ -362,7 +355,7 @@ require_once("cabecalho.php");
 
 
 
-			<a href="https://www.youtube.com/watcháv=dHvkSxQcNkY" title="Dúvidas? Clique aqui para assitir o vídeo"
+			<a href="https://www.youtube.com/watch?v=dHvkSxQcNkY" title="Dúvidas? Clique aqui para assistir o vídeo"
 				target="_blank"><i style="margin-left:3px; color:#b00404"
 					class="fa fa-question-circle text-danger ml-2 "></i></a>
 
@@ -1552,7 +1545,7 @@ require_once("cabecalho.php");
 
 									<label class="form-check-label" for="exampleCheck1"><small>Aceitar <a href="termos"
 												target="_blank">Termos e Condições</a> e <a href="politica"
-												target="_blank">Politíca de Privacidade</a></small></label>
+												target="_blank">Política de Privacidade</a></small></label>
 
 								</div>
 
@@ -1871,7 +1864,7 @@ require_once("cabecalho.php");
 
 			<div class="modal-body">
 
-				<form action="pgtos/boleto/index.php" method="post" target="_blank">
+					<form action="efi/index.php" method="get" target="_blank">
 
 					<div class="row">
 
@@ -1879,8 +1872,8 @@ require_once("cabecalho.php");
 
 							<div class="form-group" align="center">
 
-								<input type="text" name="cpf" id="cpf" class="form-control" required="required"
-									style="width:80%" placeholder="CPF Válido">
+									<input type="text" name="cpf" id="cpf" class="form-control"
+										style="width:80%" placeholder="CPF Válido">
 
 							</div>
 
@@ -1896,8 +1889,11 @@ require_once("cabecalho.php");
 
 					</div>
 
-					<input type="hidden" name="id" value="<?php echo $id_do_curso_pag ?>">
-					<input type="hidden" name="pacote" value="Nao">
+						<input type="hidden" name="formaDePagamento" value="BOLETO">
+						<input type="hidden" name="quantidadeParcelas" value="1">
+						<input type="hidden" name="id_do_curso" value="<?php echo $id_do_curso_pag ?>">
+						<input type="hidden" name="nome_do_curso" value="<?php echo htmlspecialchars($nome_do_curso_pag, ENT_QUOTES, 'UTF-8'); ?>">
+						<input type="hidden" name="pacote" value="Nao">
 
 
 				</form>
@@ -2002,25 +1998,30 @@ async function escolherResponsavel() {
               curso,
               pacote,
               responsavel,
+              modo_retorno: 'json',
               csrf_token: (window.CSRF_TOKEN || '')
           },
-          dataType: "text",
-          success: function (mensagem) {
-            if (mensagem.trim() == "Matriculado com Sucesso") {
+          dataType: "json",
+          success: function (resposta) {
+            if (resposta && resposta.success) {
                 window.location.href = '<?= $url_sistema ?>sistema/painel-aluno/index.php?pagina=cursos';
-            } else {
-                Swal.fire({
-                    title: 'Ops!',
-                    icon: 'error',
-                    text: mensagem,
-                    showConfirmButton: true,
-                    confirmButtonText: 'Acessar o Painel do Aluno',
-                    confirmButtonColor: '#3085d6',
-                    showCloseButton: true,
-                    closeButtonColor: '#3085d6',
-                    closeButtonAriaLabel: 'Fechar',
-                });
+                return;
             }
+
+              Swal.fire({
+                title: 'Ops!',
+                icon: 'error',
+                text: (resposta && resposta.message) ? resposta.message : 'Não foi possível criar a matrícula.',
+                showConfirmButton: true,
+                confirmButtonText: 'Fechar',
+                confirmButtonColor: '#3085d6',
+                showCloseButton: true,
+                closeButtonColor: '#3085d6',
+                closeButtonAriaLabel: 'Fechar',
+            });
+        },
+        error: function () {
+            Swal.fire('Erro', 'Falha ao comunicar com o servidor.', 'error');
         },
     });
 }
@@ -2127,8 +2128,8 @@ async function realizarMatricula() {
 		if (vendedorLogado) {
 			Swal.fire({
 				icon: 'warning',
-				title: 'Atencao',
-				text: 'Voce nao pode compra como vendedor, entrar como aluno'
+				title: 'Atenção',
+				text: 'Você não pode comprar como vendedor, entre como aluno.'
 			});
 			return;
 		}
@@ -2159,15 +2160,9 @@ async function realizarMatricula() {
 
 		if (modal == 'Pagamento') {
 
-			// matriculaAluno('pix');
-
 			setTimeout(() => {
 
 				listarBotaoMP();
-
-				listarPix();
-
-				listarCartao();
 
 			}, 500);
 
@@ -2528,59 +2523,10 @@ $("#form-cadastro").submit(function (event) {
 
 <script type="text/javascript">
 
-	function listarBotaoMP() {
-
-		if (!mpEnabled) {
+		function listarBotaoMP() {
 			$("#listar-btn-mp").html('');
 			return;
 		}
-
-
-		var id = '<?= $id_do_curso_pag ?>';
-
-		var nome = '<?= $nome_do_curso_pag ?>';
-
-		var aluno = $('#id_do_aluno').val();
-
-		var pacote = 'Não';
-
-
-
-		$.ajax({
-
-			url: "ajax/cursos/listar-btn-mp.php",
-
-			method: 'POST',
-
-			data: {
-
-				id,
-
-				nome,
-
-				aluno,
-
-				pacote
-
-			},
-
-			dataType: "html",
-
-
-
-			success: function (result) {
-
-				$("#listar-btn-mp").html(result);
-
-
-
-
-
-			}
-
-		});
-
-	}
 
 </script>
 
@@ -2814,47 +2760,13 @@ if (@$_POST['painel_aluno'] == 'sim') {
 <script type="text/javascript">
 
 	function listarPix() {
-
-
-
-		var id = '<?= $id_do_curso_pag ?>';
-
-		var nome = '<?= $nome_do_curso_pag ?>';
-
-
-
-
-
-		$.ajax({
-
-			url: "pgtos/pix/index.php",
-
-			method: 'POST',
-
-			data: {
-
-				id,
-
-				nome,
-				pacote: 'Nao'
-
-			},
-
-			dataType: "html",
-
-
-
-			success: function (result) {
-
-				$("#listar_pix").html(result);
-
-
-
-
-
-			}
-
+		$("#listar_pix").html('');
+		Swal.fire({
+			icon: 'info',
+			title: 'Método desativado',
+			text: 'Pagamento via PIX não faz parte do fluxo atual. Use boleto ou cartão EFY.'
 		});
+		return;
 
 	}
 
@@ -2864,47 +2776,12 @@ if (@$_POST['painel_aluno'] == 'sim') {
 
 <script type="text/javascript">
 
-	function listarCartao() {
-
-
-
-		var id = '<?= $id_do_curso_pag ?>';
-
-		var nome = '<?= $nome_do_curso_pag ?>';
-
-
-
-
-
-		$.ajax({
-
-			url: "pgtos/cartao/index.php",
-
-			method: 'POST',
-
-			data: {
-
-				id,
-
-				nome
-
-			},
-
-			dataType: "html",
-
-
-
-			success: function (result) {
-
-				$("#listar_cartao").html(result);
-
-
-
-
-
-			}
-
-		});
+	function listarCartao(idMatricula) {
+		const id = idMatricula || '<?= $id_do_curso_pag ?>';
+		const id_aluno = '<?= (int) ($id_do_aluno ?? 0) ?>';
+		const nome = encodeURIComponent('<?= htmlspecialchars($nome_do_curso_pag, ENT_QUOTES, 'UTF-8') ?>');
+		window.location.href = '<?= $url_sistema ?>efi/credit_card.php?id=' + id + '&id_aluno=' + id_aluno + '&nome_curso=' + nome;
+		return;
 
 	}
 
@@ -2917,10 +2794,17 @@ if (@$_POST['painel_aluno'] == 'sim') {
 	const valorCurso = <?php echo str_replace(',', '.', $valor_real_curso); ?>; // PHP para JS, ponto decimal
 
 	function updateFormAction() {
-		const formaPagamento = document.querySelector('input[name="formaDePagamento"]:checked').value;
+		const formaSelecionada = document.querySelector('input[name="formaDePagamento"]:checked');
+		if (!formaSelecionada) {
+			return;
+		}
+		const formaPagamento = formaSelecionada.value;
 		const pixDesconto = document.getElementById('pixDesconto');
 		const valorParceladoDiv = document.getElementById('quantidadeDeParcelas');
 		const quantidadeDeParcelasD = document.getElementById("valorParcelado");
+		if (!pixDesconto || !valorParceladoDiv || !quantidadeDeParcelasD) {
+			return;
+		}
 
 		if (formaPagamento === 'pix') {
 			pixDesconto.style.display = 'block';
@@ -2947,18 +2831,22 @@ if (@$_POST['painel_aluno'] == 'sim') {
 			const quantidade = parseInt(parcelasSelect.value);
 			if (quantidade === 1) {
 				const valorPorParcela = (valorCurso / quantidade).toFixed(2);
-				valorParceladoDiv.innerHTML = `A parcela ficará em <span style="color:#ff8800; font-zize: 16px; font-weight: bold;">R$ ${valorPorParcela.replace('.', ',')}</span>`;
+				valorParceladoDiv.innerHTML = `A parcela ficará em <span style="color:#ff8800; font-size: 16px; font-weight: bold;">R$ ${valorPorParcela.replace('.', ',')}</span>`;
 				valorParceladoDiv.style.display = 'block';
 			}
 			if (quantidade >= 2) {
 				const valorPorParcela = (valorCurso / quantidade).toFixed(2);
-				valorParceladoDiv.innerHTML = `Cada parcela ficará em <span style="color:#ff8800; font-zize: 16px; font-weight: bold;">R$ ${valorPorParcela.replace('.', ',')}</span>`;
+				valorParceladoDiv.innerHTML = `Cada parcela ficará em <span style="color:#ff8800; font-size: 16px; font-weight: bold;">R$ ${valorPorParcela.replace('.', ',')}</span>`;
 				valorParceladoDiv.style.display = 'block';
 			}
 		}
 	}
 
 	// Eventos
-	document.getElementById('quantidadeDeParcelas').addEventListener('change', atualizarValorParcelado);
+	const campoParcelas = document.getElementById('quantidadeDeParcelas');
+	if (campoParcelas) {
+		campoParcelas.addEventListener('change', atualizarValorParcelado);
+	}
 </script>
+
 

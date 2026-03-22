@@ -63,6 +63,8 @@ if ($total_reg > 0) {
 	<th class="esc">Aulas</th> 
 	<th class="esc">Progresso</th> 
 	<th class="esc">Valor</th> 	
+    <th class="esc">Forma de Pagamento</th>
+    <th class="esc">Cupom</th>
     <th class="esc">Data de Matr&iacute;cula</th> 	
 	<th class="esc">A&ccedil;&otilde;es</th>
 	<th class="esc">Status</th>
@@ -76,7 +78,8 @@ HTML;
         }
         $id = $res[$i]['id'];
         $curso = $res[$i]['id_curso'];
-        $aulas_concluidas = $res[$i]['aulas_concluidas'];
+        $aulas_concluidas_raw = (int) ($res[$i]['aulas_concluidas'] ?? 0);
+        $aulas_concluidas = $aulas_concluidas_raw;
         $valor = $res[$i]['subtotal'];
         $valor_cupom = $res[$i]['valor_cupom'];
         $data = $res[$i]['data'];
@@ -148,6 +151,20 @@ HTML;
         $query2->execute(['curso' => $curso]);
         $res2 = $query2->fetchAll(PDO::FETCH_ASSOC);
         $aulas = @count($res2);
+        if ($aulas > 0) {
+            if ($aulas_concluidas < 0) {
+                $aulas_concluidas = 0;
+            }
+            if ($aulas_concluidas > $aulas) {
+                $aulas_concluidas = $aulas;
+                // Corrige registros legados com progresso acima do total de aulas.
+                $stmtFixAulas = $pdo->prepare("UPDATE matriculas SET aulas_concluidas = :aulas WHERE id = :id");
+                $stmtFixAulas->execute([
+                    ':aulas' => $aulas,
+                    ':id' => $id
+                ]);
+            }
+        }
         $queryVideo = $pdo->prepare("SELECT COUNT(*) FROM aulas WHERE curso = :curso AND TRIM(IFNULL(link, '')) <> ''");
         $queryVideo->execute(['curso' => $curso]);
         $temVideoCurso = ((int) $queryVideo->fetchColumn()) > 0;
@@ -209,7 +226,7 @@ HTML;
             $ocultar_pagar = '';
             $classe_progress = '';
             $icones_finalizados = 'ocultar';
-            $statusTexto = 'Em andamento';
+            $statusTexto = 'Aguardando pagamento';
         } else if ($status == 'Finalizado') {
             $excluir = 'ocultar';
             $icone = 'fa-square';
@@ -230,6 +247,14 @@ HTML;
             $classe_progress = '';
             $icones_finalizados = 'ocultar';
             $statusTexto = 'Em andamento';
+        }
+
+        $botaoExcluirHtml = '';
+        if ($status == 'Aguardando') {
+            $botaoExcluirHtml = '<button type="button" onclick="excluir(' . (int) $id . ');" style="background-color: transparent; border:none!important; margin-left:8px;">'
+                . '<i class="fa fa-trash text-danger"></i>'
+                . '<span class="text-danger" style="margin-left:2px">Excluir</span>'
+                . '</button>';
         }
 
         if ($nota >= 60) {
@@ -262,23 +287,15 @@ HTML;
 
         $classe_quest = 'ocultar';
 
-        //pegar o id da matricula
-        $query_m = $pdo->prepare("SELECT * FROM matriculas WHERE id = :id");
-        $query_m->execute(['id' => $id]);
-        $res_m = $query_m->fetchAll(PDO::FETCH_ASSOC);
-        $id_mat = $res_m[0]['id'];
-        $aulas_conc = $res_m[0]['aulas_concluidas'];
-        $status_mat = $res_m[0]['status'];
-
-        //verificar total de aulas do curso
-        $query_m = $pdo->prepare("SELECT * FROM aulas WHERE curso = :curso");
-        $query_m->execute(['curso' => $curso]);
-        $res_m = $query_m->fetchAll(PDO::FETCH_ASSOC);
-        $total_aulas = @count($res_m);
+        // Usa os dados da linha atual como fonte de verdade da matrícula.
+        $id_mat = (int) $id;
+        $aulas_conc = (int) $aulas_concluidas;
+        $status_mat = (string) $status;
+        $total_aulas = (int) $aulas;
 
         if ($questionario_config == 'Sim') {
-            //mudo o status do curso para finalizado
-            if ($status_mat != 'Finalizado' and $status_mat != 'Aguardando' and $total_aulas == $aulas_conc) {
+            // Libera prova ao concluir todas as aulas (ou mais, em legado).
+            if ($status_mat != 'Finalizado' and $status_mat != 'Aguardando' and $total_aulas > 0 and $aulas_conc >= $total_aulas) {
                 $classe_quest = '';
             }
         }
@@ -351,6 +368,7 @@ HTML;
                 <i class="fa fa-money text-danger" ></i>
                 <span class="text-danger" style="margin-left:2px">Pagar</span>
             </button>
+            {$botaoExcluirHtml}
         </div>
 
 		
@@ -363,6 +381,20 @@ HTML;
 			</div>
 		</td>
 		<td class="esc">R$ {$valorF} </td>
+        <td class="esc">
+            <span style="font-size:10px">{$matriculas[$i]['forma_pgto']}</span>
+            <button class="{$ocultar_pagar}" onclick="pagarCurso('AGUARDANDO', '{$id_do_curso}', '{$id}', '{$nome_curso}');" type="button" style="background-color: transparent; border:none!important;">
+                <i class="fa fa-money text-danger"></i>
+                <span class="text-danger" style="margin-left:2px">Alterar</span>
+            </button>
+        </td>
+        <td class="esc {$ocultar_pagar}">
+            <button class="{$classe_cupom}" onclick="aplicarCupom('{$id_do_curso}');" type="button" style="background-color: transparent; border:none!important;">
+                <i class="fa fa-money text-primary"></i>
+                <span class="text-primary" style="margin-left:2px">Aplicar Cupom</span>
+            </button>
+            <span class="text-primary {$classe_cupom2}" style="margin-left:2px">{$valor_cupom}</span>
+        </td>
         <td class="esc">{$dataF}</td>
 		<td class="esc"><button type="button" class="btn btn-xs btn-primary" onclick="abrirModalAcoesCursoPorBotao(this)" data-id-mat="{$idMatJs}" data-id-curso="{$idCursoJs}" data-nome-curso="{$nomeCursoAttr}" data-total-aulas="{$aulas}" data-aulas-concluidas="{$aulas_concluidas}" data-id-primeira-aula="{$idPrimeiraAula}" data-id-aula-pendente="{$idAulaPendente}" data-link-curso="{$linkCursoAttr}" data-url-apostila="{$urlApostilaCursoAttr}" data-url-avaliacoes="{$urlAvaliacaoCursoAttr}" data-pode-acessar="{$podeAcessarConteudoJs}" data-tem-video="{$temVideoCursoJs}" data-tem-apostila="{$temApostilaCursoJs}" data-tem-gabarito="{$temGabaritoCursoJs}" data-pode-prova="{$podeProvaCursoJs}" data-prova-aprovada="{$provaAprovadaJs}" data-nota-percentual="{$notaPercentualAttr}" data-nota-escala10="{$notaEscala10Attr}" data-media-aprovacao="{$mediaAprovacaoAttr}">
 			A&ccedil;&otilde;es</button></td>
