@@ -1,5 +1,5 @@
 <?php
-require_once('../conexao.php');
+require_once('../../conexao.php');
 @session_start();
 
 if (!isset($_SESSION['nivel']) || ($_SESSION['nivel'] !== 'Administrador' && $_SESSION['nivel'] !== 'Secretario')) {
@@ -16,20 +16,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['arquivo'])) {
     $arquivo = str_replace('\\', '/', $arquivo);
     $arquivo = ltrim($arquivo, '/');
     $arquivo = preg_replace('#^(\.{2}/)+#', '', $arquivo);
-    $arquivo = preg_replace('#^historicos/#', '', $arquivo);
-    $filePath = $baseDir ? realpath($baseDir . '/' . $arquivo) : false;
+    $arquivoSemHistoricos = preg_replace('#^historicos/#', '', $arquivo);
+    $arquivoComHistoricos = 'historicos/' . ltrim($arquivoSemHistoricos, '/');
+    $filePath = $baseDir ? realpath($baseDir . '/' . $arquivoSemHistoricos) : false;
 
-    $arquivoRel = '/' . ltrim($arquivo, '/');
+    $removerRegistro = static function () use ($pdo, $arquivoComHistoricos, $arquivoSemHistoricos) {
+        $caminhos = [
+            '/' . ltrim($arquivoComHistoricos, '/'),
+            ltrim($arquivoComHistoricos, '/'),
+            '/' . ltrim($arquivoSemHistoricos, '/'),
+            ltrim($arquivoSemHistoricos, '/')
+        ];
+        $stmt = $pdo->prepare("
+            DELETE FROM documentos_emitidos
+            WHERE arquivo_relativo = :c1
+               OR arquivo_relativo = :c2
+               OR arquivo_relativo = :c3
+               OR arquivo_relativo = :c4
+        ");
+        $stmt->execute([
+            ':c1' => $caminhos[0],
+            ':c2' => $caminhos[1],
+            ':c3' => $caminhos[2],
+            ':c4' => $caminhos[3],
+        ]);
+    };
 
     if ($filePath !== false && strpos($filePath, $baseDir) === 0 && file_exists($filePath)) {
         if (unlink($filePath)) {
             // Remover registro no banco (se existir)
             try {
-                $stmt = $pdo->prepare("DELETE FROM documentos_emitidos WHERE arquivo_relativo = :arquivo OR arquivo_relativo = :arquivo_sem_barra");
-                $stmt->execute([
-                    ':arquivo' => $arquivoRel,
-                    ':arquivo_sem_barra' => ltrim($arquivoRel, '/')
-                ]);
+                $removerRegistro();
             } catch (Throwable $e) {
                 // Nao bloqueia a resposta
             }
@@ -41,11 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['arquivo'])) {
     } else {
         // Mesmo sem arquivo fisico, tenta remover registro do banco
         try {
-            $stmt = $pdo->prepare("DELETE FROM documentos_emitidos WHERE arquivo_relativo = :arquivo OR arquivo_relativo = :arquivo_sem_barra");
-            $stmt->execute([
-                ':arquivo' => $arquivoRel,
-                ':arquivo_sem_barra' => ltrim($arquivoRel, '/')
-            ]);
+            $removerRegistro();
             echo "Registro removido com sucesso!";
         } catch (Throwable $e) {
             http_response_code(400);

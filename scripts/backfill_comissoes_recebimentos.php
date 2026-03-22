@@ -146,7 +146,7 @@ function upsertSplit(PDO $pdo, array $split, string $paymentId, ?int $matriculaI
             data_pagamento = VALUES(data_pagamento)");
 
     $stmtUpsert->execute([
-        ':gateway' => 'asaas',
+        ':gateway' => 'efy',
         ':pagamento_id' => $paymentId,
         ':id_matricula' => $matriculaId,
         ':wallet_id' => $walletId,

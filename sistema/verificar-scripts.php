@@ -43,7 +43,7 @@ if($total_reg > 0){
 
 		$url_login = $url_sistema.'sistema';
 
-		//COLOCAR O CAMPO DE ALERTADO COMO SIM PARA O EMAIL N?O SER ENVIADO NOVAMENTE
+		//COLOCAR O CAMPO DE ALERTADO COMO SIM PARA O EMAIL NÃO SER ENVIADO NOVAMENTE
 		$stmtAlertado = $pdo->prepare("UPDATE matriculas set alertado = 'sim' where id = :id");
 		$stmtAlertado->execute([':id' => $id_mat]);
 
@@ -53,8 +53,8 @@ if($total_reg > 0){
 		$subject = "Lembrete de Matrícula no Curso $nome_curso";
 		$message = "
 
-		Ol? <b>$nome_aluno</b>, <br>
-		Verificamos que iniciou sua matrícula em um de nossos cursos, porém o pagamento ainda não foi confirmado, acesse nosso site <a title='$url_login' href='$url_login' target='_blank'>$url_login</a> e faça seu login para efetuar o pagamento direto em seu painel, o curso será liberado imediatamente, qualquer d?vida entre em contato conosco!
+		Olá <b>$nome_aluno</b>, <br>
+		Verificamos que iniciou sua matrícula em um de nossos cursos, porém o pagamento ainda não foi confirmado, acesse nosso site <a title='$url_login' href='$url_login' target='_blank'>$url_login</a> e faça seu login para efetuar o pagamento direto em seu painel, o curso será liberado imediatamente, qualquer dúvida entre em contato conosco!
 
 		<br><br>
 		  <a href='$url_sistema' target='_blank'><img src='$url_logo' width='300px'></a><br>
@@ -85,7 +85,7 @@ if($total_reg > 0){
 
 
 $data_anterior = date('Y/m/d', strtotime("-$dias_excluir_matricula day",strtotime($hoje))); 
-//EXCLUIR A MATRICULA QUE EST? AGUARDANDO APÓS X DIAS
+//EXCLUIR A MATRICULA QUE ESTÁ AGUARDANDO APÓS X DIAS
 $query = $pdo->prepare("SELECT * FROM matriculas where data <= :data_anterior and status = 'Aguardando'");
 $query->execute([':data_anterior' => $data_anterior]);
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
@@ -106,7 +106,3 @@ if($total_reg > 0){
 $pdo->query("UPDATE config set script_dia = curDate()");
 
  ?>
-
-
-
-

@@ -248,7 +248,7 @@ $gateway_ativo = $query->fetch(PDO::FETCH_ASSOC);
                         <div class="col-md-12">
                             <div class="form-group">
                                 <label for="nome">Nome do Gateway*</label>
-                                <input type="text" class="form-control" id="nome" name="nome" required>
+                                <input type="text" class="form-control" id="nome" name="nome" value="EFY" readonly required>
                             </div>
                         </div>
                     </div>
@@ -296,9 +296,10 @@ $gateway_ativo = $query->fetch(PDO::FETCH_ASSOC);
                         <div class="col-md-12">
                             <div class="custom-control custom-switch">
                                 <input type="checkbox" class="custom-control-input" id="ativar_gateway"
-                                    name="ativar_gateway">
+                                    name="ativar_gateway" checked disabled>
                                 <label class="custom-control-label" for="ativar_gateway">Definir como Gateway
                                     Ativo</label>
+                                <input type="hidden" name="ativar_gateway" value="on">
                             </div>
                         </div>
                     </div>
@@ -519,10 +520,11 @@ $gateway_ativo = $query->fetch(PDO::FETCH_ASSOC);
 
     function editarGateway(id, nome, chave_api, chave_secreta, webhook_url) {
         $('#id-gateway').val(id);
-        $('#nome').val(nome);
+        $('#nome').val('EFY');
         $('#chave_api').val(chave_api);
         $('#chave_secreta').val(chave_secreta);
         $('#webhook_url').val(webhook_url);
+        $('#ativar_gateway').prop('checked', true);
         $('#acao').val('editar');
         $('#modalGatewayLabel').html('Editar Gateway de Pagamento');
         $('#modalGateway').modal('show');

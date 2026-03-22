@@ -1,8 +1,8 @@
 <?php
 require_once('../conexao.php');
 require_once('verificar.php');
-require_once('../boleto.php');
-$options = require_once('../options.php');
+require_once(__DIR__ . '/../../../efi/boleto.php');
+$options = require_once(__DIR__ . '/../../../efi/options.php');
 $pag = 'relatorio_alunos';
 @session_start();
 $id_user = @$_SESSION['id'];

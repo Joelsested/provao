@@ -5,7 +5,7 @@ $postjson = json_decode(file_get_contents('php://input'), true);
 
 $id_mat = @$postjson['id'];
 $subtotal = @$postjson['valor'];
-$forma_pgto = @$postjson['pgto'];
+$forma_pgto = strtoupper(trim((string) (@$postjson['pgto'] ?? '')));
 $obs = @$postjson['obs'];
 $cartao = @$postjson['cartao'];
 $subtotal = str_replace(',', '.', $subtotal);
@@ -17,18 +17,25 @@ $data_pgto_comissao = $ano_atual.'-'.$mes_atual.'-'.$dia_pgto_comissao;
 
 
 
+$mapForma = [
+	'BOLETO' => 'BOLETO',
+	'BOLETO_PARCELADO' => 'BOLETO_PARCELADO',
+	'CARTAO_DE_CREDITO' => 'CARTAO_DE_CREDITO',
+	'CARTAO_RECORRENTE' => 'CARTAO_RECORRENTE',
+	'CARTAO DE CREDITO' => 'CARTAO_DE_CREDITO',
+	'CARTAO RECORRENTE' => 'CARTAO_RECORRENTE',
+	'BOLETO PARCELADO' => 'BOLETO_PARCELADO',
+];
+
+$forma_pgto = $mapForma[$forma_pgto] ?? 'BOLETO';
+$formasPermitidas = ['BOLETO', 'BOLETO_PARCELADO', 'CARTAO_DE_CREDITO', 'CARTAO_RECORRENTE'];
+if (!in_array($forma_pgto, $formasPermitidas, true)) {
+	$forma_pgto = 'BOLETO';
+}
+
 $total_recebido = $subtotal;
-
-if($forma_pgto == 'MP'){
-$total_recebido = $subtotal - ($subtotal * ($taxa_mp / 100));
-}
-
-if($forma_pgto == 'Boleto'){
-$total_recebido = $subtotal - $taxa_boleto;
-}
-
-if($forma_pgto == 'Paypal'){		
-	$total_recebido = $subtotal - ($subtotal * ($taxa_paypal / 100)); ;
+if ($forma_pgto === 'BOLETO' || $forma_pgto === 'BOLETO_PARCELADO') {
+	$total_recebido = $subtotal - $taxa_boleto;
 }
 
 
@@ -90,7 +97,7 @@ if(@count($res) > 0){
 
 
 
-//ATUALIZANDO A MATRÍCULA
+//ATUALIZANDO A MATRÇ?CULA
 $query = $pdo->prepare("UPDATE matriculas SET status = 'Matriculado', forma_pgto = :forma_pgto, total_recebido = :total_recebido, data = curDate(), obs = :obs  where id = :id");
 
 $query->bindValue(":total_recebido", "$total_recebido");

@@ -83,7 +83,7 @@ if (!$res1) {
     $resAluno = $queryAluno->fetchAll(PDO::FETCH_ASSOC);
 }
 
-// Buscar ?ltimo histórico versionado (se existir)
+// Buscar último Histórico versionado (se existir)
 $historico_salvo = null;
 try {
     $stmtHistorico = $pdo->prepare("SELECT dados_json FROM historicos_versionados WHERE aluno_id = :aluno_id AND categoria = :categoria ORDER BY versao DESC LIMIT 1");
@@ -136,7 +136,7 @@ if (!$aluno_error) {
 
 
 
-            // Armazenar nota (assumindo que ? uma nota geral - você pode adaptar conforme sua estrutura)
+            // Armazenar nota (assumindo que é uma nota geral - você pode adaptar conforme sua estrutura)
             $notas_existentes[$nome_curso] = [
                 'nota' => formatarNota($nota),
                 'data_certificado' => $data_certificado,
@@ -458,9 +458,7 @@ if (!$aluno_error) {
             <h1>Histórico Fundamental</h1>
             <div style="display: flex; gap: 10px;">
                 <a class="btn" href="index.php?pagina=alunos" style="text-decoration: none;">Voltar</a>
-                <button class="btn" onclick="abrirFormularioCompleto()">
-                    Gerar Historico Escolar
-                </button>
+                <button class="btn" onclick="abrirFormularioCompleto()">Gerar Histórico Escolar</button>
             </div>
 
         </div>
@@ -586,7 +584,7 @@ if (!$aluno_error) {
                     if (!empty($docs)) {
                         echo '<table class="table table-hover">';
                         echo '<thead class="bg-gray-50"><tr>';
-                        echo '<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Arquivo</th>';
+                        echo '<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ação</th>';
                         echo '<th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Versão</th>';
                         echo '<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gerado Por</th>';
                         echo '<th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>';
@@ -609,9 +607,9 @@ if (!$aluno_error) {
                             echo "<td class='px-6 py-4 whitespace-nowrap'>{$criadoPor}</td>";
                             echo "<td class='px-6 py-4 text-center'>{$dataGerado}</td>";
                             echo "<td class='px-6 py-4 text-center'>"
-                                . "<button onclick=\\\"abrirHistorico('{$caminhoUrl}')\\\" class='text-blue-500 hover:text-blue-700'>Ver</button> "
-                                . "<button onclick=\\\"downloadHistorico('{$caminhoUrl}')\\\" class='text-blue-500 hover:text-blue-700'>Download</button> "
-                                . "<button onclick=\\\"apagarHistorico('{$caminhoRel}')\\\" class='text-red-500 hover:text-red-700 ml-3'>Apagar</button>"
+                                . "<button onclick=\"abrirHistorico('{$caminhoUrl}')\" class='text-blue-500 hover:text-blue-700'>Ver</button> "
+                                . "<button onclick=\"downloadHistorico('{$caminhoUrl}')\" class='text-blue-500 hover:text-blue-700'>Download</button> "
+                                . "<button onclick=\"apagarHistorico('{$caminhoRel}')\" class='text-red-500 hover:text-red-700 ml-3'>Apagar</button>"
                                 . "</td>";
                             echo '</tr>';
                         }
@@ -661,12 +659,13 @@ if (!$aluno_error) {
         function apagarHistorico(caminho) {
             Swal.fire({
                 title: "Tem certeza?",
-                text: "O arquivo será apagado permanentemente!",
+                text: "O arquivo ser\u00e1 apagado permanentemente!",
                 icon: "warning",
                 showCancelButton: true,
                 confirmButtonColor: "#d33",
                 cancelButtonColor: "#3085d6",
-                confirmButtonText: "Sim, apagar!"
+                confirmButtonText: "Sim, apagar!",
+                cancelButtonText: "Cancelar"
             }).then((result) => {
                 if (result.isConfirmed) {
                     fetch("paginas/apagar_historico.php", {
@@ -694,84 +693,61 @@ if (!$aluno_error) {
 
     <script>
         function abrirHistorico(caminho) {
-            fetch(caminho)
-                .then(response => response.text())
-                .then(html => {
-                    swal({
-                        title: "Histórico Escolar",
-                        content: (function () {
-                            const div = document.createElement("div");
-                            div.innerHTML = '<iframe src="' + caminho + '" width="100%" height="600px" style="border: none;"></iframe>';
-                            return div;
-                        })(),
-                        buttons: {
-                            fechar: "Fechar",
-                            imprimir: "Imprimir",
-                            download: "Download"
-                        }
-                    }).then((result) => {
-                        if (result === 'download') {
-                            window.open(caminho + "?download=1", "_blank");
-                        } else if (result === 'imprimir') {
-                            window.open(caminho + "?print=1", "_blank");
-                        }
-                    });
-
-                })
-                .catch(err => {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Erro',
-                        text: 'Não foi possível carregar o arquivo.'
-                    });
+            if (!caminho) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro',
+                    text: 'Caminho do historico invalido.'
                 });
-        }
+                return;
+            }
 
+            const novaAba = window.open(caminho, '_blank');
+            if (!novaAba || novaAba.closed || typeof novaAba.closed === 'undefined') {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Pop-up bloqueado',
+                    text: 'Permita pop-up para visualizar o historico.'
+                });
+            }
+        }
     </script>
 
     <!-- Importar html2pdf (CDN) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <script>
-        function downloadHistorico(caminho, nomeArquivo = "historico.pdf") {
-            fetch(caminho)
-                .then(response => response.text())
-                .then(html => {
-                    // Cria um container temporário para renderizar o HTML
-                    const div = document.createElement("div");
-                    div.innerHTML = html;
-
-                    // Configuração do PDF
-                    const opt = {
-                        margin: 0,
-                        filename: nomeArquivo,
-                        image: { type: 'jpeg', quality: 0.98 },
-                        html2canvas: { scale: 1 },
-                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                    };
-
-                    // Gera e baixa o PDF
-                    html2pdf().from(div).set(opt).save();
-                })
-                .catch(err => {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Erro',
-                        text: 'Não foi possível gerar o PDF.'
-                    });
+        function downloadHistorico(caminho, nomeArquivo = "historico.html") {
+            if (!caminho) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro',
+                    text: 'Caminho do historico invalido.'
                 });
+                return;
+            }
+
+            const separador = caminho.includes('?') ? '&' : '?';
+            const urlImpressao = caminho + separador + 'download=1';
+            const novaAba = window.open(urlImpressao, '_blank');
+            if (!novaAba || novaAba.closed || typeof novaAba.closed === 'undefined') {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Pop-up bloqueado',
+                    text: 'Permita pop-up para abrir a tela de impressao.'
+                });
+            }
         }
     </script>
 
 
     <script>
-        // Dados das matérias por ?rea
+        // Dados das matérias por área
         const materias = {
             'linguagens': [
                 'Língua portuguesa',
                 'Arte',
-                'Educação física',
-                'Educação religiosa',
+                'Educação Física',
                 'Matemática'
 
 
@@ -842,8 +818,7 @@ if (!$aluno_error) {
             'arte_fundamental': 'Arte',
             'ciencias_fundamental': 'Ciências',
             'lingua_inglesa_fundamental': 'Língua inglesa',
-            'educacao_religiosa_fundamental': 'Educação religiosa',
-            'educacao_fisica_fundamental': 'Educação física',
+            'educacao_fisica_fundamental': 'Educação Física',
             'biologia_fundamental': 'Biologia',
             'geografia_fundamental': 'Geografia',
             "geografia_de_rondonia_fundamental": 'Geografia',
@@ -856,7 +831,7 @@ if (!$aluno_error) {
             'fisica_fundamental': 'Física',
             'sociologia_fundamental': 'Sociologia',
             'biologia_fundamental': 'Biologia',
-            'educacao_fisica_fundamental': 'Educação física',
+            'educacao_fisica_fundamental': 'Educação Física',
 
 
 
@@ -979,7 +954,7 @@ if (!$aluno_error) {
             // Linguagens
             htmlNotas += '<h3>LINGUAGENS E TECNOLOGIAS</h3>';
             htmlNotas += '<table class="subjects-table">';
-            htmlNotas += '<tr><th>Matéria</th><th>6? Ano</th><th>7? Ano</th><th>8? Ano</th><th>9? Ano</th><th style="width: 120px !important;">Data</th></tr>';
+            htmlNotas += '<tr><th>Matéria</th><th>6º Ano</th><th>7º Ano</th><th>8º Ano</th><th>9º Ano</th><th style="width: 120px !important;">Data</th></tr>';
             materias.linguagens.forEach(materia => {
                 const nomeMateria = formatarMateria(materia);
                 const nota1 = obterNotaExistente(materia, '1');
@@ -1041,7 +1016,7 @@ if (!$aluno_error) {
             // Ciências Humanas
             htmlNotas += '<h3>CIÊNCIAS HUMANAS</h3>';
             htmlNotas += '<table class="subjects-table">';
-            htmlNotas += '<tr><th>Matéria</th><th>6? Ano</th><th>7? Ano</th><th>8? Ano</th><th>9? Ano</th><th style="width: 120px !important;">Data</th></tr>';
+            htmlNotas += '<tr><th>Matéria</th><th>6º Ano</th><th>7º Ano</th><th>8º Ano</th><th>9º Ano</th><th style="width: 120px !important;">Data</th></tr>';
             materias.humanas.forEach(materia => {
                 const nomeMateria = formatarMateria(materia);
                 const classExistente = temNotaExistente(materia) ? 'nota-existente' : '';
@@ -1081,7 +1056,7 @@ if (!$aluno_error) {
             // Parte Diversificada
             htmlNotas += '<h3>PARTE DIVERSIFICADA</h3>';
             htmlNotas += '<table class="subjects-table">';
-            htmlNotas += '<tr><th>Matéria</th><th>6? Ano</th><th>7? Ano</th><th>8? Ano</th><th>9? Ano</th><th style="width: 120px !important;">Data</th></tr>';
+            htmlNotas += '<tr><th>Matéria</th><th>6º Ano</th><th>7º Ano</th><th>8º Ano</th><th>9º Ano</th><th style="width: 120px !important;">Data</th></tr>';
             materias.diversificada.forEach(materia => {
                 const nomeMateria = formatarMateria(materia);
                 const classExistente = temNotaExistente(materia) ? 'nota-existente' : '';
@@ -1121,10 +1096,10 @@ if (!$aluno_error) {
             // Adicionar informações sobre o preenchimento
             htmlNotas += `
         <div style="margin-top: 15px; padding: 10px; background-color: #f0f8ff; border-radius: 5px;">
-            <p style="margin: 5px 0;"><small>?? <strong>Legenda:</strong></small></p>
-            <p style="margin: 5px 0;"><small>?? <strong>Verde:</strong> Campos preenchidos automaticamente com notas do sistema</small></p>
-            <p style="margin: 5px 0;"><small>? <strong>Branco:</strong> Campos para preenchimento manual</small></p>
-            <p style="margin: 5px 0;"><small>?? <strong>Nota:</strong> Você pode editar qualquer valor, mesmo os preenchidos automaticamente</small></p>
+            <p style="margin: 5px 0;"><small><strong>Legenda:</strong></small></p>
+            <p style="margin: 5px 0;"><small><strong>Verde:</strong> Campos preenchidos automaticamente com notas do sistema</small></p>
+            <p style="margin: 5px 0;"><small><strong>Branco:</strong> Campos para preenchimento manual</small></p>
+            <p style="margin: 5px 0;"><small><strong>Nota:</strong> Você pode editar qualquer valor, mesmo os preenchidos automaticamente</small></p>
         </div>
     `;
 
@@ -1234,12 +1209,12 @@ if (!$aluno_error) {
                             </div>
 
                              <div class="form-group">
-                                <label>CERTIDÃO NASCIMENTO:</label>
+                                <label>CERTIDÃO DE NASCIMENTO:</label>
                                 <input type="text" id="certidao_nascimento" class="swal-content__input" placeholder="Ex: 123456789" value="${dadosAdicionaisSalvos.certidao_nascimento || ''}">
                             </div>
                             
                                 <div class="form-group">
-    <label>DATA HISTÓRICO:</label>
+    <label>DATA Histórico:</label>
     <input type="date" id="data_historico" class="swal-content__input" value="${dadosAdicionaisSalvos.data_historico_iso || new Date().toISOString().split('T')[0]}" onclick="this.showPicker()" onfocus="this.showPicker()">
 </div>
 
@@ -1324,7 +1299,7 @@ if (!$aluno_error) {
         }
 
         function gerarHistoricoPDF(notas, dadosAdicionais) {
-            swal("Processando...", "Gerando histórico escolar, aguarde...", "info", {
+            swal("Processando...", "Gerando Histórico escolar, aguarde...", "info", {
                 buttons: false,
                 closeOnClickOutside: false,
                 closeOnEsc: false
@@ -1350,8 +1325,24 @@ if (!$aluno_error) {
             })
                 .then(async response => {
                     if (!response.ok) {
-                        const erroJson = await response.json().catch(() => null);
-                        const mensagem = erroJson && erroJson.mensagens ? erroJson.mensagens.join(' ') : 'Erro ao gerar histórico.';
+                        let mensagem = 'Erro ao gerar historico.';
+                        const textoErro = await response.text();
+                        if (textoErro) {
+                            try {
+                                const erroJson = JSON.parse(textoErro);
+                                if (erroJson && Array.isArray(erroJson.mensagens) && erroJson.mensagens.length) {
+                                    mensagem = erroJson.mensagens.join(' ');
+                                } else if (erroJson && typeof erroJson.mensagem === 'string' && erroJson.mensagem.trim() !== '') {
+                                    mensagem = erroJson.mensagem;
+                                } else if (erroJson && typeof erroJson.error === 'string' && erroJson.error.trim() !== '') {
+                                    mensagem = erroJson.error;
+                                } else if (typeof textoErro === 'string' && textoErro.trim() !== '') {
+                                    mensagem = textoErro.trim();
+                                }
+                            } catch (e) {
+                                mensagem = textoErro.trim() || mensagem;
+                            }
+                        }
                         throw new Error(mensagem);
                     }
                     return response.text();
@@ -1401,17 +1392,13 @@ if (!$aluno_error) {
                 .catch(error => {
                     swal.close();
                     console.error('Erro:', error);
-                    swal("Erro!", "Erro de comunicação com o servidor.", "error");
-                })
-                .catch(error => {
-                    swal.close();
-                    swal("Erro!", error.message || "Erro ao gerar histórico.", "error");
+                    swal("Erro!", error.message || "Erro de comunicação com o servidor.", "error");
                 });
         }
 
         function visualizarExemplo() {
             const dadosExemplo = {
-                nome: "Maria Silva Santos",
+                nome: "Marços",
                 sexo: "F",
                 dataNasc: "1995-05-15",
                 naturalidade: "Machadinho D'Oeste - RO",
@@ -1557,7 +1544,7 @@ if (!$aluno_error) {
                         });
 
                     } else {
-                        Swal.fire("Erro!", data.mensagem || "Erro ao gerar o histórico.", "error");
+                        Swal.fire("Erro!", data.mensagem || "Erro ao gerar o Histórico.", "error");
                     }
                 })
                 .catch(error => {
@@ -1571,7 +1558,6 @@ if (!$aluno_error) {
 </body>
 
 </html>
-
 
 
 

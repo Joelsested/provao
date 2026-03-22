@@ -13,7 +13,7 @@ if($dataInicial == $dataFinal){
 }else if($dataInicial == '1980-01-01'){
 	$texto_apuracao = 'APURADO EM TODO O PERÍODO';
 }else{
-	$texto_apuracao = 'APURAÇÃO DE '.$dataInicialF. ' AT? '.$dataFinalF;
+	$texto_apuracao = 'APURAÇÃO DE '.$dataInicialF. ' ATÉ '.$dataFinalF;
 }
 
 
@@ -404,5 +404,3 @@ if($saldo_total >= 0){
 	</body>
 
 	</html>
-
-

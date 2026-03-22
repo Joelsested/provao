@@ -1,7 +1,5 @@
 <?php
-require_once __DIR__ . '/config/env.php';
-require_once __DIR__ . '/config/csrf.php';
-csrf_start();
+session_start();
 
 header('Content-Type: application/json');
 

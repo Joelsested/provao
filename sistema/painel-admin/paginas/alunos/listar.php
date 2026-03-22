@@ -8,6 +8,7 @@ $tabela = 'alunos';
 
 $id_user = $_SESSION['id'];
 $nivel_usuario = $_SESSION['nivel'] ?? '';
+$csrf_token_listar_alunos = function_exists('csrf_token') ? csrf_token() : '';
 
 $niveisComAcessoPagina = ['Administrador', 'Secretario', 'Tesoureiro', 'Tutor', 'Parceiro', 'Professor', 'Vendedor'];
 $niveisVisaoTotal = ['Administrador', 'Secretario', 'Tesoureiro'];
@@ -73,6 +74,8 @@ if (@$_SESSION['nivel'] != 'Secretario' and @$_SESSION['nivel'] != 'Administrado
 } else {
 	$ocultar = '';
 }
+$niveisPermitidosEntrarComoAluno = ['Administrador', 'Secretario', 'Tutor', 'Vendedor'];
+$botaoEntrarAlunoDisabled = !in_array($nivel_usuario, $niveisPermitidosEntrarComoAluno, true) ? 'disabled' : '';
 $mostrarData = (@$_SESSION['nivel'] == 'Administrador' || @$_SESSION['nivel'] == 'Secretario');
 $thData = $mostrarData ? '<th class="esc">Data</th>' : '';
 
@@ -465,6 +468,16 @@ HTML;
                 <i class="fa fa-money text-primary"></i><br>
                 Pagamentos
               </a>
+            </div>
+
+            <div class="col-md-4 text-center mb-3">
+              <form action="entrar-como-aluno-admin.php" method="POST" style="margin:0;">
+                <input type="hidden" name="csrf_token" value="{$csrf_token_listar_alunos}">
+                <input type="hidden" name="aluno_id" value="{$id}">
+                <button type="submit" class="btn btn-default" {$botaoEntrarAlunoDisabled} title="Entrar no painel do aluno" style="display:inline-block; width:auto; min-width:0; padding:6px 14px;">
+                  Entrar como Aluno
+                </button>
+              </form>
             </div>
             
              <!-- Financy -->
@@ -986,7 +999,20 @@ window.mostrarAluno = function(data) {
 	);
 };
 
-	window.editar = function(id, nome, cpf, email, telefone, rg, orgao_expedidor, expedicao, nascimento, cep, sexo, endereco, numero, bairro, cidade, estado, mae, pai, naturalidade, responsavel_id, responsavel_nome, responsavel_nivel, responsavel_professor, data_transferencia_atendente, foto) {
+		function formatarDataNascimentoBR(valor) {
+			const v = (valor || '').toString().trim();
+			if (!v) return '';
+			if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+				const partes = v.split('-');
+				return partes[2] + '-' + partes[1] + '-' + partes[0];
+			}
+			if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) {
+				return v.replace(/\//g, '-');
+			}
+			return v;
+		}
+
+		window.editar = function(id, nome, cpf, email, telefone, rg, orgao_expedidor, expedicao, nascimento, cep, sexo, endereco, numero, bairro, cidade, estado, mae, pai, naturalidade, responsavel_id, responsavel_nome, responsavel_nivel, responsavel_professor, data_transferencia_atendente, foto) {
 
 		$('#id').val(id);
 		$('#nome').val(nome);
@@ -996,7 +1022,7 @@ window.mostrarAluno = function(data) {
 		$('#rg').val(rg);
 		$('#orgao_expedidor').val(orgao_expedidor);
 		$('#expedicao').val(expedicao);
-		$('#nascimento').val(nascimento);
+			$('#nascimento').val(formatarDataNascimentoBR(nascimento));
 		$('#cep').val(cep);
 		$('#sexo').val(sexo);
 		$('#endereco').val(endereco);

@@ -33,23 +33,7 @@ if($total_m > 0){
 		}
 		*/
 
-		if($ref_api != "" and $status == 'Aguardando'){
-			$pix_api = 'Sim';
-			require("../../pgtos/cartao/consulta.php");
-
-			if(@$status_api == 'approved'){
-				$id_matricula = $id_mat;
-				$forma_pgto = $forma_pg;
-				if($forma_pgto == 'Boleto'){
-					$total_recebido = $sub_total - $taxa_boleto;
-				}else{
-					$total_recebido = $sub_total;
-				}
-				
-				require("../../pagamentos/aprovar_matricula.php");
-			}
-
-		}
+		// Fluxo legado de consulta de cartao (Mercado Pago) removido no modo EFY-only.
 	}
 }
 

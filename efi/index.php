@@ -214,7 +214,14 @@ $options = require_once 'options.php';
 
 function montarUrlWebhook($url)
 {
-    $token = env('WEBHOOK_TOKEN', '');
+    $token = '';
+    foreach (['WEBHOOK_TOKEN_EJA_PROD', 'WEBHOOK_TOKEN_EJA', 'WEBHOOK_TOKEN'] as $key) {
+        $value = trim((string) env($key, ''));
+        if ($value !== '') {
+            $token = $value;
+            break;
+        }
+    }
     if ($token === '') {
         return $url;
     }
@@ -222,8 +229,13 @@ function montarUrlWebhook($url)
     return $url . $sep . 'token=' . urlencode($token);
 }
 
-$webhookBoletoUrl = montarUrlWebhook('https://www.sested-eja.com/efi_webhook_boleto.php');
-$webhookBoletoParceladoUrl = montarUrlWebhook('https://www.sested-eja.com/efi_webhook_boleto_parcelado.php');
+$baseWebhook = rtrim((string) ($url_sistema ?? ''), '/');
+if ($baseWebhook === '' || stripos($baseWebhook, 'https://') !== 0) {
+    $baseWebhook = 'https://www.sested-eja.com';
+}
+
+$webhookBoletoUrl = montarUrlWebhook($baseWebhook . '/efi_webhook_boleto.php');
+$webhookBoletoParceladoUrl = montarUrlWebhook($baseWebhook . '/efi_webhook_boleto_parcelado.php');
 
 
 

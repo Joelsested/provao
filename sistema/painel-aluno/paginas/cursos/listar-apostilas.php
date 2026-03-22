@@ -69,14 +69,17 @@ foreach ($res as $row) {
     $arquivoUrl = rawurlencode($apostila);
     $urlAbrir = $url_sistema . 'sistema/painel-aluno/paginas/cursos/abrir-apostila.php?arquivo=' . $arquivoUrl . '&download=0';
     $urlBaixar = $url_sistema . 'sistema/painel-aluno/paginas/cursos/abrir-apostila.php?arquivo=' . $arquivoUrl . '&download=1';
+    $urlAbrirJs = json_encode($urlAbrir, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $urlBaixarJs = json_encode($urlBaixar, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $tituloJs = json_encode($arquivoLabelSemData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
     echo '<tr>';
     echo '<td>' . htmlspecialchars($tituloAula, ENT_QUOTES, 'UTF-8') . '</td>';
     echo '<td>' . htmlspecialchars($arquivoLabelSemData, ENT_QUOTES, 'UTF-8') . '</td>';
     echo '<td>';
-    echo '<a class="btn btn-xs btn-primary" href="' . htmlspecialchars($urlAbrir, ENT_QUOTES, 'UTF-8') . '" target="_blank" title="Abrir apostila"><i class="fa fa-external-link"></i> Abrir</a>';
+    echo '<button type="button" class="btn btn-xs btn-primary" onclick="return abrirArquivoNoApp(' . $urlAbrirJs . ', ' . $tituloJs . ');" title="Abrir apostila aqui no app"><i class="fa fa-external-link"></i> Abrir</button>';
     echo '&nbsp;';
-    echo '<a class="btn btn-xs btn-success" href="' . htmlspecialchars($urlBaixar, ENT_QUOTES, 'UTF-8') . '" target="_blank" title="Baixar apostila"><i class="fa fa-download"></i> Baixar</a>';
+    echo '<button type="button" class="btn btn-xs btn-success" onclick="return baixarArquivoNoApp(' . $urlBaixarJs . ');" title="Baixar apostila"><i class="fa fa-download"></i> Baixar</button>';
     echo '</td>';
     echo '</tr>';
 }

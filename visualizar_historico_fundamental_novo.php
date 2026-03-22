@@ -1,6 +1,87 @@
 <?php
 setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
 
+if (!headers_sent()) {
+    header('Content-Type: text/html; charset=UTF-8');
+}
+ini_set('default_charset', 'UTF-8');
+
+if (!function_exists('normalizar_chave_historico')) {
+    function normalizar_chave_historico($chave)
+    {
+        $chave = mb_strtolower((string) $chave, 'UTF-8');
+        $normalizado = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $chave);
+        if ($normalizado !== false) {
+            $chave = $normalizado;
+        }
+        $chave = preg_replace('/[^a-z0-9]+/', '_', $chave);
+        return trim((string) $chave, '_');
+    }
+}
+
+if (!function_exists('data_nota')) {
+    function data_nota(array $notas, $chave)
+    {
+        $raw = (string) ($notas[$chave]['data'] ?? '');
+        $raw = ltrim($raw, '*');
+        if ($raw === '') {
+            return '';
+        }
+        $ts = strtotime($raw);
+        return $ts ? date('d-m-Y', $ts) : '';
+    }
+}
+
+if (!function_exists('valor_nota')) {
+    function valor_nota(array $notas, $chave, $serie)
+    {
+        $valor = (string) ($notas[$chave][$serie] ?? '0.0');
+        return ltrim($valor, '*');
+    }
+}
+
+$notas = isset($notas) && is_array($notas) ? $notas : [];
+$notasNormalizadas = [];
+foreach ($notas as $materia => $dadosMateria) {
+    if (!is_array($dadosMateria)) {
+        continue;
+    }
+    $chaveNormalizada = normalizar_chave_historico($materia);
+    if ($chaveNormalizada === '') {
+        continue;
+    }
+    $notasNormalizadas[$chaveNormalizada] = [
+        'serie1' => (string) ($dadosMateria['serie1'] ?? '0.0'),
+        'serie2' => (string) ($dadosMateria['serie2'] ?? '0.0'),
+        'serie3' => (string) ($dadosMateria['serie3'] ?? '0.0'),
+        'data' => (string) ($dadosMateria['data'] ?? ''),
+    ];
+}
+
+$materiasEsperadas = [
+    'lingua_portuguesa',
+    'arte',
+    'educacao_fisica',
+    'matematica',
+    'ciencias',
+    'historia',
+    'geografia',
+    'lingua_inglesa',
+];
+
+foreach ($materiasEsperadas as $materia) {
+    if (!isset($notasNormalizadas[$materia])) {
+        $notasNormalizadas[$materia] = [
+            'serie1' => '0.0',
+            'serie2' => '0.0',
+            'serie3' => '0.0',
+            'data' => '',
+        ];
+    }
+}
+
+$notas = $notasNormalizadas;
+
 ?>
 
 <!DOCTYPE html>
@@ -34,7 +115,8 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
             justify-content: flex-start;
             gap: 20px;
             padding-bottom: 4px;
-            margin-bottom: 34px;
+            margin-top: 8px;
+            margin-bottom: 10px;
         }
 
         .logo-header img {
@@ -94,6 +176,12 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
         .grades-section td {
             text-align: center;
             font-weight: bold;
+        }
+
+        .ch-data-head,
+        .ch-data-cell {
+            white-space: nowrap;
+            text-align: center;
         }
 
         .subject-area {
@@ -156,11 +244,62 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
             /* background: yellow; */
             /* exemplo */
         }
+
+        .historico-carimbo {
+            border: 1px solid #000;
+            text-align: center;
+            font-weight: 700;
+            line-height: 1.05;
+            padding: 6px 4px;
+            margin-bottom: 8px;
+        }
+
+        .historico-carimbo .titulo {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        .historico-carimbo .linha {
+            font-size: 12px;
+        }
+
+        .historico-data-texto {
+            font-size: 13px;
+            text-align: left;
+            margin-top: 4px;
+        }
+
+        .print-toolbar {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 9999;
+            display: flex;
+            gap: 8px;
+        }
+
+        .print-btn {
+            border: 1px solid #1f3b57;
+            background: #1f3b57;
+            color: #fff;
+            padding: 8px 12px;
+            font-size: 13px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        @media print {
+            .print-toolbar {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 
 <body>
-    <!-- <button onclick="imprimirModal()">Imprimir</button> -->
+    <div class="print-toolbar">
+        <button type="button" class="print-btn" onclick="imprimirHistorico()">Imprimir / Salvar em PDF</button>
+    </div>
     <div class="document-container" id="conteudoModal">
         <div class="logo-header">
             <img src="https://sested-eja.com/img/logo.jpg" alt="Logo SESTED" />
@@ -172,8 +311,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
                     <b><?php echo $dadosAdicionais['escola']; ?></b>
                 </td>
                 <td colspan="22" class="">
-                    AUTORIZAÇÃO: <b>PARECER CEB/CEE/RO N? 041/18 e RESOLUÇÃO CEB/CEE/RO N?
-                        1296/21</b>
+                    AUTORIZAÇÃO: <b>PARECER CEB/CEE/RO Nº 041/18 e RESOLUÇÃO CEB/CEE/RO Nº 1296/21</b>
                 </td>
             </tr>
             <tr>
@@ -223,7 +361,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
 
 
             <tr>
-                <th colspan="12" style="padding: 10px; text-align: center; background-color:rgb(238, 238, 238);">?REAS
+                <th colspan="12" style="padding: 10px; text-align: center; background-color:rgb(238, 238, 238);">ÁREAS
                     DE CONHECIMENTO</th>
                 <th colspan="14" style="padding: 10px; text-align: center; background-color:rgb(238, 238, 238);">ANOS /
                     CARGA HORÁRIA</th>
@@ -233,251 +371,217 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
                     HORÁRIAS = CH TOTAL DE FALTAS = TF
                     COMPONENTES
                     CURRICULARES</th>
-                <th style="padding: 12px; text-align: center; background-color: #f0f0f0;" colspan="2">6? Ano</th>
-                <th style="padding: 12px; text-align: center; background-color: #f0f0f0;" colspan="2">7? Ano</th>
-                <th style="padding: 12px; text-align: center; background-color: #f0f0f0;" colspan="3">8? Ano</th>
-                <th style="padding: 12px; text-align: center; background-color: #f0f0f0;" colspan="3">9? Ano</th>
+                <th style="padding: 12px; text-align: center; background-color: #f0f0f0;" colspan="2">6º Ano</th>
+                <th style="padding: 12px; text-align: center; background-color: #f0f0f0;" colspan="2">7º Ano</th>
+                <th style="padding: 12px; text-align: center; background-color: #f0f0f0;" colspan="3">8º Ano</th>
+                <th style="padding: 12px; text-align: center; background-color: #f0f0f0;" colspan="3">9º Ano</th>
             </tr>
             <tr>
                 <th colspan="1" style="padding: 4px; background-color: #f0f0f0; font-size: 10px; text-align: center;">
                     NOTA</th>
-                <th colspan="1" style="padding: 4px; background-color: #f0f0f0; font-size: 10px; text-align: center;">CH
-                    / DATA</th>
+                <th colspan="1" class="ch-data-head" style="padding: 4px; background-color: #f0f0f0; font-size: 10px;">CH/DATA</th>
                 <th colspan="1" style="padding: 4px; background-color: #f0f0f0; font-size: 10px; text-align: center;">
                     NOTA</th>
-                <th colspan="1" style="padding: 4px; background-color: #f0f0f0; font-size: 10px; text-align: center;">CH
-                    / DATA</th>
+                <th colspan="1" class="ch-data-head" style="padding: 4px; background-color: #f0f0f0; font-size: 10px;">CH/DATA</th>
                 <th colspan="1" style="padding: 4px; background-color: #f0f0f0; font-size: 10px; text-align: center;">
                     NOTA</th>
-                <th colspan="2" style="padding: 4px; background-color: #f0f0f0; font-size: 10px; text-align: center;">CH
-                    / DATA</th>
+                <th colspan="2" class="ch-data-head" style="padding: 4px; background-color: #f0f0f0; font-size: 10px;">CH/DATA</th>
                 <th colspan="1" style="padding: 4px; background-color: #f0f0f0; font-size: 10px; text-align: center;">
                     NOTA</th>
-                <th colspan="3" style="padding: 4px; background-color: #f0f0f0; font-size: 10px; text-align: center;">CH
-                    / DATA</th>
+                <th colspan="3" class="ch-data-head" style="padding: 4px; background-color: #f0f0f0; font-size: 10px;">CH/DATA</th>
             </tr>
             <tr>
-                <td rowspan="8" colspan="3" class="area-name"
+                <td rowspan="7" colspan="3" class="area-name"
                     style="text-align: center; width: 20%; background-color:rgb(238, 238, 238);"><b>BASE
                         NACIONAL</b></td>
                 <td colspan="11" class="subject-name">Língua Portuguesa</td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['lingua_portuguesa']['serie1']; ?>
+                    <?php echo valor_nota($notas, 'lingua_portuguesa', 'serie1'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px; white-space: nowrap;" class="grade-cell">
-                    <?php echo isset($notas['lingua_portuguesa']['data']) ? date('d/m/Y', strtotime($notas['lingua_portuguesa']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px; white-space: nowrap;" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'lingua_portuguesa'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['lingua_portuguesa']['serie2']; ?>
+                    <?php echo valor_nota($notas, 'lingua_portuguesa', 'serie2'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px; white-space: nowrap;" class="grade-cell">
-                    <?php echo isset($notas['lingua_portuguesa']['data']) ? date('d/m/Y', strtotime($notas['lingua_portuguesa']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px; white-space: nowrap;" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'lingua_portuguesa'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">
-                    <?php echo $notas['lingua_portuguesa']['serie3']; ?>
+                    <?php echo valor_nota($notas, 'lingua_portuguesa', 'serie3'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px; white-space: nowrap;" colspan="2" class="grade-cell">
-                    <?php echo isset($notas['lingua_portuguesa']['data']) ? date('d/m/Y', strtotime($notas['lingua_portuguesa']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px; white-space: nowrap;" colspan="2" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'lingua_portuguesa'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['lingua_portuguesa']['serie3']; ?>
+                    <?php echo valor_nota($notas, 'lingua_portuguesa', 'serie3'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px; white-space: nowrap;" colspan="2" class="grade-cell">
-                    <?php echo isset($notas['lingua_portuguesa']['data']) ? date('d/m/Y', strtotime($notas['lingua_portuguesa']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px; white-space: nowrap;" colspan="2" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'lingua_portuguesa'); ?>
                 </td>
             </tr>
             <tr>
                 <td colspan="11" class="subject-name">Arte</td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['arte']['serie1']; ?>
+                    <?php echo valor_nota($notas, 'arte', 'serie1'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">
-                    <?php echo isset($notas['arte']['data']) ? date('d/m/Y', strtotime($notas['arte']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'arte'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['arte']['serie2']; ?>
+                    <?php echo valor_nota($notas, 'arte', 'serie2'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">
-                    <?php echo isset($notas['arte']['data']) ? date('d/m/Y', strtotime($notas['arte']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'arte'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">
-                    <?php echo $notas['arte']['serie3']; ?>
+                    <?php echo valor_nota($notas, 'arte', 'serie3'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">
-                    <?php echo isset($notas['arte']['data']) ? date('d/m/Y', strtotime($notas['arte']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'arte'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['arte']['serie3']; ?>
+                    <?php echo valor_nota($notas, 'arte', 'serie3'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">
-                    <?php echo isset($notas['arte']['data']) ? date('d/m/Y', strtotime($notas['arte']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'arte'); ?>
                 </td>
             </tr>
             <tr>
                 <td colspan="11" class="subject-name">Educação Física</td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['educacao_fisica']['serie1']; ?>
+                    <?php echo valor_nota($notas, 'educacao_fisica', 'serie1'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">
-                    <?php echo isset($notas['educacao_fisica']['data']) ? date('d/m/Y', strtotime($notas['educacao_fisica']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'educacao_fisica'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['educacao_fisica']['serie2']; ?>
+                    <?php echo valor_nota($notas, 'educacao_fisica', 'serie2'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">
-                    <?php echo isset($notas['educacao_fisica']['data']) ? date('d/m/Y', strtotime($notas['educacao_fisica']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'educacao_fisica'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">
-                    <?php echo $notas['educacao_fisica']['serie3']; ?>
+                    <?php echo valor_nota($notas, 'educacao_fisica', 'serie3'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">
-                    <?php echo isset($notas['educacao_fisica']['data']) ? date('d/m/Y', strtotime($notas['educacao_fisica']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'educacao_fisica'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['educacao_fisica']['serie3']; ?>
+                    <?php echo valor_nota($notas, 'educacao_fisica', 'serie3'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">
-                    <?php echo isset($notas['educacao_fisica']['data']) ? date('d/m/Y', strtotime($notas['educacao_fisica']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'educacao_fisica'); ?>
                 </td>
             </tr>
             <tr>
                 <td colspan="11" class="subject-name">Matemática</td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['matematica']['serie1']; ?>
+                    <?php echo valor_nota($notas, 'matematica', 'serie1'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">
-                    <?php echo isset($notas['matematica']['data']) ? date('d/m/Y', strtotime($notas['matematica']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'matematica'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['matematica']['serie2']; ?>
+                    <?php echo valor_nota($notas, 'matematica', 'serie2'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">
-                    <?php echo isset($notas['matematica']['data']) ? date('d/m/Y', strtotime($notas['matematica']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'matematica'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">
-                    <?php echo $notas['matematica']['serie3']; ?>
+                    <?php echo valor_nota($notas, 'matematica', 'serie3'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">
-                    <?php echo isset($notas['matematica']['data']) ? date('d/m/Y', strtotime($notas['matematica']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'matematica'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['matematica']['serie3']; ?>
+                    <?php echo valor_nota($notas, 'matematica', 'serie3'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">
-                    <?php echo isset($notas['matematica']['data']) ? date('d/m/Y', strtotime($notas['matematica']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'matematica'); ?>
                 </td>
             </tr>
             <tr>
                 <td colspan="11" class="subject-name">Ciências</td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['ciencias']['serie1']; ?>
+                    <?php echo valor_nota($notas, 'ciencias', 'serie1'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">
-                    <?php echo isset($notas['ciencias']['data']) ? date('d/m/Y', strtotime($notas['ciencias']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'ciencias'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['ciencias']['serie2']; ?>
+                    <?php echo valor_nota($notas, 'ciencias', 'serie2'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">
-                    <?php echo isset($notas['ciencias']['data']) ? date('d/m/Y', strtotime($notas['ciencias']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'ciencias'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">
-                    <?php echo $notas['ciencias']['serie3']; ?>
+                    <?php echo valor_nota($notas, 'ciencias', 'serie3'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">
-                    <?php echo isset($notas['ciencias']['data']) ? date('d/m/Y', strtotime($notas['ciencias']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'ciencias'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['ciencias']['serie3']; ?>
+                    <?php echo valor_nota($notas, 'ciencias', 'serie3'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">
-                    <?php echo isset($notas['ciencias']['data']) ? date('d/m/Y', strtotime($notas['ciencias']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'ciencias'); ?>
                 </td>
             </tr>
             <tr>
                 <td colspan="11" class="subject-name">História</td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['historia']['serie1']; ?>
+                    <?php echo valor_nota($notas, 'historia', 'serie1'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">
-                    <?php echo isset($notas['historia']['data']) ? date('d/m/Y', strtotime($notas['historia']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'historia'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['historia']['serie2']; ?>
+                    <?php echo valor_nota($notas, 'historia', 'serie2'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">
-                    <?php echo isset($notas['historia']['data']) ? date('d/m/Y', strtotime($notas['historia']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'historia'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">
-                    <?php echo $notas['historia']['serie3']; ?>
+                    <?php echo valor_nota($notas, 'historia', 'serie3'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">
-                    <?php echo isset($notas['historia']['data']) ? date('d/m/Y', strtotime($notas['historia']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'historia'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['historia']['serie3']; ?>
+                    <?php echo valor_nota($notas, 'historia', 'serie3'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">
-                    <?php echo isset($notas['historia']['data']) ? date('d/m/Y', strtotime($notas['historia']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'historia'); ?>
                 </td>
             </tr>
             <tr>
                 <td colspan="11" class="subject-name">Geografia</td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['geografia']['serie1']; ?>
+                    <?php echo valor_nota($notas, 'geografia', 'serie1'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">
-                    <?php echo isset($notas['geografia']['data']) ? date('d/m/Y', strtotime($notas['geografia']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'geografia'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['geografia']['serie2']; ?>
+                    <?php echo valor_nota($notas, 'geografia', 'serie2'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">
-                    <?php echo isset($notas['geografia']['data']) ? date('d/m/Y', strtotime($notas['geografia']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'geografia'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">
-                    <?php echo $notas['geografia']['serie3']; ?>
+                    <?php echo valor_nota($notas, 'geografia', 'serie3'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">
-                    <?php echo isset($notas['geografia']['data']) ? date('d/m/Y', strtotime($notas['geografia']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'geografia'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['geografia']['serie3']; ?>
+                    <?php echo valor_nota($notas, 'geografia', 'serie3'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">
-                    <?php echo isset($notas['geografia']['data']) ? date('d/m/Y', strtotime($notas['geografia']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'geografia'); ?>
                 </td>
             </tr>
-            <tr>
-                <td colspan="11" class="subject-name">Educação Religiosa</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['educacao_religiosa']['serie1']; ?>
-                </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">
-                    <?php echo isset($notas['educacao_religiosa']['data']) ? date('d/m/Y', strtotime($notas['educacao_religiosa']['data'])) : ''; ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['educacao_religiosa']['serie2']; ?>
-                </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">
-                    <?php echo isset($notas['educacao_religiosa']['data']) ? date('d/m/Y', strtotime($notas['educacao_religiosa']['data'])) : ''; ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">
-                    <?php echo $notas['educacao_religiosa']['serie3']; ?>
-                </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">
-                    <?php echo isset($notas['educacao_religiosa']['data']) ? date('d/m/Y', strtotime($notas['educacao_religiosa']['data'])) : ''; ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['educacao_religiosa']['serie3']; ?>
-                </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">
-                    <?php echo isset($notas['educacao_religiosa']['data']) ? date('d/m/Y', strtotime($notas['educacao_religiosa']['data'])) : ''; ?>
-                </td>
-            </tr>
-
-
-
             <tr class="total-row">
                 <td colspan="3" class="area-name" style="text-align: center; background-color:rgb(238, 238, 238);">
                     <b>SUB-TOTAL</b>
@@ -498,28 +602,28 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
                 </td>
                 <td colspan="11" class="subject-name">Língua Inglesa</td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['lingua_inglesa']['serie1']; ?>
+                    <?php echo valor_nota($notas, 'lingua_inglesa', 'serie1'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">
-                    <?php echo isset($notas['lingua_inglesa']['data']) ? date('d/m/Y', strtotime($notas['lingua_inglesa']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'lingua_inglesa'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['lingua_inglesa']['serie2']; ?>
+                    <?php echo valor_nota($notas, 'lingua_inglesa', 'serie2'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">
-                    <?php echo isset($notas['lingua_inglesa']['data']) ? date('d/m/Y', strtotime($notas['lingua_inglesa']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'lingua_inglesa'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">
-                    <?php echo $notas['lingua_inglesa']['serie3']; ?>
+                    <?php echo valor_nota($notas, 'lingua_inglesa', 'serie3'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">
-                    <?php echo isset($notas['lingua_inglesa']['data']) ? date('d/m/Y', strtotime($notas['lingua_inglesa']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'lingua_inglesa'); ?>
                 </td>
                 <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo $notas['lingua_inglesa']['serie3']; ?>
+                    <?php echo valor_nota($notas, 'lingua_inglesa', 'serie3'); ?>
                 </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">
-                    <?php echo isset($notas['lingua_inglesa']['data']) ? date('d/m/Y', strtotime($notas['lingua_inglesa']['data'])) : ''; ?>
+                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
+                    <?php echo data_nota($notas, 'lingua_inglesa'); ?>
                 </td>
             </tr>
             <tr class="total-row">
@@ -617,7 +721,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
                 <td colspan="1" class="center bold">UF</td>
             </tr>
             <tr>
-                <td colspan="2" class="center" style="padding: 4px;">6? Ano</td>
+                <td colspan="2" class="center" style="padding: 4px;">6º Ano</td>
                 <td colspan="3" class="center">
                     <?php echo $dadosAdicionais['anoConclusao'] ?? '' ?>
                 </td>
@@ -632,7 +736,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
                 </td>
             </tr>
             <tr>
-                <td colspan="2" class="center" style="padding: 4px;">7? Ano</td>
+                <td colspan="2" class="center" style="padding: 4px;">7º Ano</td>
                 <td colspan="3" class="center">
                     <?php echo $dadosAdicionais['anoConclusao'] ?? '' ?>
                 </td>
@@ -647,7 +751,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
                 </td>
             </tr>
             <tr>
-                <td colspan="2" class="center" style="padding: 4px;">8? Ano</td>
+                <td colspan="2" class="center" style="padding: 4px;">8º Ano</td>
                 <td colspan="3" class="center">
                     <?php echo $dadosAdicionais['anoConclusao'] ?? '' ?>
                 </td>
@@ -662,7 +766,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
                 </td>
             </tr>
             <tr>
-                <td colspan="2" class="center" style="padding: 4px;">9? Ano</td>
+                <td colspan="2" class="center" style="padding: 4px;">9º Ano</td>
                 <td colspan="3" class="center">
                     <?php echo $dadosAdicionais['anoConclusao'] ?? '' ?>
                 </td>
@@ -680,7 +784,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
 
             <tr></tr>
 
-            <!-- S?ntese e Observações -->
+            <!-- Síntese e Observações -->
             <tr>
                 <td style="padding: 4px;" colspan="25"><b>SÍNTESE DO SISTEMA DE AVALIAÇÃO:</b> Será aprovado quando
                     obtiver
@@ -716,19 +820,32 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
             <!-- Data e Assinaturas -->
             <tr>
                 <td colspan="4" style="text-align: left; padding: 5px; width: 30% !important;">
-                    <?php echo $dadosAdicionais['municipio'] ?? '' ?> -  <?php echo $dadosAdicionais['data_historico_extenso'] ?? ($dadosAdicionais['data_historico'] ?? '') ?>
-                    
+                    <div class="historico-carimbo">
+                        <div class="titulo">SESTED</div>
+                        <div class="linha">Autorização de Funcionamento</div>
+                        <div class="linha">Parecer CEB/CEE/RO n&ordm; 003/24</div>
+                        <div class="linha">Resolução n&ordm; 011/23 - CEE/RO</div>
+                        <div class="linha">CNPJ 07.158.229/0001-06</div>
+                        <div class="linha">BURITIS - RO</div>
+                    </div>
+                    <div class="historico-data-texto">
+                        <?php
+                        $municipioData = trim((string) ($dadosAdicionais['municipio'] ?? ''));
+                        $dataHistoricoTxt = (string) ($dadosAdicionais['data_historico_extenso'] ?? ($dadosAdicionais['data_historico'] ?? ''));
+                        echo ($municipioData !== '' ? ($municipioData . ' - ') : '') . $dataHistoricoTxt;
+                        ?>
+                    </div>
                 </td>
                 <td colspan="22">
                     <table style="width: 100%; text-align: center; border: none; margin: auto;">
                         <tr>
-                            <td style="border: none; width: 50%; text-align: center;  padding: 10px;">
+                            <td style="border: none; width: 50%; text-align: center; padding: 10px; padding-top: 32px;">
                                 ______________________________<br>
                                 Laura Maria Jonjob de Souza<br>
                                 RG: 757423 SESDEC/RO<br>
                                 <strong>Diretora</strong>
                             </td>
-                            <td style="border: none; width: 50%; text-align: center;">
+                            <td style="border: none; width: 50%; text-align: center; padding-top: 32px;">
                                 ______________________________<br>
                                 Daniely Jonjob da Silva<br>
                                 RG: 1480635 SESDEC/RO<br>
@@ -742,13 +859,16 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
         </table>
     </div>
     <script>
-        function minhaFuncao() {
+        function imprimirHistorico() {
             window.print();
         }
+
         window.addEventListener("DOMContentLoaded", () => {
             const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get("download") === "1") {
-                minhaFuncao();
+            if (urlParams.get("download") === "1" || urlParams.get("print") === "1") {
+                setTimeout(() => {
+                    imprimirHistorico();
+                }, 250);
             }
         });
     </script>

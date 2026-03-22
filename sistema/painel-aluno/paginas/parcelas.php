@@ -69,6 +69,40 @@ function resumirStatusBoleto($statusApi, $situacao = null)
     return 'Nao Gerado';
 }
 
+function formatarDataPagamento($data): string
+{
+    $valor = trim((string) $data);
+    if ($valor === '' || $valor === '0000-00-00' || $valor === '0000-00-00 00:00:00') {
+        return '-';
+    }
+
+    try {
+        $dt = new DateTime($valor);
+        return $dt->format('d/m/Y H:i');
+    } catch (Exception $e) {
+        return '-';
+    }
+}
+
+function resolverDataPagamentoRegistro(array $registro, string $statusResumo): string
+{
+    if ($statusResumo !== 'Pago') {
+        return '-';
+    }
+
+    foreach (['data_pagamento', 'paid_at', 'updated_at', 'update_at', 'received_by_bank_at', 'criado_em', 'created_at', 'data'] as $campo) {
+        if (empty($registro[$campo])) {
+            continue;
+        }
+        $dataFmt = formatarDataPagamento((string) $registro[$campo]);
+        if ($dataFmt !== '-') {
+            return $dataFmt;
+        }
+    }
+
+    return '-';
+}
+
 $id_do_aluno = @$_SESSION['id'];
 $telefone_aluno = '';
 try {
@@ -202,7 +236,7 @@ $consulta_matriculas = $pdo->prepare("
 
     WHERE matriculas.aluno = :aluno
 
-    AND matriculas.forma_pgto = 'MP'
+    AND matriculas.forma_pgto IN ('CARTAO_DE_CREDITO', 'CARTAO_RECORRENTE')
 
 ");
 
@@ -323,13 +357,6 @@ foreach ($transactions as $registro) {
 
 
 <head>
-
-    <?php if ($mp_enabled) { ?>
-        <script src="https://sdk.mercadopago.com/js/v2"></script>
-    <?php } ?>
-
-
-
 </head>
 
 
@@ -405,6 +432,7 @@ foreach ($transactions as $registro) {
                 <th>N° da parcela</th>
                 <th>Valor</th>
                 <th>Situação</th>
+                <th>Data Pagamento</th>
                 <th>Pix Copia e Cola</th>
                 <th>Gerar boleto</th>
                 <th>Enviar</th>
@@ -424,6 +452,7 @@ foreach ($transactions as $registro) {
                     }
                     $statusResumo = resumirStatusBoleto($statusApi, $registro['situacao'] ?? null);
                     $vencido = ($statusResumo === 'Vencido');
+                    $dataPagamentoExibicao = resolverDataPagamentoRegistro($registro, $statusResumo);
                     ?>
 
                     <tr>
@@ -436,6 +465,7 @@ foreach ($transactions as $registro) {
                         
                         
                         <td><?php echo htmlspecialchars($statusResumo); ?></td>
+                        <td><?php echo htmlspecialchars($dataPagamentoExibicao); ?></td>
                         
                         <td style="max-width: 100px; overflow: hidden;">
                                <?php if($registro['transaction_receipt_url']): ?>
@@ -668,6 +698,7 @@ foreach ($transactions as $registro) {
                         <th>Identificador</th>
                         <th>Valor</th>
                         <th>Situação</th>
+                        <th>Data Pagamento</th>
                         <th>Pix Copia e Cola</th>
                         <th>Ação</th>
                     </tr>
@@ -690,6 +721,7 @@ foreach ($transactions as $registro) {
                             }
                         }
                         $vencido = ($statusResumo === 'Vencido' || $statusResumo === 'vencido');
+                        $dataPagamentoBoletoAvista = resolverDataPagamentoRegistro($registro, $statusResumo);
                         ?>
                         <tr>
                             <td><?php echo $registro['id']; ?></td>
@@ -703,15 +735,15 @@ foreach ($transactions as $registro) {
                             </td>
                             <td><?php echo 'R$ ' . number_format($registro['valor'], 2, ',', '.'); ?></td>
                            <td class="esc" style="text-transform: uppercase; max-width: 50px;">
-    <?php echo htmlspecialchars($statusResumo); ?>
-</td>
-<td style="max-width: 60px; overflow: hidden;">
-    <button
-        onclick="copiarPix('<?php echo htmlspecialchars($registro['linha_digitavel'], ENT_QUOTES); ?>')">
-        <i class="fa fa-file-pdf-o" aria-hidden="true"></i>
-        Copiar Pix
-    </button>
-</td>
+                                <?php echo htmlspecialchars($statusResumo); ?>
+                            </td>
+                            <td><?php echo htmlspecialchars($dataPagamentoBoletoAvista); ?></td>
+                            <td style="max-width: 60px; overflow: hidden;">
+                                <button onclick="copiarPix('<?php echo htmlspecialchars($registro['linha_digitavel'], ENT_QUOTES); ?>')">
+                                    <i class="fa fa-file-pdf-o" aria-hidden="true"></i>
+                                    Copiar Pix
+                                </button>
+                            </td>
                             <td>
                                 <?php if ($statusResumo === 'Pendente'): ?>
                                     <button

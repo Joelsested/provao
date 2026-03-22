@@ -106,12 +106,29 @@ function normalizarTelefone($telefone): string
 
 function montarUrlWebhook($url)
 {
-    $token = env('WEBHOOK_TOKEN', '');
+    $token = '';
+    foreach (['WEBHOOK_TOKEN_EJA_PROD', 'WEBHOOK_TOKEN_EJA', 'WEBHOOK_TOKEN'] as $key) {
+        $value = trim((string) env($key, ''));
+        if ($value !== '') {
+            $token = $value;
+            break;
+        }
+    }
     if ($token === '') {
         return $url;
     }
     $sep = strpos($url, '?') === false ? '?' : '&';
     return $url . $sep . 'token=' . urlencode($token);
+}
+
+function montarUrlWebhookAbsoluta(string $path): string
+{
+    global $url_sistema;
+    $baseWebhook = rtrim((string) ($url_sistema ?? ''), '/');
+    if ($baseWebhook === '' || stripos($baseWebhook, 'https://') !== 0) {
+        $baseWebhook = 'https://www.sested-eja.com';
+    }
+    return montarUrlWebhook($baseWebhook . '/' . ltrim($path, '/'));
 }
 
 function usuarioPodeAtualizar(string $nivel, int $idUsuario, int $alunoId, int $responsavelId): bool
@@ -340,8 +357,28 @@ function montarDadosBoleto(PDO $pdo, int $idMatricula, string $vencimento): arra
         'telefone' => $telefone_aluno ?: '69999694538',
         'vencimento' => $vencimento,
         'repasses' => $repasses,
-        'notification_url' => montarUrlWebhook('https://www.sested-eja.com/efi_webhook_boleto.php')
+        'notification_url' => montarUrlWebhookAbsoluta('efi_webhook_boleto.php')
     ];
+}
+
+function normalizarPayloadParcela(array $payload, array $parcela): array
+{
+    $valorParcela = (float) ($parcela['valor_parcela'] ?? 0);
+    if ($valorParcela <= 0) {
+        return $payload;
+    }
+
+    $valorCentavos = (int) round($valorParcela * 100);
+    $payload['valor'] = $valorCentavos;
+
+    if (isset($payload['items']) && is_array($payload['items']) && count($payload['items']) === 1 && is_array($payload['items'][0])) {
+        $payload['items'][0]['value'] = $valorCentavos;
+        if (empty($payload['items'][0]['amount']) || (int) $payload['items'][0]['amount'] < 1) {
+            $payload['items'][0]['amount'] = 1;
+        }
+    }
+
+    return $payload;
 }
 
 try {
@@ -380,8 +417,9 @@ try {
             if ($payload !== '' && tabelaTemColuna($pdo, 'parcelas_geradas_por_boleto', 'payload')) {
                 $payloadArray = json_decode($payload, true);
                 if (is_array($payloadArray)) {
+                    $payloadArray = normalizarPayloadParcela($payloadArray, $parcela);
                     $payloadArray['vencimento'] = $vencimento;
-                    $payloadArray['notification_url'] = montarUrlWebhook('https://www.sested-eja.com/efi_webhook_boleto_parcelado.php');
+                    $payloadArray['notification_url'] = montarUrlWebhookAbsoluta('efi_webhook_boleto_parcelado.php');
                     $payload = json_encode($payloadArray, JSON_UNESCAPED_UNICODE);
                 }
                 $stmtPayload = $pdo->prepare("UPDATE parcelas_geradas_por_boleto SET payload = :payload WHERE id = :id");
@@ -401,8 +439,9 @@ try {
                 echo 'Não foi possível reemitir o boleto desta parcela.';
                 exit();
             }
+            $payloadArray = normalizarPayloadParcela($payloadArray, $parcela);
             $payloadArray['vencimento'] = $vencimento;
-            $payloadArray['notification_url'] = montarUrlWebhook('https://www.sested-eja.com/efi_webhook_boleto_parcelado.php');
+            $payloadArray['notification_url'] = montarUrlWebhookAbsoluta('efi_webhook_boleto_parcelado.php');
             $payloadAtualizado = json_encode($payloadArray, JSON_UNESCAPED_UNICODE);
 
             $resultado = $boletoPayment->createBoletoCharge($payloadArray);

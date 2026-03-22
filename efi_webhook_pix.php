@@ -305,7 +305,7 @@ try {
                             // Verificar se o curso é um pacote
                             $pacote = verificarSeCursoEPacote($pdo, $idMatricula);
 
-                            if ($pacote === 'Sim') {
+                            if (strcasecmp(trim((string) $pacote), 'sim') === 0) {
                                 logMessage("Detectado pagamento de pacote. TXID: $txid, Curso: $idCurso, Aluno: $alunoId");
 
                                 if (!ativarCursosDoPacote($pdo, $idCurso, $alunoId)) {

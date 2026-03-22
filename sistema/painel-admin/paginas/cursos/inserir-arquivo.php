@@ -1,6 +1,6 @@
 <?php 
 require_once("../../../conexao.php");
-require_once(__DIR__ . "/../../../config/upload.php");
+require_once(__DIR__ . "/../../../../config/upload.php");
 @session_start();
 $id_usuario = $_SESSION['id'];
 

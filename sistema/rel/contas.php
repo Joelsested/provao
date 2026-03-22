@@ -26,7 +26,7 @@ if($dataInicial == $dataFinal){
 }else if($dataInicial == '1980-01-01'){
 	$texto_apuracao = 'APURADO EM TODO O PERÍODO';
 }else{
-	$texto_apuracao = 'APURAÇÃO DE '.$dataInicialF. ' AT? '.$dataFinalF;
+	$texto_apuracao = 'APURAÇÃO DE '.$dataInicialF. ' ATÉ '.$dataFinalF;
 }
 
 
@@ -42,11 +42,11 @@ if($pago == ''){
 }
 
 if($tabela == 'receber'){
-	$texto_tabela = ' ? Receber';
+	$texto_tabela = ' à Receber';
 	$cor_tabela = 'text-success';
 	$tabela_pago = 'RECEBIDAS';
 }else{
-	$texto_tabela = ' ? Pagar';
+	$texto_tabela = ' à Pagar';
 	$cor_tabela = 'text-danger';
 	$tabela_pago = 'PAGAS';
 }
@@ -64,7 +64,7 @@ $data_hoje = utf8_encode(strftime('%A, %d de %B de %Y', strtotime('today')));
 <!DOCTYPE html>
 <html>
 <head>
-	<title>Relatério de Contas</title>	
+	<title>Relatório de Contas</title>	
 
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-wEmeIV1mKuiNpC+IOBjI7aAzPcEZeedi5yW5f2yOq55WWLwNGmvvx4Um1vskeMj0" crossorigin="anonymous">
 
@@ -196,7 +196,7 @@ $data_hoje = utf8_encode(strftime('%A, %d de %B de %Y', strtotime('today')));
 
 
 
-<div class="titulo_cab titulo_img"><u>Relatério de Contas <?php echo $texto_tabela ?>  <?php echo $acao_rel ?> </u></div>	
+<div class="titulo_cab titulo_img"><u>Relatório de Contas <?php echo $texto_tabela ?>  <?php echo $acao_rel ?> </u></div>	
 	<div class="data_img"><?php echo mb_strtoupper($data_hoje) ?></div>
 
 	<img class="imagem" src="<?php echo $url_sistema ?>/sistema/img/logo_rel.jpg" width="200px" height="47">
@@ -337,7 +337,7 @@ $data_hoje = utf8_encode(strftime('%A, %d de %B de %Y', strtotime('today')));
 	<div class="col-md-12 p-2">
 		<div class="" align="right">
 
-		<span class="text-danger"> <small><small><small><small>TOTAL ? <?php echo mb_strtoupper($tabela) ?></small> : R$ <?php echo $total_a_pagarF ?></small></small></small>  </span>			
+		<span class="text-danger"> <small><small><small><small>TOTAL À <?php echo mb_strtoupper($tabela) ?></small> : R$ <?php echo $total_a_pagarF ?></small></small></small>  </span>			
 		<span class="text-success"> <small><small><small><small>TOTAL <?php echo $tabela_pago ?></small> : R$ <?php echo $total_pagoF ?></small></small></small>  </span>	
 		
 		</div>
@@ -358,5 +358,3 @@ $data_hoje = utf8_encode(strftime('%A, %d de %B de %Y', strtotime('today')));
 	</body>
 
 	</html>
-
-

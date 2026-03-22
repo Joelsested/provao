@@ -27,6 +27,21 @@ $calcularTotalCartaoCliente = static function (
     return round(max($baseBruta, 0), 2);
 };
 
+function formatarDataPagamentoBr(string $data): string
+{
+    $valor = trim($data);
+    if ($valor === '' || $valor === '0000-00-00' || $valor === '0000-00-00 00:00:00') {
+        return '-';
+    }
+
+    try {
+        $dt = new DateTime($valor);
+        return $dt->format('d/m/Y H:i');
+    } catch (Throwable $e) {
+        return '-';
+    }
+}
+
 
 echo <<<HTML
 <small>
@@ -41,7 +56,7 @@ foreach ($res as $matricula) {
     $id_matricula = $matricula['id'];
 
     // Fluxo EFY: pagamento listado apenas por boletos no módulo de parcelas.
-    $stmt = $pdo->prepare("SELECT * FROM pagamentos_boleto WHERE id_matricula = :id_matricula");
+    $stmt = $pdo->prepare("SELECT * FROM pagamentos_boleto WHERE id_matricula = :id_matricula ORDER BY id DESC");
     $stmt->bindParam(':id_matricula', $id_matricula);
     $stmt->execute();
     $pagamentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -74,6 +89,7 @@ if ($total_reg > 0) {
     <th class="esc">Forma de Pagamento</th> 
     <th class="esc">Cupom</th> 	
 	<th class="esc">Data</th>
+	<th class="esc">Data Pagamento</th>
 	<th class="esc">Status</th> 	
 	<th>Ações</th>
 	</tr> 
@@ -204,8 +220,36 @@ HTML;
         }else{
             $classe_cupom2 = 'ocultar';
         }
+        $dataPagamento = '-';
+        if (!empty($matriculas[$i]['pagamentos']) && is_array($matriculas[$i]['pagamentos'])) {
+            foreach ($matriculas[$i]['pagamentos'] as $pg) {
+                $statusPagamento = strtolower(trim((string) ($pg['status'] ?? '')));
+                if (in_array($statusPagamento, ['paid', 'settled', 'pago', 'aprovado'], true)) {
+                    $dataRaw = (string) ($pg['data_pagamento'] ?? $pg['updated_at'] ?? $pg['data_criacao'] ?? $pg['criado_em'] ?? '');
+                    $dataPagamento = formatarDataPagamentoBr($dataRaw);
+                    break;
+                }
+            }
+        }
 
-
+        if ($dataPagamento === '-') {
+            $stmtParcelaPaga = $pdo->prepare("
+                SELECT data_pagamento
+                FROM parcelas_geradas_por_boleto
+                WHERE id_matricula = :id_matricula
+                  AND (
+                    situacao = 1
+                    OR LOWER(COALESCE(status, '')) IN ('paid', 'pago', 'settled')
+                  )
+                ORDER BY data_pagamento DESC, id DESC
+                LIMIT 1
+            ");
+            $stmtParcelaPaga->execute([':id_matricula' => $id]);
+            $dataParcelaPaga = $stmtParcelaPaga->fetchColumn();
+            if (!empty($dataParcelaPaga)) {
+                $dataPagamento = formatarDataPagamentoBr((string) $dataParcelaPaga);
+            }
+        }
 
         echo <<<HTML
 <tr> 
@@ -265,6 +309,7 @@ HTML;
         
         
 		<td class="esc">{$dataF}</td>
+		<td class="esc">{$dataPagamento}</td>
 		<td class="esc"><i class="fa {$icone} $classe_square"></i></td>				
 		<td>
 		

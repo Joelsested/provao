@@ -44,13 +44,52 @@ function logWebhook($pdo, $eventType, $payload, $receivedAt)
     }
 }
 
+function extrairNotificationToken(string $rawBody): string
+{
+    $rawBody = trim($rawBody);
+
+    if (isset($_POST['notification']) && trim((string) $_POST['notification']) !== '') {
+        return trim((string) $_POST['notification']);
+    }
+
+    if ($rawBody === '') {
+        return '';
+    }
+
+    $json = json_decode($rawBody, true);
+    if (is_array($json)) {
+        foreach (['notification', 'notification_token', 'token'] as $k) {
+            if (!empty($json[$k])) {
+                return trim((string) $json[$k]);
+            }
+        }
+    }
+
+    $parsed = [];
+    parse_str($rawBody, $parsed);
+    if (!empty($parsed['notification'])) {
+        return trim((string) $parsed['notification']);
+    }
+
+    if (strpos($rawBody, '=') !== false) {
+        [$key, $value] = explode('=', $rawBody, 2);
+        if (trim((string) $key) === 'notification') {
+            return trim((string) $value);
+        }
+    }
+
+    return '';
+}
+
 // Função para atualizar status do pagamento boleto
 function atualizarStatusPagamentoBoleto($pdo, $chargeId, $status, $dataPagamento = null)
 {
     try {
+        $statusNorm = strtolower(trim((string) $status));
+        $isPago = in_array($statusNorm, ['paid', 'settled'], true);
         $sql = "UPDATE parcelas_geradas_por_boleto SET situacao = :situacao";
         $params = [
-            ':situacao' => ($status === 'paid') ? 1 : 0,
+            ':situacao' => $isPago ? 1 : 0,
             ':charge_id' => $chargeId
         ];
         if (!empty($dataPagamento)) {
@@ -235,24 +274,15 @@ try {
     $payload = json_encode($data, JSON_UNESCAPED_UNICODE);
     $receivedAt = date('Y-m-d H:i:s');
 
-    // Extrai o notification hash
-    $notification = trim($input);
-
-    if (strpos($notification, '=') === false) {
-        http_response_code(400);
-        echo json_encode(['error' => 'Formato de notificação inválido']);
-        logWebhook($pdo, 'boleto_error', $payload, $receivedAt);
+    // Extrai o token da notificacao (suporta form-urlencoded e JSON).
+    $notification_hash = extrairNotificationToken($input);
+    if ($notification_hash === '') {
+        http_response_code(200);
+        echo json_encode(['success' => true, 'ignored' => true, 'message' => 'Token de notificacao ausente']);
+        logWebhook($pdo, 'boleto_webhook_token_ausente', $payload, $receivedAt);
         exit;
     }
-
-
-
-    list($key, $value) = explode('=', $notification, 2);
-    $notification_hash = $value;
-    $notification_hash = rtrim($notification_hash, '"');
-
-
-    logMessage("Processando webhook de boleto. Notification hash: $notification_hash");
+logMessage("Processando webhook de boleto. Notification hash: $notification_hash");
 
     // Consultar webhook da EFI
     $boletoWebhook = new EFIBoletoPayment(
@@ -279,7 +309,10 @@ try {
 
     logMessage("Status atual do boleto: $currentStatus, Charge ID: $chargeId");
 
-    if ($currentStatus === 'paid') {
+    $statusAtualNorm = strtolower(trim((string) $currentStatus));
+    $statusPago = in_array($statusAtualNorm, ['paid', 'settled'], true);
+
+    if ($statusPago) {
         // Boleto pago - processar pagamento
         $pdo->beginTransaction();
 
@@ -291,7 +324,7 @@ try {
                 ?? $receivedAt;
 
             // Atualizar status do pagamento boleto
-            if (!atualizarStatusPagamentoBoleto($pdo, $chargeId, 'paid', $dataPagamento)) {
+            if (!atualizarStatusPagamentoBoleto($pdo, $chargeId, $statusAtualNorm, $dataPagamento)) {
                 throw new Exception("Falha ao atualizar pagamento boleto");
             }
 
@@ -368,7 +401,7 @@ try {
         'success' => true,
         'charge_id' => $chargeId,
         'status' => $currentStatus,
-        'processed' => $currentStatus === 'paid'
+        'processed' => $statusPago
     ]);
 
 } catch (Exception $e) {

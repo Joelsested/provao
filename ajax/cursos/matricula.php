@@ -23,10 +23,25 @@ function validarResponsavel(PDO $pdo, int $id, array $allowedLevels, string $pla
 
 @session_start();
 $id_aluno = $_SESSION['id'] ?? null;
+$modoRetorno = strtolower((string) ($_POST['modo_retorno'] ?? 'texto'));
+$retornoJson = $modoRetorno === 'json';
+
+$responder = static function (string $mensagem, bool $sucesso = false, array $extra = []) use ($retornoJson): void {
+    if ($retornoJson) {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(array_merge([
+            'success' => $sucesso,
+            'message' => $mensagem,
+        ], $extra), JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
+    echo $mensagem;
+    exit();
+};
 
 if (!$id_aluno) {
-    echo 'Usuario nao autenticado!';
-    exit();
+    $responder('Usuário não autenticado!');
 }
 
 $allowedLevels = ['Administrador', 'Vendedor', 'Tutor', 'Secretario', 'Tesoureiro', 'Parceiro'];
@@ -63,15 +78,13 @@ if ($alunoPessoaId > 0) {
 }
 
 if (!$responsavelValido && $alunoPessoaId > 0) {
-    echo 'Selecione um responsavel valido!';
-    exit();
+    $responder('Selecione um responsável válido!');
 }
 
 if ($responsavelValido && $alunoPessoaId > 0) {
     $responsavelSelecionado = buscarResponsavel($pdo, (int) $responsavelValido, $allowedLevels, $levelPlaceholders);
     if (!$responsavelSelecionado) {
-        echo 'Responsavel invalido!';
-        exit();
+        $responder('Responsável inválido!');
     }
 
     $responsavelProfessor = responsavelEhProfessor($pdo, $responsavelSelecionado);
@@ -81,15 +94,13 @@ if ($responsavelValido && $alunoPessoaId > 0) {
 
     if ($responsavelProfessor) {
         if ($novoAtendente <= 0) {
-            echo 'Responsavel com Professor marcado exige atendente ativo (Tutor ou Secretario).';
-            exit();
+            $responder('Responsável com Professor marcado exige atendente ativo (Tutor ou Secretário).');
         }
         $stmtNivelDest = $pdo->prepare("SELECT nivel FROM usuarios WHERE id = :id AND ativo = 'Sim' LIMIT 1");
         $stmtNivelDest->execute([':id' => (int) $novoAtendente]);
         $nivelDestino = (string) ($stmtNivelDest->fetchColumn() ?: '');
         if (!in_array($nivelDestino, ['Tutor', 'Secretario'], true)) {
-            echo 'Atendente invalido para responsavel com Professor marcado.';
-            exit();
+            $responder('Atendente inválido para responsável com Professor marcado.');
         }
     }
 
@@ -99,8 +110,7 @@ if ($responsavelValido && $alunoPessoaId > 0) {
     if ($responsavelMudou || $atendenteMudou) {
         $bloqueioTroca = podeTrocarAtendente($pdo, (int) $alunoPessoaId, (int) $novoAtendente, date('Y-m-d'));
         if (!empty($bloqueioTroca['bloqueado'])) {
-            echo (string) ($bloqueioTroca['mensagem'] ?? 'Troca bloqueada por regra de comissao.');
-            exit();
+            $responder((string) ($bloqueioTroca['mensagem'] ?? 'Troca bloqueada por regra de comissão.'));
         }
     }
 
@@ -145,8 +155,7 @@ if ($_SESSION['nivel'] == 'Aluno') {
 
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 if (@count($res) == 0) {
-    echo 'Aluno nao cadastrado com este email!';
-    exit();
+    $responder('Aluno não cadastrado com este e-mail!');
 } else {
     $id_aluno = $res[0]['id'];
     $nome_aluno = $res[0]['nome'];
@@ -169,8 +178,7 @@ $stmtMat = $pdo->prepare("SELECT * FROM matriculas WHERE aluno = ? AND id_curso 
 $stmtMat->execute([(int) $id_aluno, $curso, $pacote]);
 $res = $stmtMat->fetchAll(PDO::FETCH_ASSOC);
 if (@count($res) > 0) {
-    echo 'Aluno ja matriculado neste curso!';
-    exit();
+    $responder('Aluno já matriculado neste curso!');
 } else {
     if ($valor == '0') {
         $status = 'Matriculado';
@@ -187,9 +195,14 @@ if (@count($res) > 0) {
     $stmtInsert->bindValue(':pacote', $pacote);
     $stmtInsert->bindValue(':subtotal', "$valor");
     $stmtInsert->execute();
+    $idMatriculaCriada = (int) $pdo->lastInsertId();
 }
 
-echo 'Matriculado com Sucesso';
-
 require_once('email-matricula.php');
+
+$responder('Matriculado com Sucesso', true, [
+    'id_matricula' => $idMatriculaCriada ?? 0,
+    'id_curso' => (int) $curso,
+    'pacote' => $pacote,
+]);
 

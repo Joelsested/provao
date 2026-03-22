@@ -89,7 +89,7 @@ if (!$res1) {
     $resAluno = $queryAluno->fetchAll(PDO::FETCH_ASSOC);
 }
 
-// Buscar ?ltimo histórico versionado (se existir)
+// Buscar último histórico versionado (se existir)
 $historico_salvo = null;
 try {
     $stmtHistorico = $pdo->prepare("SELECT dados_json FROM historicos_versionados WHERE aluno_id = :aluno_id AND categoria = :categoria ORDER BY versao DESC LIMIT 1");
@@ -142,7 +142,7 @@ if (!$aluno_error) {
 
 
 
-            // Armazenar nota (assumindo que ? uma nota geral - você pode adaptar conforme sua estrutura)
+            // Armazenar nota (assumindo que é uma nota geral - você pode adaptar conforme sua estrutura)
             $notas_existentes[$nome_curso] = [
                 'nota' => formatarNota($nota),
                 'data_certificado' => $data_certificado,
@@ -466,7 +466,7 @@ if (!$aluno_error) {
                 <a class="btn" href="index.php?pagina=alunos" style="text-decoration: none;">Voltar</a>
                 <?php if ($notas_existentes): ?>
                     <button class="btn" onclick="abrirFormularioCompleto()">
-                        Gerar Historico Escolar
+                        Gerar Histórico Escolar
                     </button>
                 <?php endif; ?>
             </div>
@@ -620,8 +620,9 @@ if (!$aluno_error) {
                             echo "<td class='px-6 py-4 whitespace-nowrap'>{$criadoPor}</td>";
                             echo "<td class='px-6 py-4 text-center'>{$dataGerado}</td>";
                             echo "<td class='px-6 py-4 text-center'>"
-                                . "<button onclick=\\\"abrirHistorico('{$caminhoUrl}')\\\" class='text-blue-500 hover:text-blue-700'>Ver</button> "
-                                . "<button onclick=\\\"apagarHistorico('{$caminhoRel}')\\\" class='text-red-500 hover:text-red-700 ml-3'>Apagar</button>"
+                                . "<button onclick=\"abrirHistorico('{$caminhoUrl}')\" class='text-blue-500 hover:text-blue-700'>Ver</button> "
+                                . "<button onclick=\"downloadHistorico('{$caminhoUrl}')\" class='text-blue-500 hover:text-blue-700'>Download</button> "
+                                . "<button onclick=\"apagarHistorico('{$caminhoRel}')\" class='text-red-500 hover:text-red-700 ml-3'>Apagar</button>"
                                 . "</td>";
                             echo '</tr>';
                         }
@@ -669,12 +670,13 @@ if (!$aluno_error) {
         function apagarHistorico(caminho) {
             Swal.fire({
                 title: "Tem certeza?",
-                text: "O arquivo será apagado permanentemente!",
+                text: "O arquivo ser\u00e1 apagado permanentemente!",
                 icon: "warning",
                 showCancelButton: true,
                 confirmButtonColor: "#d33",
                 cancelButtonColor: "#3085d6",
-                confirmButtonText: "Sim, apagar!"
+                confirmButtonText: "Sim, apagar!",
+                cancelButtonText: "Cancelar"
             }).then((result) => {
                 if (result.isConfirmed) {
                     fetch("paginas/apagar_historico.php", {
@@ -700,33 +702,7 @@ if (!$aluno_error) {
 
     <script>
         function abrirHistorico2(caminho) {
-            fetch(caminho)
-                .then(response => response.text())
-                .then(html => {
-                    Swal.fire({
-                        title: 'Visualização do Histórico',
-                        // html: '<iframe src="' + caminho + '" width="100%" height="600px" style="border: none;"></iframe>',
-                        html:
-                            width: '60%',
-
-                        showCloseButton: true,
-                        showConfirmButton: true,
-                        confirmButtonText: 'Imprimir',
-                        scrollbarPadding: false,
-
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            window.open(caminho + "?print=1", "_blank");
-                        }
-                    });
-                })
-                .catch(err => {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Erro',
-                        text: 'Não foi possível carregar o arquivo.'
-                    });
-                });
+            abrirHistorico(caminho);
         }
     </script>
 
@@ -734,31 +710,46 @@ if (!$aluno_error) {
 
     <script>
         function abrirHistorico(caminho) {
-            fetch(caminho)
-                .then(response => response.text())
-                .then(html => {
-                    swal({
-                        title: "Histórico Escolar",
-                        content: (function () {
-                            const div = document.createElement("div");
-                            div.innerHTML = '<iframe src="' + caminho + '" width="100%" height="600px" style="border: none;"></iframe>';
-                            return div;
-                        })(),
-                        buttons: {
-                            fechar: "Fechar"
-                        }
-                    });
-
-                })
-                .catch(err => {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Erro',
-                        text: 'Não foi possível carregar o arquivo.'
-                    });
+            if (!caminho) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro',
+                    text: 'Caminho do histórico inválido.'
                 });
+                return;
+            }
+
+            const novaAba = window.open(caminho, '_blank');
+            if (!novaAba || novaAba.closed || typeof novaAba.closed === 'undefined') {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Pop-up bloqueado',
+                    text: 'Permita pop-up para visualizar o histórico.'
+                });
+            }
         }
 
+        function downloadHistorico(caminho) {
+            if (!caminho) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro',
+                    text: 'Caminho do histórico inválido.'
+                });
+                return;
+            }
+
+            const separador = caminho.includes('?') ? '&' : '?';
+            const urlImpressao = caminho + separador + 'download=1';
+            const novaAba = window.open(urlImpressao, '_blank');
+            if (!novaAba || novaAba.closed || typeof novaAba.closed === 'undefined') {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Pop-up bloqueado',
+                    text: 'Permita pop-up para abrir a tela de impressao.'
+                });
+            }
+        }
     </script>
 
 
@@ -766,11 +757,10 @@ if (!$aluno_error) {
         // Dados das matérias por ?rea
         const materias = {
             'linguagens': [
-                'Língua portuguesa',
+                'Língua Portuguesa',
                 'Arte',
-                'Língua inglesa',
-                'Língua espanhola',
-                'Educação física'
+                'Língua Inglesa',
+                'Educação Física'
             ],
             'matematica': ['Matemática'],
             'ciencias': ['Química', 'Física', 'Biologia'],
@@ -778,8 +768,6 @@ if (!$aluno_error) {
             'diversificada': [
                 'Sociologia',
                 'Filosofia',
-                'História do Estado de Rondônia',
-                'Geografia do Estado de Rondônia'
             ]
         };
 
@@ -829,34 +817,29 @@ if (!$aluno_error) {
         // Notas existentes do banco
         const notasExistentes = <?php echo json_encode($notas_existentes); ?>;
         const historicoSalvo = <?php echo json_encode($historico_salvo ?? null, JSON_UNESCAPED_UNICODE); ?>;
-        const notasSalvas = historicoSalvo && (historicoSalvo.notas_raw || historicoSalvo.notas) ? (historicoSalvo.notas_raw || historicoSalvo.notas) : {};
-        const dadosAdicionaisSalvos = historicoSalvo && historicoSalvo.dadosAdicionais ? historicoSalvo.dadosAdicionais : {};
+        const notasSalvas = históricoSalvo && (historicoSalvo.notas_raw || historicoSalvo.notas) ? (historicoSalvo.notas_raw || historicoSalvo.notas) : {};
+        const dadosAdicionaisSalvos = históricoSalvo && historicoSalvo.dadosAdicionais ? historicoSalvo.dadosAdicionais : {};
 
 
         const mapeamentoCursos = {
 
-            // arte_medio, biologia_medio, educacao_fisica_medio, filosofia_medio, fisica_medio, geografia_medio, geografia_de_rondonia_medio, historia_medio, historia_de_rondonia_medio, lingua_espanhola_medio, lingua_inglesa_medio, lingua_portuguesa_medio, matematica_medio, quimica_medio, sociologia_medio
             // Cursos Fundamentais
-            'lingua_portuguesa_medio': 'Língua portuguesa',
+            'lingua_portuguesa_medio': 'Língua Portuguesa',
             'matematica_medio': 'Matemática',
             'arte_medio': 'Arte',
             'arte_fundamental': 'Arte',
-            'lingua_inglesa_fundamental': 'Língua inglesa',
-            'lingua_inglesa_medio': 'Língua inglesa',
-            'educacao_fisica_medio': 'Educação física',
+            'lingua_inglesa_fundamental': 'Língua Inglesa',
+            'lingua_inglesa_medio': 'Língua Inglesa',
+            'educacao_fisica_medio': 'Educação Física',
             'biologia_medio': 'Biologia',
             'geografia_medio': 'Geografia',
-            "geografia_de_rondonia_medio": 'Geografia',
             'historia_medio': 'História',
             'filosofia_medio': 'Filosofia',
-            'historia_de_rondonia_medio': 'História do Estado de Rondônia',
-            'geografia_de_rondonia_medio': 'Geografia do Estado de Rondônia',
-            'lingua_espanhola_medio': 'Língua espanhola',
             'quimica_medio': 'Química',
             'fisica_medio': 'Física',
             'sociologia_medio': 'Sociologia',
             'biologia_medio': 'Biologia',
-            'educacao_fisica_medio': 'Educação física',
+            'educacao_fisica_medio': 'Educação Física',
 
 
 
@@ -903,7 +886,7 @@ if (!$aluno_error) {
             };
 
             if (!dadosAluno.nome || !dadosAluno.sexo || !dadosAluno.dataNasc) {
-                swal("Erro!", "Por favor, preencha todos os campos obrigatórios (Nome, Sexo, Data de Nascimento).", "error");
+                swal("Erro!", "Por favor, preencha todos os campos obrigatérios (Nome, Sexo, Data de Nascimento).", "error");
                 return;
             }
 
@@ -996,7 +979,7 @@ if (!$aluno_error) {
             // Linguagens
             htmlNotas += '<h3>LINGUAGENS E TECNOLOGIAS</h3>';
             htmlNotas += '<table class="subjects-table">';
-            htmlNotas += '<tr><th>Matéria</th><th>1? Série</th><th>2? Série</th><th>3? Série</th><th style="width: 120px !important;">Data</th></tr>';
+            htmlNotas += '<tr><th>Matéria</th><th>1ª Série</th><th>2ª Série</th><th>3ª Série</th><th style="width: 120px !important;">Data</th></tr>';
             materias.linguagens.forEach(materia => {
 
                 const nomeMateria = formatarMateria(materia);
@@ -1051,7 +1034,7 @@ if (!$aluno_error) {
             // Matemática
             htmlNotas += '<h3>MATEMÁTICA</h3>';
             htmlNotas += '<table class="subjects-table">';
-            htmlNotas += '<tr><th>Matéria</th><th>1? Série</th><th>2? Série</th><th>3? Série</th><th style="width: 120px !important;">Data</th></tr>';
+            htmlNotas += '<tr><th>Matéria</th><th>1ª Série</th><th>2ª Série</th><th>3ª Série</th><th style="width: 120px !important;">Data</th></tr>';
             materias.matematica.forEach(materia => {
                 const nomeMateria = formatarMateria(materia);
                 const classExistente = temNotaExistente(materia) ? 'nota-existente' : '';
@@ -1090,7 +1073,7 @@ if (!$aluno_error) {
             // Ciências da Natureza
             htmlNotas += '<h3>CIÊNCIAS DA NATUREZA</h3>';
             htmlNotas += '<table class="subjects-table">';
-            htmlNotas += '<tr><th>Matéria</th><th>1? Série</th><th>2? Série</th><th>3? Série</th><th style="width: 120px !important;">Data</th></tr>';
+            htmlNotas += '<tr><th>Matéria</th><th>1ª Série</th><th>2ª Série</th><th>3ª Série</th><th style="width: 120px !important;">Data</th></tr>';
             materias.ciencias.forEach(materia => {
                 const nomeMateria = formatarMateria(materia);
                 const classExistente = temNotaExistente(materia) ? 'nota-existente' : '';
@@ -1129,7 +1112,7 @@ if (!$aluno_error) {
             // Ciências Humanas
             htmlNotas += '<h3>CIÊNCIAS HUMANAS</h3>';
             htmlNotas += '<table class="subjects-table">';
-            htmlNotas += '<tr><th>Matéria</th><th>1? Série</th><th>2? Série</th><th>3? Série</th><th style="width: 120px !important;">Data</th></tr>';
+            htmlNotas += '<tr><th>Matéria</th><th>1ª Série</th><th>2ª Série</th><th>3ª Série</th><th style="width: 120px !important;">Data</th></tr>';
             materias.humanas.forEach(materia => {
                 const nomeMateria = formatarMateria(materia);
                 const classExistente = temNotaExistente(materia) ? 'nota-existente' : '';
@@ -1168,7 +1151,7 @@ if (!$aluno_error) {
             // Parte Diversificada
             htmlNotas += '<h3>PARTE DIVERSIFICADA</h3>';
             htmlNotas += '<table class="subjects-table">';
-            htmlNotas += '<tr><th>Matéria</th><th>1? Série</th><th>2? Série</th><th>3? Série</th><th style="width: 120px !important;">Data</th></tr>';
+            htmlNotas += '<tr><th>Matéria</th><th>1ª Série</th><th>2ª Série</th><th>3ª Série</th><th style="width: 120px !important;">Data</th></tr>';
             materias.diversificada.forEach(materia => {
                 const nomeMateria = formatarMateria(materia);
                 const classExistente = temNotaExistente(materia) ? 'nota-existente' : '';
@@ -1207,10 +1190,10 @@ if (!$aluno_error) {
             // Adicionar informações sobre o preenchimento
             htmlNotas += `
         <div style="margin-top: 15px; padding: 10px; background-color: #f0f8ff; border-radius: 5px;">
-            <p style="margin: 5px 0;"><small>?? <strong>Legenda:</strong></small></p>
-            <p style="margin: 5px 0;"><small>?? <strong>Verde:</strong> Campos preenchidos automaticamente com notas do sistema</small></p>
+            <p style="margin: 5px 0;"><small>• <strong>Legenda:</strong></small></p>
+            <p style="margin: 5px 0;"><small>• <strong>Verde:</strong> Campos preenchidos automaticamente com notas do sistema</small></p>
             <p style="margin: 5px 0;"><small>? <strong>Branco:</strong> Campos para preenchimento manual</small></p>
-            <p style="margin: 5px 0;"><small>?? <strong>Nota:</strong> Você pode editar qualquer valor, mesmo os preenchidos automaticamente</small></p>
+            <p style="margin: 5px 0;"><small>• <strong>Nota:</strong> Você pode editar qualquer valor, mesmo os preenchidos automaticamente</small></p>
         </div>
     `;
 
@@ -1473,7 +1456,7 @@ if (!$aluno_error) {
             //                 } else if (result === 'download') {
             //                     const link = document.createElement('a');
             //                     link.href = data.arquivo_pdf;
-            //                     link.download = `historico_${dadosAluno.nome.replace(/\s+/g, '_')}.pdf`;
+            //                     link.download = `histórico_${dadosAluno.nome.replace(/\s+/g, '_')}.pdf`;
             //                     link.click();
             //                 }
             //             });
@@ -1485,7 +1468,7 @@ if (!$aluno_error) {
             //     .catch(error => {
             //         swal.close();
             //         console.error('Erro:', error);
-            //         swal("Erro!", "Erro de comunicação com o servidor.", "error");
+            //         swal("Erro!", error.message || "Erro de comunicação com o servidor.", "error");
             //     });
 
 
@@ -1500,8 +1483,24 @@ if (!$aluno_error) {
             })
                 .then(async response => {
                     if (!response.ok) {
-                        const erroJson = await response.json().catch(() => null);
-                        const mensagem = erroJson && erroJson.mensagens ? erroJson.mensagens.join(' ') : 'Erro ao gerar histórico.';
+                        let mensagem = 'Erro ao gerar histórico.';
+                        const textoErro = await response.text();
+                        if (textoErro) {
+                            try {
+                                const erroJson = JSON.parse(textoErro);
+                                if (erroJson && Array.isArray(erroJson.mensagens) && erroJson.mensagens.length) {
+                                    mensagem = erroJson.mensagens.join(' ');
+                                } else if (erroJson && typeof erroJson.mensagem === 'string' && erroJson.mensagem.trim() !== '') {
+                                    mensagem = erroJson.mensagem;
+                                } else if (erroJson && typeof erroJson.error === 'string' && erroJson.error.trim() !== '') {
+                                    mensagem = erroJson.error;
+                                } else if (typeof textoErro === 'string' && textoErro.trim() !== '') {
+                                    mensagem = textoErro.trim();
+                                }
+                            } catch (e) {
+                                mensagem = textoErro.trim() || mensagem;
+                            }
+                        }
                         throw new Error(mensagem);
                     }
                     return response.text();
@@ -1539,7 +1538,7 @@ if (!$aluno_error) {
                 .catch(error => {
                     swal.close();
                     console.error('Erro:', error);
-                    swal("Erro!", "Erro de comunicação com o servidor.", "error");
+                    swal("Erro!", error.message || "Erro de comunicação com o servidor.", "error");
                 });
 
         }
@@ -1690,7 +1689,7 @@ if (!$aluno_error) {
                         }).then(result => {
                             if (result.isConfirmed) {
                                 const idUsuario = result.value;
-                                // Aqui você decide o que fazer, por exemplo:
+                                // Aqui voc? decide o que fazer, por exemplo:
                                 window.location.href = "<?php echo $url_sistema; ?>gerador_historico.php?id=" + idUsuario;
                             }
                         });

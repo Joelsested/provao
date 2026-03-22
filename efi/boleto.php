@@ -207,20 +207,27 @@ class EFIBoletoPayment
             $items = $dados['items'];
         } else {
             // Item padrao se nao fornecido
-            $items[] = [
+            $itemDefault = [
                 'name' => $dados['item_nome'] ?? 'Produto/Servico',
                 'value' => (int) ($dados['valor']), // Valor em centavos
-                'amount' => $dados['quantidade'] ?? 1,
-                'marketplace' => [
-                    'repasses' => $dados['repasses'] ?? []
-                ]
+                'amount' => $dados['quantidade'] ?? 1
             ];
+            $repassesDefault = $this->normalizarRepasses((array) ($dados['repasses'] ?? []));
+            if (!empty($repassesDefault)) {
+                $itemDefault['marketplace'] = ['repasses' => $repassesDefault];
+            }
+            $items[] = $itemDefault;
         }
 
         foreach ($items as $idx => $item) {
             $repassesItem = $item['marketplace']['repasses'] ?? [];
-            if (is_array($repassesItem)) {
+            if (is_array($repassesItem) && !empty($repassesItem)) {
                 $items[$idx]['marketplace']['repasses'] = $this->normalizarRepasses($repassesItem);
+                if (empty($items[$idx]['marketplace']['repasses'])) {
+                    unset($items[$idx]['marketplace']);
+                }
+            } else {
+                unset($items[$idx]['marketplace']);
             }
         }
 

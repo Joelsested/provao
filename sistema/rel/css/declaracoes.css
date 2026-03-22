@@ -1,0 +1,23 @@
+.carimbo {
+position: absolute;
+top: 52px;
+right: 40px;
+width: 195px;
+border: 2px solid #000;
+padding: 4px 6px;
+text-align: center;
+line-height: 1.05;
+font-family: Arial, Helvetica, sans-serif;
+color: #000;
+background: #fff;
+}
+
+.carimbo .titulo {
+font-size: 16px;
+font-weight: 700;
+}
+
+.carimbo .linha {
+font-size: 10.8px;
+font-weight: 700;
+}

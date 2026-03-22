@@ -2,6 +2,13 @@
 if (!function_exists('csrf_session_name')) {
     function csrf_session_name(): string
     {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $active = (string) session_name();
+            if ($active !== '') {
+                return $active;
+            }
+        }
+
         $name = function_exists('env') ? trim((string) env('SESSION_NAME', 'EJASESSID')) : 'EJASESSID';
         if ($name === '') {
             $name = 'EJASESSID';
@@ -10,6 +17,15 @@ if (!function_exists('csrf_session_name')) {
         if ($name === '') {
             $name = 'EJASESSID';
         }
+
+        // Compatibilidade: se existir sessao legada em PHPSESSID, reaproveita.
+        if (!empty($_COOKIE[$name])) {
+            return $name;
+        }
+        if (!empty($_COOKIE['PHPSESSID'])) {
+            return 'PHPSESSID';
+        }
+
         return $name;
     }
 }
@@ -100,6 +116,24 @@ function csrf_start(): void
             @session_id($_COOKIE[$name]);
         }
         @session_start();
+
+        // Fallback: se a sessão abriu sem dados de login, tenta cookie legado.
+        if (empty($_SESSION['id']) && empty($_SESSION['nivel'])) {
+            $currentName = session_name();
+            $alternateName = '';
+            if ($currentName === 'PHPSESSID' && !empty($_COOKIE['EJASESSID'])) {
+                $alternateName = 'EJASESSID';
+            } elseif ($currentName !== 'PHPSESSID' && !empty($_COOKIE['PHPSESSID'])) {
+                $alternateName = 'PHPSESSID';
+            }
+
+            if ($alternateName !== '') {
+                @session_write_close();
+                @session_name($alternateName);
+                @session_id((string) $_COOKIE[$alternateName]);
+                @session_start();
+            }
+        }
     }
 }
 

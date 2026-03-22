@@ -6,7 +6,7 @@ require_once __DIR__ . '/sistema/conexao.php';
 
 if (empty($_SESSION['nivel']) || $_SESSION['nivel'] === 'Aluno') {
     http_response_code(401);
-    echo 'Nao autorizado.';
+    echo 'Não autorizado.';
     exit();
 }
 
@@ -33,45 +33,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $dadosAdicionais = $input['dadosAdicionais'];
     $retorno = isset($input['retorno']) ? $input['retorno'] : 'html';
 
-    // Função para normalizar nomes
+    // FunÃ§Ã£o para normalizar nomes
     function formatarNomeMateria($str)
     {
+        $str = trim((string) $str);
+        if ($str === '') {
+            return '';
+        }
+
         $str = mb_strtolower($str, 'UTF-8');
         if (class_exists('Normalizer')) {
             $str = Normalizer::normalize($str, Normalizer::FORM_D);
             $str = preg_replace('/\pM/u', '', $str);
         } else {
-            $acentos = [
-                'á' => 'a',
-                'à' => 'a',
-                'ã' => 'a',
-                'â' => 'a',
-                'é' => 'e',
-                'ê' => 'e',
-                'í' => 'i',
-                'ó' => 'o',
-                'õ' => 'o',
-                'ô' => 'o',
-                'ú' => 'u',
-                'ü' => 'u',
-                'ç' => 'c'
-            ];
-            $str = strtr($str, $acentos);
+            $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $str);
+            if ($ascii !== false) {
+                $str = $ascii;
+            }
         }
-        $str = preg_replace('/[^a-z0-9]+/', '_', $str);
-        return trim($str, '_');
+
+        $str = preg_replace('/[^a-z0-9]+/', '_', (string) $str);
+        $str = trim((string) $str, '_');
+        $str = preg_replace('/_(fundamental|medio)$/', '', $str);
+
+        if ($str === 'hist_ria') {
+            $str = 'historia';
+        }
+
+        return $str;
     }
 
-    // Função para formatar nota (0-100 → "0,0" até "10,0")
     function formatarNota($valor)
     {
         $valor = (float) $valor;
-        $nota = $valor / 10; // transforma em escala 0-10
+        $nota = $valor / 10;
         return number_format($nota, 1, ',', '');
     }
 
-
-    // Recria array de notas
+// Recria array de notas
     $notasFormatadas = [];
     foreach ($notas as $materia => $valores) {
         $novaChave = formatarNomeMateria($materia);
@@ -90,30 +89,97 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $notas = $notasFormatadas;
 
-    $erros = [];
-    $hoje = new DateTimeImmutable('today');
-    $dataHistoricoIso = $dadosAdicionais['data_historico_iso'] ?? '';
+    $normalizarDataEntrada = static function ($data) {
+    $data = trim((string) $data);
+    $temAsterisco = str_starts_with($data, '*');
+    $dataLimpa = ltrim($data, '*');
 
-    $validarData = static function ($data) use ($hoje, &$erros) {
-        if ($data === '') {
-            return null;
+    if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $dataLimpa)) {
+        [$dia, $mes, $ano] = explode('/', $dataLimpa);
+        $dataLimpa = "{$ano}-{$mes}-{$dia}";
+    } elseif (preg_match('/^\d{8}$/', $dataLimpa)) {
+        $dia = substr($dataLimpa, 0, 2);
+        $mes = substr($dataLimpa, 2, 2);
+        $ano = substr($dataLimpa, 4, 4);
+        $dataLimpa = "{$ano}-{$mes}-{$dia}";
+    }
+
+    return $temAsterisco ? ('*' . $dataLimpa) : $dataLimpa;
+};
+
+$formatarDataBr = static function ($dataIso) {
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataIso)) {
+        return substr($dataIso, 8, 2) . '/' . substr($dataIso, 5, 2) . '/' . substr($dataIso, 0, 4);
+    }
+    return $dataIso;
+};
+
+date_default_timezone_set('America/Porto_Velho');
+$erros = [];
+$hoje = new DateTimeImmutable('today');
+$dataHistoricoIso = $dadosAdicionais['data_historico_iso'] ?? '';
+
+$validarData = static function ($data) use ($hoje, &$erros, $normalizarDataEntrada, $formatarDataBr) {
+    if ($data === '') {
+        return null;
+    }
+    $data = $normalizarDataEntrada($data);
+    $dataLimpa = ltrim($data, '*');
+    $dt = DateTimeImmutable::createFromFormat('Y-m-d', $dataLimpa);
+    $dataValida = $dt && $dt->format('Y-m-d') === $dataLimpa;
+    if (!$dataValida) {
+        $erros[] = "Data inválida: {$dataLimpa}. Use o formato DDMMAAAA ou DD/MM/AAAA.";
+        return null;
+    }
+    if ($dt > $hoje) {
+        $erros[] = "Data no futuro não permitida: " . $formatarDataBr($dataLimpa) . ".";
+        return null;
+    }
+    return $dataLimpa;
+};
+
+    $formatarMateriaExibicao = static function ($materia) {
+        $materiaOriginal = trim((string) $materia);
+        if ($materiaOriginal === '') {
+            return 'nÃ£o informada';
         }
-        $dataLimpa = ltrim($data, '*');
-        $dt = DateTimeImmutable::createFromFormat('Y-m-d', $dataLimpa);
-        $dataValida = $dt && $dt->format('Y-m-d') === $dataLimpa;
-        if (!$dataValida) {
-            $erros[] = "Data inválida: {$dataLimpa}.";
-            return null;
+
+        $chave = mb_strtolower($materiaOriginal, 'UTF-8');
+        $chaveAscii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $chave);
+        if ($chaveAscii !== false) {
+            $chave = $chaveAscii;
         }
-        if ($dt > $hoje) {
-            $erros[] = "Data no futuro não permitida: {$dataLimpa}.";
-            return null;
+        $chave = preg_replace('/[^a-z0-9]+/', '_', $chave);
+        $chave = trim((string) $chave, '_');
+
+        $mapaMaterias = [
+            'hist_ria' => 'HistÃ³ria',
+            'historia' => 'HistÃ³ria',
+            'geografia' => 'Geografia',
+            'lingua_portuguesa' => 'LÃ­ngua Portuguesa',
+            'lingua_inglesa' => 'LÃ­ngua Inglesa',
+            'educacao_fisica' => 'EducaÃ§Ã£o FÃ­sica',
+            'ciencias' => 'CiÃªncias',
+            'matematica' => 'MatemÃ¡tica',
+            'arte' => 'Arte',
+            'quimica' => 'QuÃ­mica',
+            'fisica' => 'FÃ­sica',
+            'biologia' => 'Biologia',
+            'filosofia' => 'Filosofia',
+            'sociologia' => 'Sociologia',
+        ];
+
+        if (isset($mapaMaterias[$chave])) {
+            return $mapaMaterias[$chave];
         }
-        return $dataLimpa;
+
+        $texto = str_replace('_', ' ', $materiaOriginal);
+        $texto = preg_replace('/\s+/', ' ', $texto);
+        return mb_convert_case(trim((string) $texto), MB_CASE_TITLE, 'UTF-8');
     };
 
     if ($dataHistoricoIso === '') {
-        $erros[] = "Data do histórico é obrigatória.";
+        $erros[] = "Data do histÃ³rico Ã© obrigatÃ³ria.";
     } else {
         $validarData($dataHistoricoIso);
     }
@@ -133,8 +199,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             return (float) $valor > 0;
         };
 
-        if (($notaTemValor($serie1) || $notaTemValor($serie2) || $notaTemValor($serie3)) && $dataMateria === '') {
-            $erros[] = "Data obrigatória para a matéria {$materia}.";
+        $temNota = ($notaTemValor($serie1) || $notaTemValor($serie2) || $notaTemValor($serie3));
+        if ($temNota && $dataMateria === '' && $dataHistoricoIso !== '') {
+            // Usa a data do histÃ³rico como fallback para nÃ£o bloquear geraÃ§Ã£o por falta da data da matÃ©ria.
+            $dataMateria = $dataHistoricoIso;
+            $notas[$materia]['data'] = $dataMateria;
+        }
+
+        if ($temNota && $dataMateria === '') {
+            $materiaExibicao = $formatarMateriaExibicao($materia);
+            $erros[] = "Data obrigatÃ³ria para a matÃ©ria {$materiaExibicao}.";
         }
 
         if ($dataMateria !== '') {
@@ -165,11 +239,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         . preg_replace('/[^A-Za-z0-9_\-]/', '_', $input['dadosAluno']['nome'])
         . '_' . date('YmdHis') . '.html';
 
-    // Diretório base
+    // DiretÃ³rio base
     $dirBase = __DIR__ . '/historicos';
 
     // Criar subpasta com o ID do aluno
-    $idAluno = intval($input['dadosAluno']['id_aluno']); // garante que é número
+    $idAluno = intval($input['dadosAluno']['id_aluno']); // garante que Ã© nÃºmero
     $dirAluno = $dirBase . '/' . $idAluno . '/' . $categoria;
 
     if (!is_dir($dirAluno)) {

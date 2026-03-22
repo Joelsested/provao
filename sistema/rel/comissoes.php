@@ -16,7 +16,7 @@ if($dataInicial == $dataFinal){
 }else if($dataInicial == '1980-01-01'){
 	$texto_apuracao = 'APURADO EM TODO O PERÍODO';
 }else{
-	$texto_apuracao = 'APURAÇÃO DE '.$dataInicialF. ' AT? '.$dataFinalF;
+	$texto_apuracao = 'APURAÇÃO DE '.$dataInicialF. ' ATÉ '.$dataFinalF;
 }
 
 
@@ -54,7 +54,7 @@ $data_hoje = utf8_encode(strftime('%A, %d de %B de %Y', strtotime('today')));
 <!DOCTYPE html>
 <html>
 <head>
-	<title>Relatério de Comissões</title>	
+	<title>Relatório de Comissões</title>	
 
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-wEmeIV1mKuiNpC+IOBjI7aAzPcEZeedi5yW5f2yOq55WWLwNGmvvx4Um1vskeMj0" crossorigin="anonymous">
 
@@ -186,7 +186,7 @@ $data_hoje = utf8_encode(strftime('%A, %d de %B de %Y', strtotime('today')));
 
 
 
-<div class="titulo_cab titulo_img"><u>Relatério de Comissões <?php echo $acao_rel ?> <?php echo $nome_professor ?> </u></div>	
+<div class="titulo_cab titulo_img"><u>Relatório de Comissões <?php echo $acao_rel ?> <?php echo $nome_professor ?> </u></div>	
 	<div class="data_img"><?php echo mb_strtoupper($data_hoje) ?></div>
 
 	<img class="imagem" src="<?php echo $url_sistema ?>/sistema/img/logo_rel.jpg" width="200px" height="47">

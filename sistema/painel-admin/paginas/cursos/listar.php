@@ -1,4 +1,4 @@
-<?php 
+﻿<?php 
 require_once("../../../conexao.php");
 $tabela = 'cursos';
 
@@ -32,7 +32,7 @@ echo <<<HTML
 	<th class="esc">Categoria</th> 	
 	<th class="esc">Alunos</th> 
 	<th class="esc">Aulas</th>	
-	<th>Ações</th>
+	<th>AÃ§Ãµes</th>
 	</tr> 
 	</thead> 
 	<tbody>
@@ -133,7 +133,7 @@ echo <<<HTML
 <tr class="{$classe_linha}"> 
 		<td>
 		<img src="img/cursos/{$foto}" width="27px" class="mr-2">
-		<a href="#" onclick="aulas('{$id}', '{$nome}', '{$aulas}')" class="cinza_escuro">		
+		<a href="#" onclick="aulas('{$id}', '{$nome}', '{$aulas}')" class="cinza_escuro" title="Caminho: sistema/painel-admin/paginas/cursos/listar.php (acao: aulas)">		
 		{$nome}
 	
 		</a>
@@ -146,35 +146,35 @@ echo <<<HTML
 		<td class="esc">{$alunos}</td>
 		<td class="esc">{$aulas}</td>				
 		<td>
-		<big><a href="#" onclick="editar('{$id}', '{$nome}', '{$desc_rapida}', '{$desc_longa}' , '{$valor}' , '{$categoria}' , '{$foto}' , '{$carga}' , '{$arquivo}' , '{$ano}' , '{$palavras}' , '{$grupo}' , '{$pacote}', '{$sistema}', '{$link}', '{$tecnologias}', '{$promocao}', '{$comissao}')" title="Editar Dados"><i class="fa fa-edit text-primary"></i></a></big>
+		<big><a href="#" onclick="editar('{$id}', '{$nome}', '{$desc_rapida}', '{$desc_longa}' , '{$valor}' , '{$categoria}' , '{$foto}' , '{$carga}' , '{$arquivo}' , '{$ano}' , '{$palavras}' , '{$grupo}' , '{$pacote}', '{$sistema}', '{$link}', '{$tecnologias}', '{$promocao}', '{$comissao}')" title="Editar Dados | Caminho: sistema/painel-admin/paginas/cursos/listar.php (funcao editar)"><i class="fa fa-edit text-primary"></i></a></big>
 
 
-		<big><a href="#" onclick="mostrar('{$nome}', '{$desc_rapida}','{$desc_longa}','{$valorF}','{$nome_professor}','{$nome_categoria}','{$foto}','{$status}', '{$carga}', '{$arquivo}', '{$ano}', '{$palavras}', '{$nome_grupo}', '{$pacote}', '{$sistema}', '{$link}', '{$tecnologias}', '{$promocaoF}', '{$comissao}')" title="Ver Dados"><i class="fa fa-info-circle text-secondary"></i></a></big>
+		<big><a href="#" onclick="mostrar('{$nome}', '{$desc_rapida}','{$desc_longa}','{$valorF}','{$nome_professor}','{$nome_categoria}','{$foto}','{$status}', '{$carga}', '{$arquivo}', '{$ano}', '{$palavras}', '{$nome_grupo}', '{$pacote}', '{$sistema}', '{$link}', '{$tecnologias}', '{$promocaoF}', '{$comissao}')" title="Ver Dados | Caminho: sistema/painel-admin/paginas/cursos/listar.php (funcao mostrar)"><i class="fa fa-info-circle text-secondary"></i></a></big>
 
 
 		<li class="dropdown head-dpdn2 {$excluir}" style="display: inline-block;">
-		<a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><big><i class="fa fa-trash-o text-danger"></i></big></a>
+		<a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="false" title="Caminho: sistema/painel-admin/paginas/cursos/listar.php (acao: excluir)"><big><i class="fa fa-trash-o text-danger"></i></big></a>
 
 		<ul class="dropdown-menu" style="margin-left:-230px;">
 		<li>
 		<div class="notification_desc2">
-		<p>Confirmar Exclusão? <a href="#" onclick="excluir('{$id}')"><span class="text-danger">Sim</span></a></p>
+		<p>Confirmar ExclusÃ£o? <a href="#" onclick="excluir('{$id}')"><span class="text-danger">Sim</span></a></p>
 		</div>
 		</li>										
 		</ul>
 		</li>
 
-		<big><a href="#" onclick="sessao('{$id}', '{$nome}')" title="Criar Sessão"><i class="fa fa-globe verde"></i></a></big>
+		<big><a href="#" onclick="sessao('{$id}', '{$nome}')" title="Criar Sessao | Caminho: sistema/painel-admin/paginas/cursos/listar.php (funcao sessao)"><i class="fa fa-globe verde"></i></a></big>
 
 
-		<big><a class="{$acesso}" href="#" onclick="ativar('{$id}', '{$acao}')" title="{$titulo_link}"><i class="fa {$icone} $classe_square"></i></a></big>
+		<big><a class="{$acesso}" href="#" onclick="ativar('{$id}', '{$acao}')" title="{$titulo_link} | Caminho: sistema/painel-admin/paginas/cursos/listar.php (funcao ativar)"><i class="fa {$icone} $classe_square"></i></a></big>
 
 
-		<big><a href="#" onclick="obs('{$id}', '{$nome}', '{$mensagem}')" title="Ver Mensagens"><i class="fa fa-comment-o {$classe_mensagem}"></i></a></big>
+		<big><a href="#" onclick="obs('{$id}', '{$nome}', '{$mensagem}')" title="Ver Mensagens | Caminho: sistema/painel-admin/paginas/cursos/listar.php (funcao obs)"><i class="fa fa-comment-o {$classe_mensagem}"></i></a></big>
 
-		<big><a href="#" onclick="email('{$id}', '{$nome}')" title="Ver Email Alunos"><i class="fa fa-envelope-o text-primary"></i></a></big>
+		<big><a href="#" onclick="email('{$id}', '{$nome}')" title="Ver Email Alunos | Caminho: sistema/painel-admin/paginas/cursos/listar.php (funcao email)"><i class="fa fa-envelope-o text-primary"></i></a></big>
 
-		<big><a class="" href="#" onclick="questionario('{$id}', '{$nome}')" title="Criar Questionário"><i class="fa fa-question-circle-o verde"></i></a></big>
+		<big><a class="" href="#" onclick="questionario('{$id}', '{$nome}')" title="Criar Questionario | Caminho: sistema/painel-admin/paginas/cursos/listar.php (funcao questionario)"><i class="fa fa-question-circle-o verde"></i></a></big>
 		
 
 		</td>
@@ -190,7 +190,7 @@ echo <<<HTML
 HTML;
 
 }else{
-	echo 'Não possui nenhum registro cadastrado!';
+	echo 'NÃ£o possui nenhum registro cadastrado!';
 }
 echo <<<HTML
 </small>
@@ -285,14 +285,23 @@ HTML;
 function outraFuncao(idzinho) {
   $.ajax({
          url: 'paginas/' + pag + "/listar-id-edit.php",
-        method: 'POST',
+        method: 'GET',
         data: {idzinho},
         dataType: "html",
 
         success:function(result){
-        	
-        	$("#listar-id-edit").html(result);
+	        if ((result || '').trim() === 'Nao autorizado.' || (result || '').trim() === 'NÃ£o autorizado.') {
+	        	$("#listar-id-edit").html('');
+	        	$('#mensagem_arquivo').addClass('text-danger');
+	        	$('#mensagem_arquivo').text('SessÃ£o expirada ou invÃ¡lida. Atualize a pÃ¡gina e faÃ§a login novamente.');
+	        	return;
+	        }
+	        $("#listar-id-edit").html(result);
            
+        },
+        error: function (xhr) {
+        	$('#mensagem_arquivo').addClass('text-danger');
+        	$('#mensagem_arquivo').text((xhr && xhr.responseText) ? xhr.responseText : 'Falha ao carregar os documentos do curso.');
         }
     });
 }
@@ -385,5 +394,6 @@ function outraFuncao(idzinho) {
 	}
 
 </script>
+
 
 

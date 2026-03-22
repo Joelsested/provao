@@ -67,16 +67,23 @@ if(@count($res) > 0){
 }
 
 
-if($forma_pgto == 'MP'){
-	$total_recebido = $subtotal - ($subtotal * ($taxa_mp / 100));
-}
+$formaPgtoRaw = strtoupper(trim((string) ($forma_pgto ?? '')));
+$mapForma = [
+	'BOLETO' => 'BOLETO',
+	'BOLETO_PARCELADO' => 'BOLETO_PARCELADO',
+	'CARTAO_DE_CREDITO' => 'CARTAO_DE_CREDITO',
+	'CARTAO_RECORRENTE' => 'CARTAO_RECORRENTE',
+	'CARTAO DE CREDITO' => 'CARTAO_DE_CREDITO',
+	'CARTAO RECORRENTE' => 'CARTAO_RECORRENTE',
+	'BOLETO PARCELADO' => 'BOLETO_PARCELADO',
+	'BOLETO A VISTA' => 'BOLETO',
+	'BOLETOAVISTA' => 'BOLETO',
+	'BOLETO A VISTA EFY' => 'BOLETO',
+];
+$forma_pgto = $mapForma[$formaPgtoRaw] ?? 'BOLETO';
 
-if($forma_pgto == 'Paypal'){		
-	$total_recebido = $subtotal - ($subtotal * ($taxa_paypal / 100));
-}
-
-if($forma_pgto == 'Pix' and @$pix_api == 'Sim'){		
-	$total_recebido = $subtotal - ($subtotal * (($desconto_pix + 1) / 100));
+if($forma_pgto == 'BOLETO' || $forma_pgto == 'BOLETO_PARCELADO'){
+	$total_recebido = $subtotal - $taxa_boleto;
 }
 
 

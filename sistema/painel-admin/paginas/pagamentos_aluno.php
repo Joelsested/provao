@@ -47,6 +47,15 @@ try {
 }
 
 if ($temRecorrenciaEfi) {
+    $temLogsPagamentos = (bool) $pdo->query("SHOW TABLES LIKE 'logs_pagamentos'")->fetch(PDO::FETCH_NUM);
+    $partesDataPgtoCartao = [
+        "(SELECT MAX(ep.data_pagamento) FROM efi_assinaturas_cartao_parcelas ep WHERE ep.id_matricula = matriculas.id AND ep.status = 'PAGA')",
+    ];
+    if ($temLogsPagamentos) {
+        $partesDataPgtoCartao[] = "(SELECT MAX(lp.data) FROM logs_pagamentos lp WHERE lp.id_matricula = matriculas.id AND UPPER(COALESCE(lp.status, '')) IN ('PAID','APPROVED','SETTLED','ACTIVE'))";
+    }
+    $selectDataPagamentoCartao = "COALESCE(" . implode(', ', $partesDataPgtoCartao) . ") AS data_pagamento_cartao";
+
     $selectRecorrenciaCartao = "
         COALESCE(ea.quantidade_parcelas, 1) AS quantidade_parcelas,
         (
@@ -60,11 +69,16 @@ if ($temRecorrenciaEfi) {
             FROM efi_assinaturas_cartao_parcelas ep
             WHERE ep.id_matricula = matriculas.id
               AND ep.status IN ('PENDENTE', 'ATRASADA')
-        ) AS parcelas_pendentes
+        ) AS parcelas_pendentes,
+        {$selectDataPagamentoCartao}
     ";
     $joinRecorrenciaCartao = "LEFT JOIN efi_assinaturas_cartao ea ON ea.id_matricula = matriculas.id";
 } else {
-    $selectRecorrenciaCartao = "1 AS quantidade_parcelas, 0 AS parcelas_pagas, 0 AS parcelas_pendentes";
+    $temLogsPagamentos = (bool) $pdo->query("SHOW TABLES LIKE 'logs_pagamentos'")->fetch(PDO::FETCH_NUM);
+    $selectDataPagamentoCartao = $temLogsPagamentos
+        ? "(SELECT MAX(lp.data) FROM logs_pagamentos lp WHERE lp.id_matricula = matriculas.id AND UPPER(COALESCE(lp.status, '')) IN ('PAID','APPROVED','SETTLED','ACTIVE')) AS data_pagamento_cartao"
+        : "NULL AS data_pagamento_cartao";
+    $selectRecorrenciaCartao = "1 AS quantidade_parcelas, 0 AS parcelas_pagas, 0 AS parcelas_pendentes, {$selectDataPagamentoCartao}";
     $joinRecorrenciaCartao = "";
 }
 try {
@@ -307,6 +321,40 @@ function resumirStatusBoleto($statusApi, $situacao = null)
     return 'Nao Gerado';
 }
 
+function formatarDataPagamento($data): string
+{
+    $valor = trim((string) $data);
+    if ($valor === '' || $valor === '0000-00-00' || $valor === '0000-00-00 00:00:00') {
+        return '-';
+    }
+
+    try {
+        $dt = new DateTime($valor);
+        return $dt->format('d/m/Y H:i');
+    } catch (Exception $e) {
+        return '-';
+    }
+}
+
+function resolverDataPagamentoRegistro(array $registro, string $statusResumo): string
+{
+    if ($statusResumo !== 'Pago') {
+        return '-';
+    }
+
+    foreach (['data_pagamento', 'paid_at', 'updated_at', 'update_at', 'received_by_bank_at', 'criado_em', 'created_at', 'data'] as $campo) {
+        if (empty($registro[$campo])) {
+            continue;
+        }
+        $data = formatarDataPagamento((string) $registro[$campo]);
+        if ($data !== '-') {
+            return $data;
+        }
+    }
+
+    return '-';
+}
+
 
 
 
@@ -355,6 +403,7 @@ function resumirStatusBoleto($statusApi, $situacao = null)
     <th>N? da parcela</th>
     <th>Valor</th>
     <th>Situação</th>
+    <th>Data Pagamento</th>
     <th>Comissões</th>
     <th>Código de Pagamento</th>
     <th>Gerar boleto</th>
@@ -374,6 +423,7 @@ function resumirStatusBoleto($statusApi, $situacao = null)
         }
         $statusResumo = resumirStatusBoleto($statusApi, $registro['situacao'] ?? null);
         $vencido = ($statusResumo === 'Vencido');
+        $dataPagamentoExibicao = resolverDataPagamentoRegistro($registro, $statusResumo);
     ?>
     <tr>
      <td><?php echo $registro['id']; ?></td>
@@ -381,6 +431,7 @@ function resumirStatusBoleto($statusApi, $situacao = null)
      <td><?php echo htmlspecialchars($registro['ordem_parcela']); ?></td>
      <td><?php echo 'R$ ' . $valorParcelaFmt; ?></td>
      <td><?php echo htmlspecialchars($statusResumo); ?></td>
+     <td><?php echo htmlspecialchars($dataPagamentoExibicao); ?></td>
      <td>
       <?php if (!empty($chargeId)): ?>
        <button type="button" class="btn btn-info btn-xs" onclick="verComissõesBoleto('<?php echo htmlspecialchars($chargeId, ENT_QUOTES); ?>')">
@@ -458,6 +509,7 @@ function resumirStatusBoleto($statusApi, $situacao = null)
     <th>Forma</th>
     <th>Parcelas</th>
     <th>Valor Total</th>
+    <th>Data Pagamento</th>
     <th>Situação</th>
    </tr>
   </thead>
@@ -515,12 +567,13 @@ function resumirStatusBoleto($statusApi, $situacao = null)
        ?>
       </td>
       <td><?php echo 'R$ ' . number_format($valorTotalLinha, 2, ',', '.'); ?></td>
+      <td><?php echo htmlspecialchars(formatarDataPagamento((string) ($registro['data_pagamento_cartao'] ?? '')), ENT_QUOTES, 'UTF-8'); ?></td>
       <td><?php echo htmlspecialchars($statusLinha, ENT_QUOTES, 'UTF-8'); ?></td>
      </tr>
     <?php endforeach; ?>
    <?php else: ?>
     <tr>
-     <td colspan="6" style="text-align:center;">Nenhum pagamento de cartão encontrado.</td>
+     <td colspan="7" style="text-align:center;">Nenhum pagamento de cartão encontrado.</td>
     </tr>
    <?php endif; ?>
   </tbody>

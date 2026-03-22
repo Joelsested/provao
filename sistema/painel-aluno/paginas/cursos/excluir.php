@@ -14,16 +14,16 @@ if ($idRaw === '' || $idRaw === null) {
 $id = (int) $idRaw;
 
 if (!$aluno) {
-	echo 'Nao autorizado.';
+	echo 'Não autorizado.';
 	exit();
 }
 
 if ($id <= 0) {
-	echo 'Matricula invalida.';
+	echo 'Matrícula inválida.';
 	exit();
 }
 
-$stmtBusca = $pdo->prepare("SELECT id, id_curso, pacote, obs FROM matriculas WHERE id = :id AND aluno = :aluno LIMIT 1");
+$stmtBusca = $pdo->prepare("SELECT id, id_curso, pacote, obs, status FROM matriculas WHERE id = :id AND aluno = :aluno LIMIT 1");
 $stmtBusca->execute([
 	':id' => $id,
 	':aluno' => $aluno,
@@ -31,7 +31,13 @@ $stmtBusca->execute([
 $matricula = $stmtBusca->fetch(PDO::FETCH_ASSOC);
 
 if (!$matricula) {
-	echo 'Matricula nao encontrada.';
+	echo 'Matrícula não encontrada.';
+	exit();
+}
+
+$statusMatricula = trim((string) ($matricula['status'] ?? ''));
+if (strcasecmp($statusMatricula, 'Aguardando') !== 0) {
+	echo 'Não é possível excluir uma matrícula com pagamento confirmado.';
 	exit();
 }
 
@@ -77,11 +83,11 @@ try {
 	$pdo->commit();
 	$startedTransaction = false;
 
-	echo 'Excluido com Sucesso';
+	echo 'Excluído com Sucesso';
 } catch (Exception $e) {
 	if ($startedTransaction && $pdo->inTransaction()) {
 		$pdo->rollBack();
 	}
-	echo 'Erro ao excluir matricula.';
+	echo 'Erro ao excluir matrícula.';
 }
 ?>

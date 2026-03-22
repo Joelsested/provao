@@ -332,9 +332,9 @@ $resposta_consulta = $consulta_arquivos->fetchAll(PDO::FETCH_ASSOC);
 
     title: 'Visualizar Arquivo',
 
-    html: `<iframe src="${caminhoArquivo}" width="100%" height="400px" style="border: none;"></iframe>`,
+    html: `<iframe src="${caminhoArquivo}" width="100%" style="border: none; height: 78vh; min-height: 520px;"></iframe>`,
 
-    width: '80%',
+    width: '90%',
 
     showCloseButton: true,
 
@@ -348,17 +348,9 @@ $resposta_consulta = $consulta_arquivos->fetchAll(PDO::FETCH_ASSOC);
 
    Swal.fire({
 
-    // title: descricao,
+    title: 'Visualizar Arquivo',
 
-    text: descricao,
-
-    imageUrl: caminhoArquivo,
-
-    imageAlt: 'Imagem do Arquivo',
-
-    imageWidth: 400,
-
-    // imageHeight: 200,
+    html: `<div style="height: 78vh; min-height: 520px; display: flex; align-items: center; justify-content: center;"><img src="${caminhoArquivo}" alt="${descricao || 'Imagem do Arquivo'}" style="max-width: 100%; max-height: 74vh; object-fit: contain;"></div>`,
 
     showCloseButton: true,
 

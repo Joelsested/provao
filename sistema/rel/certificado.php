@@ -14,9 +14,9 @@ if (!empty($data_certificado)) {
 	if ($timestamp === false) {
 		$timestamp = strtotime('today');
 	}
-	$data_formatada = utf8_encode(strftime('%A, %d de %B de %Y', $timestamp));
+	$data_formatada = utf8_encode(strftime('%d de %B de %Y', $timestamp));
 } else {
-	$data_formatada = utf8_encode(strftime('%A, %d de %B de %Y', strtotime('today')));
+	$data_formatada = utf8_encode(strftime('%d de %B de %Y', strtotime('today')));
 }
 
 
@@ -151,6 +151,31 @@ $data_hoje = utf8_encode(strftime('%A, %d de %B de %Y', strtotime('today')));
 		width: 100%;
 		opacity: 0.1;
 	}
+
+	.carimbo-verso {
+		position: absolute;
+		top: 45px;
+		right: 40px;
+		width: 225px;
+		border: 2px solid #000;
+		padding: 7px 10px;
+		text-align: center;
+		line-height: 1.05;
+		font-family: Arial, Helvetica, sans-serif;
+		color: #000;
+		background: #fff;
+		z-index: 20;
+	}
+
+	.carimbo-verso .titulo {
+		font-size: 22px;
+		font-weight: 700;
+	}
+
+	.carimbo-verso .linha {
+		font-size: 14px;
+		font-weight: 700;
+	}
 </style>
 
 <!DOCTYPE html>
@@ -166,22 +191,30 @@ $data_hoje = utf8_encode(strftime('%A, %d de %B de %Y', strtotime('today')));
 	<div class="id"> <?php echo $id_mat ?: $id; ?></div>
 	<div class="nome-aluno"> <b><br><br><?php echo mb_strtoupper($nome_aluno); ?></b></div>
 
-	<div class="descricao"><br><br> <?php echo $identidade_texto; ?>, Nacionalidade Brasileiro(a), Natural de <?php echo $naturalidade ?>, Nascido em, <?php echo $nascimento ?>, o presente
+	<div class="descricao"><br><br> <?php echo $identidade_texto; ?>, Nacionalidade Brasileiro(a), Natural de <?php echo $naturalidade ?>, Nascido(a) em, <?php echo $nascimento ?>, o presente
 		CERTIFICADO por haver concluído no ano de <?php echo $ano_certificado; ?> o Ensino Médio, nos Exames de Finalização de Etapas – EJA –
 		Educação e Jovens e Adultos. </div>
 
 
-	<div class="data"> <br><br> Buritis <?php echo $data_formatada ?></div>
+	<div class="data"> <br><br> Buritis - <?php echo $data_formatada ?></div>
 
 	<img class="imagem" src="<?php echo $url_sistema ?>sistema/img/certificado-fundo.jpg">
 
 	<div class="verso">
 		<img class="imagem2" src="<?php echo $url_sistema ?>sistema/img/certificado-verso.jpg">
+		<div class="carimbo-verso">
+			<div class="titulo">SESTED</div>
+			<div class="linha">Autoriza&ccedil;&atilde;o de Funcionamento</div>
+			<div class="linha">Parecer CEB/CEE/RO n&ordm; 003/24</div>
+			<div class="linha">Resolu&ccedil;&atilde;o n&ordm; 011/23 - CEE/RO</div>
+			<div class="linha">CNPJ 07.158.229/0001-06</div>
+			<div class="linha">BURITIS - RO</div>
+		</div>
 		<div class="conteudo">zzzzzzzzzzzzz
 
 
 		</div>
-		<div class="data2"> Buritis <?php echo ($data_formatada); ?>
+		<div class="data2"> Buritis - <?php echo ($data_formatada); ?>
 		</div>
 	</div>
 

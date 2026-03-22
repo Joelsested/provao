@@ -1,7 +1,10 @@
 
 <?php 
 require_once("../../../conexao.php");
-$idei = @$_POST['idzinho'];
+$idei = @$_GET['idzinho'];
+if ($idei === '' || $idei === null) {
+	$idei = @$_POST['idzinho'];
+}
                             $id_al = @$_GET['id'];
                              $query = $pdo->prepare("SELECT * FROM arquivos_cursos where curso = :curso order by id desc");
                              $query->execute([':curso' => $idei]);
@@ -16,6 +19,9 @@ $idei = @$_POST['idzinho'];
                   $descricao = $res[$i]['descricao'];
                   $data = $res[$i]['data'];
                   $data = implode('/', array_reverse(explode('-', $data)));
+                  $arquivoRel = 'img/arquivos/' . $arquivo;
+                  $arquivoRelJs = json_encode($arquivoRel, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                  $descricaoJs = json_encode((string) $descricao, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
                   $ext = pathinfo($arquivo, PATHINFO_EXTENSION);   
         if($ext == 'pdf'){ 
@@ -29,7 +35,7 @@ $idei = @$_POST['idzinho'];
 
                              ?>
                              
-                             <a href="img/arquivos/<?php echo $arquivo ?>" target="_blank" title="Abrir Arquivo">
+                             <a href="#" onclick='return abrirArquivoAdminNoApp(<?php echo $arquivoRelJs; ?>, <?php echo $descricaoJs; ?>)' title="Abrir Arquivo no app">
                              <span class="mr-2"> <?php echo $descricao ?>  </span>
                              <span class="mr-2"> Data: <?php echo $data ?>  </span></a>
 

@@ -26,7 +26,7 @@ if (!in_array(@$_SESSION['nivel'], ['Administrador', 'Secretario', 'Tesoureiro',
 
 
 
-// Verificar se o parâmetro "aluno" foi passado corretamente
+// Verificar se o parÃ¢metro "aluno" foi passado corretamente
 
 if (!isset($_GET['aluno']) || empty($_GET['aluno'])) {
 
@@ -67,7 +67,7 @@ if (in_array($nivel_usuario, ['Vendedor', 'Tutor', 'Parceiro', 'Secretario', 'Te
 
 $email_aluno = $resposta_aluno[0]['email'];
 
-$telefone_aluno = $resposta_aluno[0]['telefone'] ?? 'Não informado';
+$telefone_aluno = $resposta_aluno[0]['telefone'] ?? 'NÃ£o informado';
 
 $dados_usuario_aluno = $pdo->prepare("SELECT id, nome, cpf, foto FROM usuarios WHERE usuario = :usuario");
 $dados_usuario_aluno->execute([':usuario' => $email_aluno]);
@@ -78,7 +78,7 @@ $id_aluno = $resposta_usuario_aluno[0]['id'];
 
 $nome_aluno = $resposta_usuario_aluno[0]['nome'] ?? 'Desconhecido';
 
-$cpf_aluno = $resposta_usuario_aluno[0]['cpf'] ?? 'Não informado';
+$cpf_aluno = $resposta_usuario_aluno[0]['cpf'] ?? 'NÃ£o informado';
 
 $foto = $resposta_usuario_aluno[0]['foto'];
 
@@ -120,7 +120,7 @@ $statusFiltro = isset($_GET['status']) ? $_GET['status'] : 'todos';
 
 
 
-// Consulta todas as matriculas com verificação de campos existentes
+// Consulta todas as matriculas com verificaÃ§Ã£o de campos existentes
 
 $query_matriculas = $pdo->prepare("
 
@@ -146,7 +146,7 @@ $query_matriculas = $pdo->prepare("
 
         CASE 
 
-            WHEN m.pacote = 'Sim' THEN 'Ativo' -- Valor padrão ou constante para pacotes
+            WHEN m.pacote = 'Sim' THEN 'Ativo' -- Valor padrÃ£o ou constante para pacotes
 
             ELSE c.status 
 
@@ -158,7 +158,7 @@ $query_matriculas = $pdo->prepare("
 
     LEFT JOIN 
 
-        cursos c ON m.id_curso = c.id AND m.pacote = 'Não'
+        cursos c ON m.id_curso = c.id AND (m.pacote <> 'Sim' OR m.pacote IS NULL OR m.pacote = '')
 
     LEFT JOIN 
 
@@ -182,7 +182,7 @@ $matriculas = $query_matriculas->fetchAll(PDO::FETCH_ASSOC);
 
 
 
-// Consulta matriculas de cursos (onde pacote = 'Não' ou null)
+// Consulta matriculas de cursos (onde pacote = 'NÃ£o' ou null)
 
 $query_cursos = $pdo->prepare("
 
@@ -208,7 +208,7 @@ $query_cursos = $pdo->prepare("
 
         m.aluno = :aluno
 
-        AND (m.pacote = 'Não' OR m.pacote IS NULL)
+        AND (m.pacote <> 'Sim' OR m.pacote IS NULL OR m.pacote = '')
 
     ORDER BY 
 
@@ -270,7 +270,7 @@ $matriculas_pacotes = $query_pacotes->fetchAll(PDO::FETCH_ASSOC);
 
 // Consultar parcelas
 
-$consulta_parcelas = $pdo->query("
+$consulta_parcelas = $pdo->prepare("
 
   SELECT 
 
@@ -285,6 +285,7 @@ $consulta_parcelas = $pdo->query("
     END as curso,
 
     bp.id_matricula,
+    bp.qtd_parcelas as total_parcelas,
     m.data as data_matricula,
     m.status as status_matricula
 
@@ -296,18 +297,18 @@ FROM
 
     JOIN matriculas m ON m.id = bp.id_matricula
 
-    LEFT JOIN cursos c ON c.id = m.id_curso AND m.pacote != 'Sim'
+    LEFT JOIN cursos c ON c.id = m.id_curso AND (m.pacote <> 'Sim' OR m.pacote IS NULL OR m.pacote = '')
 
     LEFT JOIN pacotes p ON p.id = m.id_curso AND m.pacote = 'Sim'
 
 WHERE 
 
-    m.aluno = '$id_aluno'
+    m.aluno = :aluno
 
     
 
 ");
-
+$consulta_parcelas->execute([':aluno' => $id_aluno]);
 $resposta_parcelas = $consulta_parcelas->fetchAll(PDO::FETCH_ASSOC);
 
 
@@ -328,12 +329,12 @@ $hoje = date('Y-m-d');
 
 
 
-// Configurações da EFI
+// ConfiguraÃ§Ãµes da EFI
 $config = [
     'client_id' => $options['clientId'],
     'client_secret' => $options['clientSecret'],
     'certificate_path' => $options['certificate'],
-    'sandbox' => $options['sandbox'] // true para teste, false para produção
+    'sandbox' => $options['sandbox'] // true para teste, false para produÃ§Ã£o
 ];
 
 $boletoPaymentApi = new EFIBoletoPayment(
@@ -355,9 +356,64 @@ $boletos_efi = ['data' => []];
 //     return $charge['data']['status'];
 // }
 
-function getChargeStatus($boletoPaymentApi, $chargeId) {
-    $consultarCobranca = $boletoPaymentApi->consultarCobranca($chargeId);
-    return $consultarCobranca['data']['status'] ?? 'indefinido';
+function normalizarStatusResumo($statusOriginal): string
+{
+  $status = strtolower(trim((string) $statusOriginal));
+  if (in_array($status, ['matriculado', 'concluido', 'concluÃ­do', 'finalizado', 'pago', 'paid'], true)) {
+    return 'pago';
+  }
+  if (in_array($status, ['vencido', 'expired'], true)) {
+    return 'vencido';
+  }
+  return 'pendente';
+}
+
+function obterDataReferenciaParcela(array $parcela, string $statusResumo): ?int
+{
+  if ($statusResumo === 'pago') {
+    $raw = (string) ($parcela['data_pagamento'] ?? '');
+    if ($raw !== '') {
+      $ts = strtotime($raw);
+      if ($ts !== false) {
+        return $ts;
+      }
+    }
+  }
+
+  $vencimento = (string) ($parcela['data_vencimento'] ?? '');
+  if ($vencimento !== '') {
+    $tsVenc = strtotime($vencimento);
+    if ($tsVenc !== false) {
+      return $tsVenc;
+    }
+  }
+
+  $dataMatricula = (string) ($parcela['data_matricula'] ?? '');
+  if ($dataMatricula !== '') {
+    $tsMat = strtotime($dataMatricula);
+    if ($tsMat !== false) {
+      return $tsMat;
+    }
+  }
+
+  return null;
+}
+
+function getChargeStatus($boletoPaymentApi, $chargeId, array &$statusCache = []) {
+    $chargeId = trim((string) $chargeId);
+    if ($chargeId === '') {
+      return '';
+    }
+    if (array_key_exists($chargeId, $statusCache)) {
+      return $statusCache[$chargeId];
+    }
+    try {
+      $consultarCobranca = $boletoPaymentApi->consultarCobranca($chargeId);
+      $statusCache[$chargeId] = strtolower((string) ($consultarCobranca['data']['status'] ?? ''));
+    } catch (Throwable $e) {
+      $statusCache[$chargeId] = '';
+    }
+    return $statusCache[$chargeId];
 }
 
 
@@ -369,6 +425,10 @@ foreach ($resposta_parcelas as $parcela) {
   }
 }
 
+$dataInicialFiltro = strtotime($dataInicial . ' 00:00:00');
+$dataFinalFiltro = strtotime($dataFinal . ' 23:59:59');
+$chargeStatusCache = [];
+
 $total_cursos = 0.0;
 $total_pago = 0.0;
 $total_pendente = 0.0;
@@ -376,21 +436,13 @@ $total_vencido = 0.0;
 
 foreach ($matriculas as $mat) {
   $dataMatricula = strtotime($mat['data'] ?? '');
-  $dataInicialFiltro = strtotime($dataInicial);
-  $dataFinalFiltro = strtotime($dataFinal);
 
   if ($dataMatricula && ($dataMatricula < $dataInicialFiltro || $dataMatricula > $dataFinalFiltro)) {
     continue;
   }
 
-  $statusMatricula = strtolower(trim($mat['status'] ?? ''));
-  if (in_array($statusMatricula, ['matriculado', 'concluido', 'finalizado'], true)) {
-    $statusResumo = 'pago';
-  } elseif ($statusMatricula === 'vencido') {
-    $statusResumo = 'vencido';
-  } else {
-    $statusResumo = 'pendente';
-  }
+  $statusResumo = normalizarStatusResumo($mat['status'] ?? '');
+  $mat['status_resumo'] = $statusResumo;
 
   if ($statusFiltro !== 'todos' && $statusResumo !== strtolower($statusFiltro)) {
     continue;
@@ -417,7 +469,7 @@ foreach ($matriculas as $mat) {
 foreach ($resposta_parcelas as $i => $parcela) {
   $statusApi = '';
   if (!empty($parcela['charge_id'])) {
-    $statusApi = getChargeStatus($boletoPaymentApi, $parcela['charge_id']);
+    $statusApi = getChargeStatus($boletoPaymentApi, $parcela['charge_id'], $chargeStatusCache);
   }
 
   $statusResumo = 'pendente';
@@ -433,13 +485,9 @@ foreach ($resposta_parcelas as $i => $parcela) {
 
   $resposta_parcelas[$i]['status_resumo'] = $statusResumo;
 
-  $dataMatricula = !empty($parcela['data_matricula']) ? strtotime($parcela['data_matricula']) : null;
-  if ($dataMatricula) {
-    $dataInicialFiltro = strtotime($dataInicial);
-    $dataFinalFiltro = strtotime($dataFinal);
-    if ($dataMatricula < $dataInicialFiltro || $dataMatricula > $dataFinalFiltro) {
-      continue;
-    }
+  $dataReferencia = obterDataReferenciaParcela($parcela, $statusResumo);
+  if ($dataReferencia && ($dataReferencia < $dataInicialFiltro || $dataReferencia > $dataFinalFiltro)) {
+    continue;
   }
 
   if ($statusFiltro !== 'todos' && $statusResumo !== strtolower($statusFiltro)) {
@@ -473,19 +521,17 @@ foreach ($resposta_parcelas as $parcela) {
     continue;
   }
 
-  $dataMatricula = !empty($parcela['data_matricula']) ? strtotime($parcela['data_matricula']) : null;
-  if ($dataMatricula) {
-    $dataInicialFiltro = strtotime($dataInicial);
-    $dataFinalFiltro = strtotime($dataFinal);
-    if ($dataMatricula < $dataInicialFiltro || $dataMatricula > $dataFinalFiltro) {
-      continue;
-    }
+  $dataReferencia = obterDataReferenciaParcela($parcela, 'pago');
+  if ($dataReferencia && ($dataReferencia < $dataInicialFiltro || $dataReferencia > $dataFinalFiltro)) {
+    continue;
   }
 
   $dataPagamentoRaw = $parcela['data_pagamento'] ?? '';
   $dataPagamento = '-';
   if (!empty($dataPagamentoRaw)) {
     $dataPagamento = date('d/m/Y H:i', strtotime($dataPagamentoRaw));
+  } elseif ($dataReferencia) {
+    $dataPagamento = date('d/m/Y H:i', $dataReferencia);
   }
 
   $comprovantes[] = [
@@ -498,6 +544,9 @@ foreach ($resposta_parcelas as $parcela) {
     'tipo' => $tipoComprovante,
   ];
 }
+
+$totalBaseResumo = $total_pago + $total_pendente + $total_vencido;
+$percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 : 0;
 
 
 ?>
@@ -1194,7 +1243,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-      /* Animações */
+      /* AnimaÃ§Ãµes */
 
       @keyframes fadeIn {
 
@@ -1266,7 +1315,7 @@ foreach ($resposta_parcelas as $parcela) {
 
     <div>
 
-      <!-- Cabeçalho do perfil -->
+      <!-- CabeÃ§alho do perfil -->
 
       <div class="profile-card animated">
 
@@ -1310,6 +1359,7 @@ foreach ($resposta_parcelas as $parcela) {
 
           <form method="GET" action="" class="row">
 
+            <input type="hidden" name="pagina" value="relatorio_aluno">
             <input type="hidden" name="aluno" value="<?php echo $aluno; ?>">
 
 
@@ -1371,12 +1421,9 @@ foreach ($resposta_parcelas as $parcela) {
 
 
             <div class="col-md-3 mb-3 d-flex align-items-end">
-
-              <div class="btn btn-primary btn-custom">
-
+              <button type="submit" class="btn btn-primary btn-custom">
                 <i class="fa fa-search"></i> Filtrar
-
-              </div>
+              </button>
 
             </div>
 
@@ -1388,7 +1435,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-      <!-- Estatísticas -->
+      <!-- EstatÃ­sticas -->
 
       <div class="row mt-4 animated delay-2">
 
@@ -1451,7 +1498,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-      <!-- Gráfico de progresso -->
+      <!-- GrÃ¡fico de progresso -->
 
       <div class="card animated delay-3">
 
@@ -1472,10 +1519,8 @@ foreach ($resposta_parcelas as $parcela) {
               <div class="progress mb-3">
 
                 <div class="progress-bar bg-success" role="progressbar"
-
-                  style="width: <?php echo ($total_pago / ($total_pago + $total_pendente + 0.0001)) * 100; ?>%"
-
-                  aria-valuenow="<?php echo ($total_pago / ($total_pago + $total_pendente + 0.0001)) * 100; ?>"
+                  style="width: <?php echo $percentualPago; ?>%"
+                  aria-valuenow="<?php echo $percentualPago; ?>"
 
                   aria-valuemin="0" aria-valuemax="100"></div>
 
@@ -1489,7 +1534,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-        <!-- Tab Histórico -->
+        <!-- Tab HistÃ³rico -->
 
         <div style="display: none;" id="historico" class="animated delay-4">
 
@@ -1507,15 +1552,20 @@ foreach ($resposta_parcelas as $parcela) {
 
                 <?php
 
-                // Ordenar matrículas e parcelas por data para criar um histórico cronológico
+                // Ordenar matrÃ­culas e parcelas por data para criar um histÃ³rico cronolÃ³gico
 
                 $historico = [];
 
 
 
-                // Adicionar matrículas ao histórico
+                // Adicionar matrÃ­culas ao histÃ³rico
 
                 foreach ($matriculas as $mat) {
+                  $statusResumoMat = normalizarStatusResumo($mat['status'] ?? '');
+                  $valorMat = (float) ($mat['subtotal'] ?? 0);
+                  if ($valorMat <= 0) {
+                    $valorMat = (float) ($mat['valor'] ?? 0);
+                  }
 
                   $historico[] = [
 
@@ -1523,11 +1573,10 @@ foreach ($resposta_parcelas as $parcela) {
 
                     'tipo' => 'matricula',
 
-                    'descricao' => 'Matrícula no curso ' . $mat['nome_curso'],
+                    'descricao' => 'MatrÃ­cula no curso ' . $mat['nome_curso'],
 
-                    'valor' => $mat['valor'],
-
-                    'status' => $mat['status'],
+                    'valor' => $valorMat,
+                    'status' => $statusResumoMat,
 
                     'forma_pgto' => $mat['forma_pgto']
 
@@ -1537,7 +1586,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-                // // Adicionar parcelas ao histórico
+                // // Adicionar parcelas ao histÃ³rico
 
                 // foreach ($resposta_parcelas as $parcela) {
 
@@ -1568,62 +1617,38 @@ foreach ($resposta_parcelas as $parcela) {
                 
 
                 foreach ($resposta_parcelas as $parcela) {
-
-                  if (
-
-                    isset(
-
-                    $parcela['data_vencimento'],
-
-                    $parcela['numero_parcela'],
-
-                    $parcela['total_parcelas'],
-
-                    $parcela['valor'],
-
-                    $parcela['status'],
-
-                    $parcela['curso']
-
-                  )
-
-                  ) {
-
-                    $curso_parcela = $parcela['curso'];
-
-
-
-                    $historico[] = [
-
-                      'data' => $parcela['data_vencimento'],
-
-                      'tipo' => 'parcela',
-
-                      'descricao' => 'Parcela ' . $parcela['numero_parcela'] . '/' . $parcela['total_parcelas'] . ' do curso ' . $curso_parcela,
-
-                      'valor' => $parcela['valor'],
-
-                      'status' => $parcela['status'],
-
-                      'forma_pgto' => 'Boleto'
-
-                    ];
-
-                  } else {
-
-                    // (opcional) Log de depuração para identificar parcelas incompletas
-
-                    error_log('Parcela com dados incompletos: ' . json_encode($parcela));
-
+                  $numeroParcela = (int) ($parcela['ordem_parcela'] ?? $parcela['numero_parcela'] ?? 0);
+                  if ($numeroParcela <= 0 || empty($parcela['curso'])) {
+                    continue;
+                  }
+                  $totalParcelas = (int) ($parcela['total_parcelas'] ?? 0);
+                  if ($totalParcelas <= 0) {
+                    $totalParcelas = (int) ($parcela['qtd_parcelas'] ?? 0);
+                  }
+                  if ($totalParcelas <= 0) {
+                    $totalParcelas = $numeroParcela;
+                  }
+                  $statusParcelaResumo = normalizarStatusResumo($parcela['status_resumo'] ?? $parcela['status'] ?? '');
+                  $dataParcelaTs = obterDataReferenciaParcela($parcela, $statusParcelaResumo);
+                  if (!$dataParcelaTs) {
+                    continue;
                   }
 
+                  $historico[] = [
+                    'data' => date('Y-m-d H:i:s', $dataParcelaTs),
+                    'tipo' => 'parcela',
+                    'descricao' => 'Parcela ' . $numeroParcela . '/' . $totalParcelas . ' do curso ' . $parcela['curso'],
+                    'valor' => (float) ($parcela['valor_parcela'] ?? $parcela['valor'] ?? 0),
+                    'status' => $statusParcelaResumo,
+                    'forma_pgto' => 'Boleto'
+                  ];
                 }
 
 
 
 
 
-                // Ordenar o histórico por data (mais recente primeiro)
+                // Ordenar o histÃ³rico por data (mais recente primeiro)
 
                 usort($historico, function ($a, $b) {
 
@@ -1633,7 +1658,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-                // Filtrar histórico conforme os filtros selecionados
+                // Filtrar histÃ³rico conforme os filtros selecionados
 
                 $historico_filtrado = [];
 
@@ -1653,9 +1678,9 @@ foreach ($resposta_parcelas as $parcela) {
 
                   $dataItem = strtotime($item['data']);
 
-                  $dataInicialFiltro = strtotime($dataInicial);
+                  $dataInicialFiltro = strtotime($dataInicial . ' 00:00:00');
 
-                  $dataFinalFiltro = strtotime($dataFinal);
+                  $dataFinalFiltro = strtotime($dataFinal . ' 23:59:59');
 
 
 
@@ -1767,7 +1792,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-      <!-- Botões de Ação -->
+      <!-- BotÃµes de AÃ§Ã£o -->
 
       <div class="row mt-4 no-print animated delay-4">
 
@@ -1803,7 +1828,7 @@ foreach ($resposta_parcelas as $parcela) {
 
     <div style="margin-bottom: 140px;">
 
-      <!-- Tabs para diferentes seções -->
+      <!-- Tabs para diferentes seÃ§Ãµes -->
 
       <div class="tab-custom no-print animated delay-3">
 
@@ -1890,12 +1915,13 @@ foreach ($resposta_parcelas as $parcela) {
                     if (count($matriculas_cursos) > 0) {
 
                       foreach ($matriculas_cursos as $mat) {
+                        $statusResumoMat = normalizarStatusResumo($mat['status'] ?? '');
 
                         // Filtro por status
 
                         if ($statusFiltro != 'todos') {
 
-                          if (strtolower($statusFiltro) != strtolower($mat['status'])) {
+                          if (strtolower($statusFiltro) != $statusResumoMat) {
 
                             continue;
 
@@ -1909,9 +1935,9 @@ foreach ($resposta_parcelas as $parcela) {
 
                         $dataMatricula = strtotime($mat['data']);
 
-                        $dataInicialFiltro = strtotime($dataInicial);
+                        $dataInicialFiltro = strtotime($dataInicial . ' 00:00:00');
 
-                        $dataFinalFiltro = strtotime($dataFinal);
+                        $dataFinalFiltro = strtotime($dataFinal . ' 23:59:59');
 
 
 
@@ -1936,29 +1962,13 @@ foreach ($resposta_parcelas as $parcela) {
                           <td>R$ <?php echo number_format($mat['valor'], 2, ',', '.'); ?></td>
 
                           <td>
-
-                            <?php if ($mat['status'] == 'Finalizado') { ?>
-
-                              <span class="badge badge-success">Finalizado</span>
-
-                            <?php } else if ($mat['status'] == 'Matriculado') { ?>
-
-                                <span class="badge badge-success">Matriculado</span>
-
-                            <?php } else if ($mat['status'] == 'Aguardando') { ?>
-
-                                  <span class="badge badge-danger">Aguardando</span>
-
-                            <?php } else if ($mat['status'] == 'Concluído') { ?>
-
-                                    <span class="badge badge-info">Concluído</span>
-
+                            <?php if ($statusResumoMat === 'pago') { ?>
+                              <span class="badge badge-success">Pago</span>
+                            <?php } else if ($statusResumoMat === 'vencido') { ?>
+                              <span class="badge badge-danger">Vencido</span>
                             <?php } else { ?>
-
-                                    <span class="badge badge-secondary"><?php echo $mat['status']; ?></span>
-
+                              <span class="badge badge-warning">Pendente</span>
                             <?php } ?>
-
                           </td>
 
                           <td>
@@ -2050,12 +2060,13 @@ foreach ($resposta_parcelas as $parcela) {
                     if (count($matriculas_pacotes) > 0) {
 
                       foreach ($matriculas_pacotes as $mat) {
+                        $statusResumoMat = normalizarStatusResumo($mat['status'] ?? '');
 
                         // Filtro por status
 
                         if ($statusFiltro != 'todos') {
 
-                          if (strtolower($statusFiltro) != strtolower($mat['status'])) {
+                          if (strtolower($statusFiltro) != $statusResumoMat) {
 
                             continue;
 
@@ -2069,9 +2080,9 @@ foreach ($resposta_parcelas as $parcela) {
 
                         $dataMatricula = strtotime($mat['data']);
 
-                        $dataInicialFiltro = strtotime($dataInicial);
+                        $dataInicialFiltro = strtotime($dataInicial . ' 00:00:00');
 
-                        $dataFinalFiltro = strtotime($dataFinal);
+                        $dataFinalFiltro = strtotime($dataFinal . ' 23:59:59');
 
 
 
@@ -2097,7 +2108,13 @@ foreach ($resposta_parcelas as $parcela) {
 
                           <td>
 
-                            <span class="badge badge-success">Ativo</span>
+                            <?php if ($statusResumoMat === 'pago') { ?>
+                              <span class="badge badge-success">Pago</span>
+                            <?php } else if ($statusResumoMat === 'vencido') { ?>
+                              <span class="badge badge-danger">Vencido</span>
+                            <?php } else { ?>
+                              <span class="badge badge-warning">Pendente</span>
+                            <?php } ?>
 
                           </td>
 
@@ -2187,35 +2204,17 @@ foreach ($resposta_parcelas as $parcela) {
 
                       foreach ($resposta_parcelas as $parcela) {
                         
-                        // Filtro por status
-
+                        $statusParcelaResumo = normalizarStatusResumo($parcela['status_resumo'] ?? $parcela['status'] ?? '');
                         if ($statusFiltro != 'todos') {
-
-                          if (strtolower($statusFiltro) != strtolower($parcela['status_resumo'] ?? '')) {
-
+                          if (strtolower($statusFiltro) != $statusParcelaResumo) {
                             continue;
-
                           }
-
                         }
 
-
-
-                        // Filtro por data
-
-                        // $dataVencimento = strtotime($parcela['data_vencimento']);
-
-                        // $dataInicialFiltro = strtotime($dataInicial);
-
-                        // $dataFinalFiltro = strtotime($dataFinal);
-
-                    
-
-                        // if ($dataVencimento < $dataInicialFiltro || $dataVencimento > $dataFinalFiltro) {
-
-                        //     continue;
-
-                        // }
+                        $dataParcelaTs = obterDataReferenciaParcela($parcela, $statusParcelaResumo);
+                        if ($dataParcelaTs && ($dataParcelaTs < $dataInicialFiltro || $dataParcelaTs > $dataFinalFiltro)) {
+                          continue;
+                        }
                         
                         
 
@@ -2242,7 +2241,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 <td>
   <?php
-  $statusResumo = $parcela['status_resumo'] ?? 'pendente';
+  $statusResumo = $statusParcelaResumo;
   if (empty($parcela['charge_id']) && empty($parcela['id_asaas'])) {
       echo '<span class="badge">Nao Gerado</span>';
   } elseif ($statusResumo === 'pago') {
@@ -2307,12 +2306,12 @@ foreach ($resposta_parcelas as $parcela) {
       <th>Pagador</th>
       <th>CPF</th>
       <th>Telefone</th>
-      <th>Data Criação</th>
-      <th>Nº Parcela</th>
+      <th>Data CriaÃ§Ã£o</th>
+      <th>NÂº Parcela</th>
       <th>Valor</th>
       <th>Status</th>
       <th>Data Pagamento</th>
-      <th>Ações</th>
+      <th>AÃ§Ãµes</th>
     </tr>
   </thead>
   <tbody>
@@ -2354,7 +2353,7 @@ foreach ($resposta_parcelas as $parcela) {
         <td>
           <?php if ($linkPagamento): ?>
             <button onclick="abrirBoleto('<?= $linkPagamento ?>')" style="background:#007bff; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer;">
-              👁️
+              ðŸ‘ï¸
             </button>
           <?php endif; ?>
         </td>
@@ -2479,7 +2478,7 @@ foreach ($resposta_parcelas as $parcela) {
 
         <div class="modal-header bg-gradient-primary text-white">
 
-          <h5 class="modal-title" id="detalhesModalLabel">Detalhes da Matrícula</h5>
+          <h5 class="modal-title" id="detalhesModalLabel">Detalhes da MatrÃ­cula</h5>
 
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 
@@ -2551,7 +2550,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-          // Adicionar classe ativa à tab clicada
+          // Adicionar classe ativa Ã  tab clicada
 
           this.classList.add('active');
 
@@ -2581,7 +2580,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-      //   // Adicionar classe para esconder elementos que não devem aparecer no PDF
+      //   // Adicionar classe para esconder elementos que nÃ£o devem aparecer no PDF
 
       //   document.querySelectorAll('.no-print').forEach(el => {
 
@@ -2591,7 +2590,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-      //   // Usar HTML2Canvas para renderizar o relatório
+      //   // Usar HTML2Canvas para renderizar o relatÃ³rio
 
       //   html2canvas(document.body, {
 
@@ -2637,7 +2636,7 @@ foreach ($resposta_parcelas as $parcela) {
 
       document.getElementById('btn-pdf').addEventListener('click', function () {
 
-        // Referência ao elemento que contém o conteúdo a ser transformado em PDF
+        // ReferÃªncia ao elemento que contÃ©m o conteÃºdo a ser transformado em PDF
 
         const relatorioElement = document.getElementById('relatorioPDF');
 
@@ -2645,7 +2644,7 @@ foreach ($resposta_parcelas as $parcela) {
 
         if (!relatorioElement) {
 
-          console.error('Elemento com ID "relatorioPDF" não encontrado.');
+          console.error('Elemento com ID "relatorioPDF" nÃ£o encontrado.');
 
           return;
 
@@ -2665,7 +2664,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-        // Adicionar classe para esconder elementos que não devem aparecer no PDF
+        // Adicionar classe para esconder elementos que nÃ£o devem aparecer no PDF
 
         document.querySelectorAll('.no-print').forEach(el => {
 
@@ -2675,7 +2674,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-        // Usar HTML2Canvas para renderizar apenas o conteúdo da div específica
+        // Usar HTML2Canvas para renderizar apenas o conteÃºdo da div especÃ­fica
 
         html2canvas(relatorioElement, {
 
@@ -2729,7 +2728,7 @@ foreach ($resposta_parcelas as $parcela) {
 
       document.getElementById('btn-print').addEventListener('click', function () {
 
-        // Referência ao elemento que contém o conteúdo a ser impresso
+        // ReferÃªncia ao elemento que contÃ©m o conteÃºdo a ser impresso
 
         const relatorioElement = document.getElementById('relatorioPDF');
 
@@ -2737,7 +2736,7 @@ foreach ($resposta_parcelas as $parcela) {
 
         if (!relatorioElement) {
 
-          console.error('Elemento com ID "relatorioPDF" não encontrado.');
+          console.error('Elemento com ID "relatorioPDF" nÃ£o encontrado.');
 
           return;
 
@@ -2745,7 +2744,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-        // Cria um iframe temporário para conter apenas o conteúdo que queremos imprimir
+        // Cria um iframe temporÃ¡rio para conter apenas o conteÃºdo que queremos imprimir
 
         const printIframe = document.createElement('iframe');
 
@@ -2759,7 +2758,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-        // Adiciona o conteúdo da div ao iframe
+        // Adiciona o conteÃºdo da div ao iframe
 
         const iframeDoc = printIframe.contentDocument || printIframe.contentWindow.document;
 
@@ -2767,7 +2766,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-        // Adicionamos um HTML básico, incluindo os estilos da página atual
+        // Adicionamos um HTML bÃ¡sico, incluindo os estilos da pÃ¡gina atual
 
         iframeDoc.write(`
 
@@ -2777,19 +2776,19 @@ foreach ($resposta_parcelas as $parcela) {
 
     <head>
 
-      <title>Impressão de Relatório</title>
+      <title>ImpressÃ£o de RelatÃ³rio</title>
 
       <meta charset="utf-8">
 
       <style>
 
-        /* Copiar estilos relevantes da página principal */
+        /* Copiar estilos relevantes da pÃ¡gina principal */
 
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
 
         
 
-        /* Você pode adicionar aqui mais estilos específicos para impressão */
+        /* VocÃª pode adicionar aqui mais estilos especÃ­ficos para impressÃ£o */
 
         @media print {
 
@@ -2829,11 +2828,11 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-        // Espera um pouco para garantir que o conteúdo seja carregado
+        // Espera um pouco para garantir que o conteÃºdo seja carregado
 
         setTimeout(() => {
 
-          // Foca no iframe e imprime seu conteúdo
+          // Foca no iframe e imprime seu conteÃºdo
 
           printIframe.contentWindow.focus();
 
@@ -2841,7 +2840,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-          // Remove o iframe após a impressão (ou depois de um tempo)
+          // Remove o iframe apÃ³s a impressÃ£o (ou depois de um tempo)
 
           setTimeout(() => {
 
@@ -2863,7 +2862,7 @@ foreach ($resposta_parcelas as $parcela) {
 
   <style>
 
-    /* Customização do SweetAlert2 */
+    /* CustomizaÃ§Ã£o do SweetAlert2 */
 
     .financial-modal .swal2-popup {
 
@@ -2961,7 +2960,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-    /* Conteúdo do Modal */
+    /* ConteÃºdo do Modal */
 
     .matricula-card {
 
@@ -3307,7 +3306,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-    /* Animações */
+    /* AnimaÃ§Ãµes */
 
     @keyframes fadeInUp {
 
@@ -3379,7 +3378,7 @@ foreach ($resposta_parcelas as $parcela) {
 
     function verDetalhes(matricula) {
 
-      // Formatar data e valor para exibição
+      // Formatar data e valor para exibiÃ§Ã£o
 
       const dataFormatada = new Date(matricula.data).toLocaleDateString('pt-BR');
 
@@ -3393,7 +3392,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-      // Definir classes e ícones de acordo com o status
+      // Definir classes e Ã­cones de acordo com o status
 
       let statusClass = '';
 
@@ -3435,7 +3434,7 @@ foreach ($resposta_parcelas as $parcela) {
 
           break;
 
-        case 'Concluído':
+        case 'ConcluÃ­do':
 
           statusClass = 'bg-concluido';
 
@@ -3457,7 +3456,7 @@ foreach ($resposta_parcelas as $parcela) {
 
 
 
-      // Montar o HTML para o conteúdo do SweetAlert
+      // Montar o HTML para o conteÃºdo do SweetAlert
 
       const conteudoHtml = `
 
@@ -3501,7 +3500,7 @@ foreach ($resposta_parcelas as $parcela) {
 
         <div class="info-card animate-fadeInUp delay-2">
 
-          <div class="label">Data de inscrição</div>
+          <div class="label">Data de inscriÃ§Ã£o</div>
 
           <div class="value">${dataFormatada}</div>
 
@@ -3529,7 +3528,7 @@ foreach ($resposta_parcelas as $parcela) {
 
       Swal.fire({
 
-        title: 'Detalhes da Matrícula',
+        title: 'Detalhes da MatrÃ­cula',
 
         html: conteudoHtml,
 
@@ -3588,8 +3587,8 @@ function abrirBoleto(link) {
   if (!linkBruto) {
     Swal.fire({
       icon: 'warning',
-      title: 'Comprovante indisponível',
-      text: 'Não há link válido para visualizar.'
+      title: 'Comprovante indisponÃ­vel',
+      text: 'NÃ£o hÃ¡ link vÃ¡lido para visualizar.'
     });
     return;
   }
@@ -3610,7 +3609,7 @@ function abrirBoleto(link) {
     Swal.fire({
       title: 'Comprovante de Pagamento',
       html: `
-        <p style="margin-bottom:10px;">Código para cópia:</p>
+        <p style="margin-bottom:10px;">CÃ³digo para cÃ³pia:</p>
         <textarea id="codigo-pagamento" style="width:100%; height:140px; border:1px solid #ddd; border-radius:6px; padding:8px;" readonly>${linkSeguro}</textarea>
         <button id="btn-copiar-codigo" style="margin-top:10px; background:#007bff; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">
           Copiar
@@ -3664,4 +3663,7 @@ function abrirBoleto(link) {
 
 
 </html>
+
+
+
 

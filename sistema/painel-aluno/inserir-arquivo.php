@@ -4,9 +4,52 @@ require_once(__DIR__ . "/../../config/upload.php");
 
 $tabela = 'arquivos_alunos';
 
-$id_aluno = $_POST['id'];
-$arquivo = @$_POST['arquivo_2'];
-$descricao = @$_POST['descricao'];
+function ini_size_to_bytes(string $value): int
+{
+    $value = trim($value);
+    if ($value === '') {
+        return 0;
+    }
+
+    $unit = strtolower(substr($value, -1));
+    $number = (float) $value;
+
+    switch ($unit) {
+        case 'g':
+            $number *= 1024;
+            // no break
+        case 'm':
+            $number *= 1024;
+            // no break
+        case 'k':
+            $number *= 1024;
+    }
+
+    return (int) $number;
+}
+
+if (
+    $_SERVER['REQUEST_METHOD'] === 'POST' &&
+    empty($_POST) &&
+    empty($_FILES) &&
+    !empty($_SERVER['CONTENT_LENGTH'])
+) {
+    $maxPostBytes = ini_size_to_bytes((string) ini_get('post_max_size'));
+    if ($maxPostBytes > 0) {
+        echo 'Arquivo maior que o permitido pelo servidor. Tamanho maximo permitido: ' . upload_format_size($maxPostBytes) . '.';
+    } else {
+        echo 'Arquivo maior que o permitido pelo servidor.';
+    }
+    exit();
+}
+
+$id_aluno = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+$descricao = isset($_POST['descricao']) ? trim((string) $_POST['descricao']) : '';
+
+if ($id_aluno <= 0) {
+    echo 'Aluno nao identificado. Atualize a pagina e tente novamente.';
+    exit();
+}
 
 $destDir = __DIR__ . '/img/arquivos';
 $allowedExt = ['png', 'jpg', 'jpeg', 'gif', 'pdf', 'zip', 'rar'];

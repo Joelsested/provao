@@ -259,13 +259,13 @@ if (@$_SESSION['nivel'] != 'Administrador' and @$_SESSION['nivel'] != 'Secretari
 						</div>
 
 					
-						<div class="col-md-2">
-							<div class="form-group">
-								<label>Data de Nascimento:</label>
-								<input type="text" class="form-control" name="nascimento" id="nascimento" required>
+							<div class="col-md-2">
+								<div class="form-group">
+									<label>Data de Nascimento:</label>
+									<input type="text" class="form-control" name="nascimento" id="nascimento" placeholder="dd-mm-aaaa" required>
 
+								</div>
 							</div>
-						</div>
                             
                             
                             <div class="col-md-2">

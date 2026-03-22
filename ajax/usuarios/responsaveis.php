@@ -8,7 +8,7 @@ $emailParam = trim($_POST['email'] ?? '');
 if (!$usuarioId && $emailParam === '') {
     echo json_encode([
         'success' => false,
-        'message' => 'Usuario nao autenticado.'
+        'message' => 'Usuário não autenticado.'
     ], JSON_UNESCAPED_UNICODE);
     exit();
 }
@@ -25,32 +25,19 @@ if ((!$alunoPessoa || empty($alunoPessoa['id_pessoa'])) && $emailParam !== '') {
 if (!$alunoPessoa || empty($alunoPessoa['id_pessoa'])) {
     echo json_encode([
         'success' => false,
-        'message' => 'Aluno nao encontrado.'
+        'message' => 'Aluno não encontrado.'
     ], JSON_UNESCAPED_UNICODE);
     exit();
 }
 
-$alunoId = (int) $alunoPessoa['id_pessoa'];
-$stmtCol = $pdo->query("SHOW COLUMNS FROM alunos LIKE 'responsavel_id'");
-$temResponsavelId = (bool) $stmtCol->fetch(PDO::FETCH_ASSOC);
-
-if ($temResponsavelId) {
-    $stmt = $pdo->prepare("SELECT usuario, responsavel_id FROM alunos WHERE id = :id LIMIT 1");
-} else {
-    $stmt = $pdo->prepare("SELECT usuario FROM alunos WHERE id = :id LIMIT 1");
-}
+$alunoId = $alunoPessoa['id_pessoa'];
+$stmt = $pdo->prepare("SELECT usuario FROM alunos WHERE id = :id LIMIT 1");
 $stmt->execute(['id' => $alunoId]);
-$aluno = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
-
-$responsavelAtualId = (int) ($aluno['responsavel_id'] ?? 0);
-if ($responsavelAtualId <= 0) {
-    $responsavelAtualId = (int) ($aluno['usuario'] ?? 0);
-}
-
+$aluno = $stmt->fetch(PDO::FETCH_ASSOC);
 $responsavelAtual = null;
-if ($responsavelAtualId > 0) {
+if ($aluno && !empty($aluno['usuario'])) {
     $stmt = $pdo->prepare("SELECT id, nome, nivel FROM usuarios WHERE id = :id LIMIT 1");
-    $stmt->execute(['id' => $responsavelAtualId]);
+    $stmt->execute(['id' => $aluno['usuario']]);
     $responsavelAtual = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 }
 

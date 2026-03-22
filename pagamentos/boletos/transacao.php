@@ -1,8 +1,4 @@
 <?php
-http_response_code(410);
-echo 'Forma de pagamento desativada. Utilize somente o gateway EFY.';
-exit;
-
 require_once("../../sistema/conexao.php");
 @session_start();
 $id_aluno = $_SESSION['id'];

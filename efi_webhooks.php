@@ -45,6 +45,75 @@ function mapearStatusAssinaturaInterno(string $status): string
     return 'PENDENTE';
 }
 
+function aprovarMatriculaRecorrenciaWebhook(PDO $pdo, int $idMatricula): void
+{
+    if ($idMatricula <= 0) {
+        return;
+    }
+
+    $stmtMat = $pdo->prepare("SELECT id, id_curso, aluno, professor, pacote, status FROM matriculas WHERE id = :id LIMIT 1");
+    $stmtMat->execute([':id' => $idMatricula]);
+    $matricula = $stmtMat->fetch(PDO::FETCH_ASSOC) ?: null;
+    if (!$matricula) {
+        return;
+    }
+
+    // Libera a matricula principal.
+    if ((string) ($matricula['status'] ?? '') !== 'Matriculado') {
+        $stmtUpdate = $pdo->prepare("UPDATE matriculas SET status = 'Matriculado' WHERE id = :id LIMIT 1");
+        $stmtUpdate->execute([':id' => $idMatricula]);
+    }
+
+    // Se nao for pacote, fim do fluxo.
+    if (strtolower((string) ($matricula['pacote'] ?? '')) !== 'sim') {
+        return;
+    }
+
+    $idPacote = (int) ($matricula['id_curso'] ?? 0);
+    $idAluno = (int) ($matricula['aluno'] ?? 0);
+    if ($idPacote <= 0 || $idAluno <= 0) {
+        return;
+    }
+
+    $stmtCursosPacote = $pdo->prepare("SELECT cp.id_curso, c.professor FROM cursos_pacotes cp JOIN cursos c ON c.id = cp.id_curso WHERE cp.id_pacote = :id_pacote");
+    $stmtCursosPacote->execute([':id_pacote' => $idPacote]);
+    $cursosPacote = $stmtCursosPacote->fetchAll(PDO::FETCH_ASSOC);
+
+    if (empty($cursosPacote)) {
+        return;
+    }
+
+    $stmtExiste = $pdo->prepare("SELECT id FROM matriculas WHERE aluno = :aluno AND id_curso = :id_curso AND (pacote <> 'Sim' OR pacote IS NULL OR pacote = '') LIMIT 1");
+    $stmtInsert = $pdo->prepare("INSERT INTO matriculas (id_curso, aluno, professor, aulas_concluidas, data, status, pacote, id_pacote, obs) VALUES (:id_curso, :aluno, :professor, 1, CURDATE(), 'Matriculado', 'Nao', :id_pacote, 'Pacote')");
+    $stmtUpdateCurso = $pdo->prepare("UPDATE cursos SET matriculas = COALESCE(matriculas, 0) + 1 WHERE id = :id LIMIT 1");
+
+    foreach ($cursosPacote as $cursoPacote) {
+        $idCurso = (int) ($cursoPacote['id_curso'] ?? 0);
+        $idProfessor = (int) ($cursoPacote['professor'] ?? 0);
+        if ($idCurso <= 0) {
+            continue;
+        }
+
+        $stmtExiste->execute([
+            ':aluno' => $idAluno,
+            ':id_curso' => $idCurso,
+        ]);
+        $jaExiste = (int) ($stmtExiste->fetchColumn() ?: 0) > 0;
+        if ($jaExiste) {
+            continue;
+        }
+
+        $stmtInsert->execute([
+            ':id_curso' => $idCurso,
+            ':aluno' => $idAluno,
+            ':professor' => $idProfessor,
+            ':id_pacote' => $idPacote,
+        ]);
+
+        $stmtUpdateCurso->execute([':id' => $idCurso]);
+    }
+}
+
 function atualizarRecorrenciaCartaoViaWebhook(PDO $pdo, array $data): array
 {
     $subscriptionId = (int) (buscarValorRecursivo($data, ['subscription_id', 'subscriptionId', 'id_subscription'], 0) ?: 0);
@@ -120,6 +189,10 @@ function atualizarRecorrenciaCartaoViaWebhook(PDO $pdo, array $data): array
                 'numero_parcela' => (int) ($parcela['numero_parcela'] ?? 0),
             ];
         }
+
+        if ($idMatricula > 0) {
+            aprovarMatriculaRecorrenciaWebhook($pdo, $idMatricula);
+        }
     }
 
     if (in_array($statusAssinatura, ['CANCELADA', 'FALHA'], true)) {
@@ -144,6 +217,86 @@ function atualizarRecorrenciaCartaoViaWebhook(PDO $pdo, array $data): array
         'charge_id' => $chargeId,
         'id_matricula' => $idMatricula,
         'parcela_atualizada' => $parcelaAtualizada,
+    ];
+}
+
+function statusPagamentoConfirmadoWebhook(string $status): bool
+{
+    $s = strtolower(trim($status));
+    return in_array($s, ['paid', 'approved', 'active', 'settled'], true);
+}
+
+function localizarMatriculaPorChargeIdEmLogs(PDO $pdo, string $chargeId): int
+{
+    $chargeId = trim($chargeId);
+    if ($chargeId === '') {
+        return 0;
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT id_matricula, json_response
+        FROM logs_pagamentos
+        WHERE json_response LIKE :needle
+        ORDER BY id DESC
+        LIMIT 50
+    ");
+    $stmt->execute([':needle' => '%' . $chargeId . '%']);
+    $registros = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($registros as $registro) {
+        $payload = json_decode((string) ($registro['json_response'] ?? ''), true);
+        if (!is_array($payload)) {
+            continue;
+        }
+        $chargePayload = (string) (buscarValorRecursivo($payload, ['charge_id', 'chargeId', 'payment_id'], '') ?: '');
+        if ($chargePayload !== '' && $chargePayload === $chargeId) {
+            return (int) ($registro['id_matricula'] ?? 0);
+        }
+    }
+
+    return 0;
+}
+
+function atualizarCartaoAvistaViaWebhook(PDO $pdo, array $data): array
+{
+    $chargeId = (string) (buscarValorRecursivo($data, ['charge_id', 'chargeId', 'payment_id'], '') ?: '');
+    $statusOriginal = (string) (buscarValorRecursivo($data, ['current', 'status', 'status_current'], '') ?: '');
+
+    if ($chargeId === '' || $statusOriginal === '') {
+        return [
+            'ok' => false,
+            'msg' => 'payload sem charge_id/status para baixa de cartao a vista',
+        ];
+    }
+
+    if (!statusPagamentoConfirmadoWebhook($statusOriginal)) {
+        return [
+            'ok' => true,
+            'charge_id' => $chargeId,
+            'status' => strtolower(trim($statusOriginal)),
+            'matricula_atualizada' => false,
+            'msg' => 'status ainda nao confirmado',
+        ];
+    }
+
+    $idMatricula = localizarMatriculaPorChargeIdEmLogs($pdo, $chargeId);
+    if ($idMatricula <= 0) {
+        return [
+            'ok' => false,
+            'charge_id' => $chargeId,
+            'msg' => 'matricula nao localizada por charge_id nos logs',
+        ];
+    }
+
+    $stmt = $pdo->prepare("UPDATE matriculas SET status = 'Matriculado' WHERE id = :id LIMIT 1");
+    $stmt->execute([':id' => $idMatricula]);
+
+    return [
+        'ok' => true,
+        'charge_id' => $chargeId,
+        'status' => strtolower(trim($statusOriginal)),
+        'id_matricula' => $idMatricula,
+        'matricula_atualizada' => true,
     ];
 }
 
@@ -180,12 +333,14 @@ try {
     if ($temEstruturaRec) {
         $resultadoRecorrencia = atualizarRecorrenciaCartaoViaWebhook($pdo, $data);
     }
+    $resultadoCartaoAvista = atualizarCartaoAvistaViaWebhook($pdo, $data);
 
     http_response_code(200);
     echo json_encode([
         'status' => 'success',
         'event_type' => $eventType,
         'recorrencia' => $resultadoRecorrencia,
+        'cartao_avista' => $resultadoCartaoAvista,
     ], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     http_response_code(500);

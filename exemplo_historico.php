@@ -3,13 +3,13 @@ require_once('lib/tcpdf/tcpdf.php');
 
 // Dados de exemplo baseados no documento fornecido
 $dadosExemplo = [
-    'nome' => 'EDEJANIO FERNANDES DA SILVA DE ?VILA',
+    'nome' => 'EDEJANIO FERNANDES DA SILVA DE ÁVILA',
     'sexo' => 'M',
     'dataNasc' => '1995-05-20',
-    'naturalidade' => 'MACHADINHO D'OESTE ? RO',
+    'naturalidade' => 'MACHADINHO D´OESTE – RO',
     'cpf' => '028.260.882-62',
     'rg' => '1305589',
-    'pai' => 'JANIO DE ?VILA',
+    'pai' => 'JANIO DE ÁVILA',
     'mae' => 'LEONICE DA SILVA',
     'notas' => [
         'Língua portuguesa' => ['1' => '7.0', '2' => '7.0', '3' => '7.0'],
@@ -107,7 +107,7 @@ $html = '
 <table class="header-table">
     <tr>
         <td colspan="7"><strong>NOME: SESTED</strong></td>
-        <td colspan="18"><strong>AUTORIZAÇÃO: PARECER CEB/CEE/RO N? 041/18 e RESOLUÇÃO CEB/CEE/RO N? 1296/21</strong></td>
+        <td colspan="18"><strong>AUTORIZAÇÃO: PARECER CEB/CEE/RO Nº 041/18 e RESOLUÇÃO CEB/CEE/RO N° 1296/21</strong></td>
     </tr>
     <tr>
         <td colspan="4"><strong>CNPJ: 07.158.229/0001-06</strong></td>
@@ -115,7 +115,7 @@ $html = '
         <td colspan="7"><strong>CNPJ: 07.158.229/0001-06</strong></td>
     </tr>
     <tr>
-        <td colspan="13"><strong>ENDEREÇO: RUA NOVA UNIÃO ? 2024 SETOR 02</strong></td>
+        <td colspan="13"><strong>ENDEREÇO: RUA NOVA UNIÃO – 2024 SETOR 02</strong></td>
         <td colspan="12"><strong>TEL.: 69 -9 - 92474696</strong></td>
     </tr>
     <tr>
@@ -133,7 +133,7 @@ $html = '
     <tr>
         <td colspan="6">CPF: ' . $dadosExemplo['cpf'] . '</td>
         <td colspan="5">RG: ' . $dadosExemplo['rg'] . '</td>
-        <td colspan="8">ÓRGÃO EXP: SESDEC/RO</td>
+        <td colspan="8">ORGÃO EXP: SESDEC/RO</td>
         <td colspan="6">EMISSÃO: 02/05/2012</td>
     </tr>
     <tr>
@@ -151,14 +151,14 @@ $html = '
 <table class="historico-table">
     <tr>
         <th rowspan="3" style="width: 8%;">Base Nacional</th>
-        <th rowspan="3" style="width: 20%;">?REAS DE CONHECIMENTO</th>
+        <th rowspan="3" style="width: 20%;">ÁREAS DE CONHECIMENTO</th>
         <th rowspan="3" style="width: 25%;">COMPONENTES CURRICULARES</th>
         <th colspan="9">ANOS/ CARGA HORÁRIA</th>
     </tr>
     <tr>
-        <th colspan="3">1? SÉRIE</th>
-        <th colspan="3">2? SÉRIE</th>
-        <th colspan="3">3? SÉRIE</th>
+        <th colspan="3">1ª SÉRIE</th>
+        <th colspan="3">2ª SÉRIE</th>
+        <th colspan="3">3ª SÉRIE</th>
     </tr>
     <tr>
         <th>NOTA</th>
@@ -172,7 +172,7 @@ $html = '
         <th>DATA</th>
     </tr>';
 
-// Matérias por ?rea - usando dados do exemplo original
+// Matérias por área - usando dados do exemplo original
 $materiasPorArea = [
     [
         'nome' => 'Base Nacional',
@@ -231,16 +231,16 @@ foreach ($materiasPorArea as $grupo) {
         if ($primeiraLinhaGrupo && !empty($grupo['nome'])) {
             $html .= '<td rowspan="' . $rowspanGrupo . '" class="area-header" style="writing-mode: vertical-lr; text-orientation: mixed;">' . $grupo['nome'] . '</td>';
         } elseif (empty($grupo['nome']) && $primeiraLinhaGrupo) {
-            // Para Matemática e Ciências da Natureza que não t?m nome na primeira coluna
+            // Para Matemática e Ciências da Natureza que não têm nome na primeira coluna
         } else {
             // Células vazias para as outras linhas do grupo
         }
 
-        // Segunda coluna (?rea de conhecimento)
+        // Segunda coluna (Área de conhecimento)
         if ($primeiraLinhaGrupo && !empty($grupo['area'])) {
             $html .= '<td rowspan="' . $rowspanGrupo . '" class="area-header" style="writing-mode: vertical-lr; text-orientation: mixed;">' . $grupo['area'] . '</td>';
         } elseif (empty($grupo['area']) && $primeiraLinhaGrupo) {
-            // Para Parte diversificada que continua com as mesmas ?reas
+            // Para Parte diversificada que continua com as mesmas áreas
         }
 
         $html .= '<td class="materia-name">' . $materia . '</td>';
@@ -294,21 +294,21 @@ $html .= '
     </tr>
     <tr>
         <td rowspan="3">Estudos Realizados</td>
-        <td>1? SÉRIE</td>
+        <td>1ª SÉRIE</td>
         <td>2023</td>
         <td>SESTED</td>
         <td>BURITIS</td>
         <td>RO</td>
     </tr>
     <tr>
-        <td>2? SÉRIE</td>
+        <td>2ª SÉRIE</td>
         <td>2023</td>
         <td>SESTED</td>
         <td>BURITIS</td>
         <td>RO</td>
     </tr>
     <tr>
-        <td>3? SÉRIE</td>
+        <td>3ª SÉRIE</td>
         <td>2023</td>
         <td>SESTED</td>
         <td>BURITIS</td>
@@ -326,7 +326,7 @@ $html .= '
 
 <div style="font-size: 8px;">
     <strong>OBSERVAÇÕES:</strong><br>
-    O (a) Aluno (a) acima est? com toda documentação arquivada.
+    O (a) Aluno (a) acima está com toda documentação arquivada.
 </div>
 
 <br><br>

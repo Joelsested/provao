@@ -251,10 +251,19 @@ HTML;
 
         $botaoExcluirHtml = '';
         if ($status == 'Aguardando') {
-            $botaoExcluirHtml = '<button type="button" onclick="excluir(' . (int) $id . ');" style="background-color: transparent; border:none!important; margin-left:8px;">'
+            $botaoExcluirHtml = '<li class="dropdown head-dpdn2" style="display: inline-block; margin-left:8px;">'
+                . '<a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="false" style="padding:0;">'
                 . '<i class="fa fa-trash text-danger"></i>'
                 . '<span class="text-danger" style="margin-left:2px">Excluir</span>'
-                . '</button>';
+                . '</a>'
+                . '<ul class="dropdown-menu" style="margin-left:-230px;">'
+                . '<li>'
+                . '<div class="notification_desc2">'
+                . '<p>Confirmar Exclusão? <a href="#" onclick="excluir(this); return false;" data-id="' . (int) $id . '"><span class="text-danger">Sim</span></a></p>'
+                . '</div>'
+                . '</li>'
+                . '</ul>'
+                . '</li>';
         }
 
         if ($nota >= 60) {

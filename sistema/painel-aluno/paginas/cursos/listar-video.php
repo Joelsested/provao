@@ -13,6 +13,7 @@ if ($id_aluno <= 0) {
 
 $id = $_POST['id'];
 $aula = $_POST['aula'];
+$id_mat_post = (int) ($_POST['id_mat'] ?? 0);
 
 
 
@@ -38,13 +39,25 @@ if(@count($res_m) > 0){
 }
 
 
-//pegar o id da matricula
-$query_m = $pdo->prepare("SELECT * FROM matriculas WHERE id_curso = :curso AND aluno = :aluno");
-$query_m->execute(['curso' => $curso, 'aluno' => $id_aluno]);
-$res_m = $query_m->fetchAll(PDO::FETCH_ASSOC);
-$id_mat = $res_m[0]['id'];
-$aulas_conc = $res_m[0]['aulas_concluidas'];
-$status_mat = $res_m[0]['status'];
+// Usa a matrícula informada pelo front (botão Ações do curso) como fonte de verdade.
+if ($id_mat_post > 0) {
+	$query_m = $pdo->prepare("SELECT * FROM matriculas WHERE id = :id AND aluno = :aluno LIMIT 1");
+	$query_m->execute(['id' => $id_mat_post, 'aluno' => $id_aluno]);
+	$matricula = $query_m->fetch(PDO::FETCH_ASSOC);
+} else {
+	$query_m = $pdo->prepare("SELECT * FROM matriculas WHERE id_curso = :curso AND aluno = :aluno AND status != 'Aguardando' ORDER BY id DESC LIMIT 1");
+	$query_m->execute(['curso' => $curso, 'aluno' => $id_aluno]);
+	$matricula = $query_m->fetch(PDO::FETCH_ASSOC);
+}
+
+if (!$matricula) {
+	echo 'Matricula invalida';
+	exit();
+}
+
+$id_mat = (int) $matricula['id'];
+$aulas_conc = (int) $matricula['aulas_concluidas'];
+$status_mat = (string) $matricula['status'];
 
 //verificar total de aulas do curso
 $query_m = $pdo->prepare("SELECT * FROM aulas WHERE curso = :curso");

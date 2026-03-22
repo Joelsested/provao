@@ -4,52 +4,52 @@ include('../conexao.php');
 function removerAcentos($string)
 {
     $mapa = [
-        '?' => 'a',
-        '?' => 'a',
-        '?' => 'a',
-        '?' => 'a',
-        '?' => 'a',
-        '?' => 'e',
-        '?' => 'e',
-        '?' => 'e',
-        '?' => 'e',
-        '?' => 'i',
-        '?' => 'i',
-        '?' => 'i',
-        '?' => 'i',
-        '?' => 'o',
-        '?' => 'o',
-        '?' => 'o',
-        '?' => 'o',
-        '?' => 'o',
-        '?' => 'u',
-        '?' => 'u',
-        '?' => 'u',
-        '?' => 'u',
-        '?' => 'c',
-        '?' => 'A',
-        '?' => 'A',
-        '?' => 'A',
-        '?' => 'A',
-        '?' => 'A',
-        '?' => 'E',
-        '?' => 'E',
-        '?' => 'E',
-        '?' => 'E',
-        '?' => 'I',
-        '?' => 'I',
-        '?' => 'I',
-        '?' => 'I',
-        '?' => 'O',
-        '?' => 'O',
-        '?' => 'O',
-        '?' => 'O',
-        '?' => 'O',
-        '?' => 'U',
-        '?' => 'U',
-        '?' => 'U',
-        '?' => 'U',
-        '?' => 'C'
+        'á' => 'a',
+        'à' => 'a',
+        'ã' => 'a',
+        'â' => 'a',
+        'ä' => 'a',
+        'é' => 'e',
+        'è' => 'e',
+        'ê' => 'e',
+        'ë' => 'e',
+        'í' => 'i',
+        'ì' => 'i',
+        'î' => 'i',
+        'ï' => 'i',
+        'ó' => 'o',
+        'ò' => 'o',
+        'õ' => 'o',
+        'ô' => 'o',
+        'ö' => 'o',
+        'ú' => 'u',
+        'ù' => 'u',
+        'û' => 'u',
+        'ü' => 'u',
+        'ç' => 'c',
+        'Á' => 'A',
+        'À' => 'A',
+        'Ã' => 'A',
+        'Â' => 'A',
+        'Ä' => 'A',
+        'É' => 'E',
+        'È' => 'E',
+        'Ê' => 'E',
+        'Ë' => 'E',
+        'Í' => 'I',
+        'Ì' => 'I',
+        'Î' => 'I',
+        'Ï' => 'I',
+        'Ó' => 'O',
+        'Ò' => 'O',
+        'Õ' => 'O',
+        'Ô' => 'O',
+        'Ö' => 'O',
+        'Ú' => 'U',
+        'Ù' => 'U',
+        'Û' => 'U',
+        'Ü' => 'U',
+        'Ç' => 'C'
     ];
     return strtr($string, $mapa);
 }
@@ -143,7 +143,7 @@ if (!$aluno_error) {
 
 
 
-            // Armazenar nota (assumindo que ? uma nota geral - você pode adaptar conforme sua estrutura)
+            // Armazenar nota (assumindo que é uma nota geral - você pode adaptar conforme sua estrutura)
             $notas_existentes[$nome_curso] = [
                 'nota' => $nota,
                 'respostas' => $respostas,
@@ -454,7 +454,7 @@ if (!$aluno_error) {
         <div style="display: flex; justify-content: space-between; padding: 20px;">
             <h1>Histórico Médio</h1>
             <button class="btn" onclick="abrirFormularioCompleto()">
-                Gerar Histórico Escolar
+                📝 Gerar Histórico Escolar
             </button>
 
         </div>
@@ -469,7 +469,7 @@ if (!$aluno_error) {
                 <div class="student-details">
                     <!-- Informações Pessoais -->
                     <div class="detail-group">
-                        <h4>Informações Pessoais</h4>
+                        <h4>👤 Informações Pessoais</h4>
                         <div class="detail-item">
                             <span class="detail-label">CPF</span>
                             <span class="detail-value"><?php echo htmlspecialchars($dadosAluno['cpf']); ?></span>
@@ -491,7 +491,7 @@ if (!$aluno_error) {
 
                     <!-- Contato -->
                     <div class="detail-group">
-                        <h4>Contato</h4>
+                        <h4>📞 Contato</h4>
                         <div class="detail-item">
                             <span class="detail-label">Email</span>
                             <span class="detail-value"><?php echo htmlspecialchars($dadosAluno['email']); ?></span>
@@ -504,7 +504,7 @@ if (!$aluno_error) {
 
                     <!-- Endereço -->
                     <div class="detail-group">
-                        <h4>Endereço</h4>
+                        <h4>🏠 Endereço</h4>
                         <div class="detail-item">
                             <span class="detail-label">Logradouro</span>
                             <span class="detail-value"><?php echo htmlspecialchars($dadosAluno['endereco']); ?></span>
@@ -525,7 +525,7 @@ if (!$aluno_error) {
 
                     <!-- Filiação -->
                     <div class="detail-group">
-                        <h4>Filiação</h4>
+                        <h4>👨‍👩‍👧‍👦 Filiação</h4>
                         <div class="detail-item">
                             <span class="detail-label">Mãe</span>
                             <span class="detail-value"><?php echo htmlspecialchars($dadosAluno['mae']); ?></span>
@@ -541,7 +541,7 @@ if (!$aluno_error) {
                 <!-- Cursos -->
                 <div style="margin-top: 1rem;">
                     <div style="display: flex; margin-top: 20px;">
-                        <h3>Cursos Matriculados</h3>
+                        <h3>📚 Cursos Matriculados</h3>
                     </div>
                     <div class="courses-list" style="margin-top: 1rem;">
                         
@@ -560,7 +560,7 @@ if (!$aluno_error) {
 
                 <div>
                     <div style="display: flex; margin-top: 40px;">
-                        <h3>Históricos Gerados</h3>
+                        <h3>🎓 Historicos Gerados</h3>
                     </div>
                     <?php
                     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -584,7 +584,7 @@ if (!$aluno_error) {
                                 echo "<td class='px-6 py-4 whitespace-nowrap'>{$nomeArquivo}</td>";
                                 echo "<td class='px-6 py-4 text-center'>
                     <button onclick=\"abrirHistorico('{$caminho}')\" class='text-blue-500 hover:text-blue-700'>
-                        Ver
+                        🔍
                     </button>
                   </td>";
                                 echo '</tr>';
@@ -609,14 +609,14 @@ if (!$aluno_error) {
             <h2>Ops! Algo deu errado.</h2>
             <p>Não foi possível carregar os dados do aluno.</p>
             <button class="btn" onclick="BuscarAlunoNovamente()">
-                Buscar novamente
+                📋 Buscar novamente
             </button>
         </center>
     <?php endif; ?>
 
 
     <!-- <button class="btn btn-success" onclick="visualizarExemplo()" style="margin-left: 20px;">
-            Visualizar Exemplo
+            👁️ Visualizar Exemplo
         </button> -->
 
 
@@ -653,13 +653,12 @@ if (!$aluno_error) {
 
 
     <script>
-        // Dados das matérias por ?rea
+        // Dados das matérias por área
         const materias = {
             'linguagens': [
                 'Língua portuguesa',
                 'Arte',
                 'Língua inglesa',
-                'Língua espanhola',
                 'Educação física'
             ],
             'matematica': ['Matemática'],
@@ -667,9 +666,7 @@ if (!$aluno_error) {
             'humanas': ['História', 'Geografia'],
             'diversificada': [
                 'Sociologia',
-                'Filosofia',
-                'História do Estado de Rondônia',
-                'Geografia do Estado de Rondônia'
+                'Filosofia'
             ]
         };
 
@@ -696,7 +693,6 @@ if (!$aluno_error) {
 
         const mapeamentoCursos = {
 
-            // arte_medio, biologia_medio, educacao_fisica_medio, filosofia_medio, fisica_medio, geografia_medio, geografia_de_rondonia_medio, historia_medio, historia_de_rondonia_medio, lingua_espanhola_medio, lingua_inglesa_medio, lingua_portuguesa_medio, matematica_medio, quimica_medio, sociologia_medio
             // Cursos Fundamentais
             'lingua_portuguesa_medio': 'Língua portuguesa',
             'matematica_medio': 'Matemática',
@@ -707,12 +703,8 @@ if (!$aluno_error) {
             'educacao_fisica_medio': 'Educação física',
             'biologia_medio': 'Biologia',
             'geografia_medio': 'Geografia',
-            "geografia_de_rondonia_medio": 'Geografia',
             'historia_medio': 'História',
             'filosofia_medio': 'Filosofia',
-            'historia_de_rondonia_medio': 'História do Estado de Rondônia',
-            'geografia_de_rondonia_medio': 'Geografia do Estado de Rondônia',
-            'lingua_espanhola_medio': 'Língua espanhola',
             'quimica_medio': 'Química',
             'fisica_medio': 'Física',
             'sociologia_medio': 'Sociologia',
@@ -764,7 +756,7 @@ if (!$aluno_error) {
             };
 
             if (!dadosAluno.nome || !dadosAluno.sexo || !dadosAluno.dataNasc) {
-                swal("Erro!", "Por favor, preencha todos os campos obrigatérios (Nome, Sexo, Data de Nascimento).", "error");
+                swal("Erro!", "Por favor, preencha todos os campos obrigatórios (Nome, Sexo, Data de Nascimento).", "error");
                 return;
             }
 
@@ -809,7 +801,7 @@ if (!$aluno_error) {
             // Linguagens
             htmlNotas += '<h3>LINGUAGENS E TECNOLOGIAS</h3>';
             htmlNotas += '<table class="subjects-table">';
-            htmlNotas += '<tr><th>Matéria</th><th>1? Série</th><th>2? Série</th><th>3? Série</th><th style="width: 120px !important;">Data</th></tr>';
+            htmlNotas += '<tr><th>Matéria</th><th>1ª Série</th><th>2ª Série</th><th>3ª Série</th><th style="width: 120px !important;">Data</th></tr>';
             materias.linguagens.forEach(materia => {
                 const nota1 = obterNotaExistente(materia, '1');
                 const nota2 = obterNotaExistente(materia, '2');
@@ -853,7 +845,7 @@ if (!$aluno_error) {
             // Matemática
             htmlNotas += '<h3>MATEMÁTICA</h3>';
             htmlNotas += '<table class="subjects-table">';
-            htmlNotas += '<tr><th>Matéria</th><th>1? Série</th><th>2? Série</th><th>3? Série</th><th style="width: 120px !important;">Data</th></tr>';
+            htmlNotas += '<tr><th>Matéria</th><th>1ª Série</th><th>2ª Série</th><th>3ª Série</th><th style="width: 120px !important;">Data</th></tr>';
             materias.matematica.forEach(materia => {
                 const classExistente = temNotaExistente(materia) ? 'nota-existente' : '';
                 const valorCampo = temNotaExistente(materia) ? obterNotaExistente(materia, '1') : '';
@@ -882,7 +874,7 @@ if (!$aluno_error) {
             // Ciências da Natureza
             htmlNotas += '<h3>CIÊNCIAS DA NATUREZA</h3>';
             htmlNotas += '<table class="subjects-table">';
-            htmlNotas += '<tr><th>Matéria</th><th>1? Série</th><th>2? Série</th><th>3? Série</th><th style="width: 120px !important;">Data</th></tr>';
+            htmlNotas += '<tr><th>Matéria</th><th>1ª Série</th><th>2ª Série</th><th>3ª Série</th><th style="width: 120px !important;">Data</th></tr>';
             materias.ciencias.forEach(materia => {
                 const classExistente = temNotaExistente(materia) ? 'nota-existente' : '';
                 const valorCampo = temNotaExistente(materia) ? obterNotaExistente(materia, '1') : '';
@@ -911,7 +903,7 @@ if (!$aluno_error) {
             // Ciências Humanas
             htmlNotas += '<h3>CIÊNCIAS HUMANAS</h3>';
             htmlNotas += '<table class="subjects-table">';
-            htmlNotas += '<tr><th>Matéria</th><th>1? Série</th><th>2? Série</th><th>3? Série</th><th style="width: 120px !important;">Data</th></tr>';
+            htmlNotas += '<tr><th>Matéria</th><th>1ª Série</th><th>2ª Série</th><th>3ª Série</th><th style="width: 120px !important;">Data</th></tr>';
             materias.humanas.forEach(materia => {
                 const classExistente = temNotaExistente(materia) ? 'nota-existente' : '';
                 const valorCampo = temNotaExistente(materia) ? obterNotaExistente(materia, '1') : '';
@@ -940,7 +932,7 @@ if (!$aluno_error) {
             // Parte Diversificada
             htmlNotas += '<h3>PARTE DIVERSIFICADA</h3>';
             htmlNotas += '<table class="subjects-table">';
-            htmlNotas += '<tr><th>Matéria</th><th>1? Série</th><th>2? Série</th><th>3? Série</th><th style="width: 120px !important;">Data</th></tr>';
+            htmlNotas += '<tr><th>Matéria</th><th>1ª Série</th><th>2ª Série</th><th>3ª Série</th><th style="width: 120px !important;">Data</th></tr>';
             materias.diversificada.forEach(materia => {
                 const classExistente = temNotaExistente(materia) ? 'nota-existente' : '';
                 const valorCampo = temNotaExistente(materia) ? obterNotaExistente(materia, '1') : '';
@@ -969,10 +961,10 @@ if (!$aluno_error) {
             // Adicionar informações sobre o preenchimento
             htmlNotas += `
         <div style="margin-top: 15px; padding: 10px; background-color: #f0f8ff; border-radius: 5px;">
-            <p style="margin: 5px 0;"><small><strong>Legenda:</strong></small></p>
-            <p style="margin: 5px 0;"><small><strong>Verde:</strong> Campos preenchidos automaticamente com notas do sistema</small></p>
-            <p style="margin: 5px 0;"><small>? <strong>Branco:</strong> Campos para preenchimento manual</small></p>
-            <p style="margin: 5px 0;"><small><strong>Nota:</strong> Você pode editar qualquer valor, mesmo os preenchidos automaticamente</small></p>
+            <p style="margin: 5px 0;"><small>💡 <strong>Legenda:</strong></small></p>
+            <p style="margin: 5px 0;"><small>🟢 <strong>Verde:</strong> Campos preenchidos automaticamente com notas do sistema</small></p>
+            <p style="margin: 5px 0;"><small>⚪ <strong>Branco:</strong> Campos para preenchimento manual</small></p>
+            <p style="margin: 5px 0;"><small>📝 <strong>Nota:</strong> Você pode editar qualquer valor, mesmo os preenchidos automaticamente</small></p>
         </div>
     `;
 
@@ -1225,7 +1217,7 @@ if (!$aluno_error) {
 
         // Função para formatar CPF durante a digitação
         document.addEventListener('DOMContentLoaded', function () {
-            // Aplicar mêscaras quando o documento carregar
+            // Aplicar máscaras quando o documento carregar
             setTimeout(() => {
                 const cpfInput = document.getElementById('cpf');
                 if (cpfInput) {

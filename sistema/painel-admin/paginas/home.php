@@ -3,7 +3,16 @@
 require_once('verificar.php');
 $pag = 'pagar';
 
-if (@$_SESSION['nivel'] != 'Administrador' and @$_SESSION['nivel'] != 'Secretario' and @$_SESSION['nivel'] != 'Tesoureiro') {
+if (
+	@$_SESSION['nivel'] != 'Administrador' &&
+	@$_SESSION['nivel'] != 'Secretario' &&
+	@$_SESSION['nivel'] != 'Tesoureiro' &&
+	@$_SESSION['nivel'] != 'Assessor'
+) {
+	if (!headers_sent()) {
+		header('Location: ../index.php');
+		exit();
+	}
 	echo "<script>window.location='../index.php'</script>";
 	exit();
 }

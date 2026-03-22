@@ -325,7 +325,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </td>
                 <td colspan="18">
                     <span>AUTORIZAÇÃO:</span>
-                    <span class="bold">PARECER CEB/CEE/RO N? 041/18 e RESOLUÇÃO CEB/CEE/RO N? 1296/21</span>
+                    <span class="bold">PARECER CEB/CEE/RO Nº 041/18 e RESOLUÇÃO CEB/CEE/RO N° 1296/21</span>
                 </td>
             </tr>
             <tr>
@@ -392,7 +392,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <span class="bold">' . htmlspecialchars($dadosAluno['rg']) . '</span>
                 </td>
                 <td colspan="7">
-                    <span>?RGÃO EXP:</span>
+                    <span>ÓRGÃO EXP:</span>
                     <span class="bold">SESDEC/RO</span>
                 </td>
                 <td colspan="6">
@@ -411,7 +411,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </td>
             </tr>
 
-            <!-- T?tulo do Histórico -->
+            <!-- Título do Histórico -->
             <tr>
                 <td colspan="24" class="bold center historico-title">
                     HISTÓRICO ESCOLAR DO ENSINO MÉDIO
@@ -421,18 +421,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <!-- Cabeçalho da tabela de notas -->
             <tr class="header-row">
                 <td rowspan="3" class="rotated-text">Base Nacional</td>
-                <td colspan="3" class="center">?REAS DE CONHECIMENTO</td>
+                <td colspan="3" class="center">ÁREAS DE CONHECIMENTO</td>
                 <td colspan="7" class="center">COMPONENTES CURRICULARES</td>
                 <td colspan="13" class="center">ANOS/ CARGA HORÁRIA</td>
             </tr>
             <tr class="header-row">
                 <td colspan="10"></td>
-                <td colspan="4" class="center">1? SÉRIE</td>
-                <td colspan="4" class="center">2? SÉRIE</td>
-                <td colspan="5" class="center">3? SÉRIE</td>
+                <td colspan="4" class="center">1ª SÉRIE</td>
+                <td colspan="4" class="center">2ª SÉRIE</td>
+                <td colspan="5" class="center">3ª SÉRIE</td>
             </tr>
             <tr class="header-row">
-                <td colspan="3" class="center">?REA</td>
+                <td colspan="3" class="center">ÁREA</td>
                 <td colspan="7" class="center">DISCIPLINA</td>
                 <td colspan="2" class="center small-text">NOTA</td>
                 <td colspan="2" class="center small-text">CH / DATA</td>
@@ -577,21 +577,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <td colspan="2" class="center">UF</td>
             </tr>
             <tr>
-                <td colspan="3" class="center">1? SÉRIE</td>
+                <td colspan="3" class="center">1ª SÉRIE</td>
                 <td colspan="3" class="center">' . htmlspecialchars($dadosAdicionais['anoConclusao']) . '</td>
                 <td colspan="10" class="center">' . htmlspecialchars($dadosAdicionais['escola']) . '</td>
                 <td colspan="6" class="center">' . explode(' - ', $dadosAdicionais['municipio'])[0] . '</td>
                 <td colspan="2" class="center">' . (explode(' - ', $dadosAdicionais['municipio'])[1] ?? 'RO') . '</td>
             </tr>
             <tr>
-                <td colspan="3" class="center">2? SÉRIE</td>
+                <td colspan="3" class="center">2ª SÉRIE</td>
                 <td colspan="3" class="center">' . htmlspecialchars($dadosAdicionais['anoConclusao']) . '</td>
                 <td colspan="10" class="center">' . htmlspecialchars($dadosAdicionais['escola']) . '</td>
                 <td colspan="6" class="center">' . explode(' - ', $dadosAdicionais['municipio'])[0] . '</td>
                 <td colspan="2" class="center">' . (explode(' - ', $dadosAdicionais['municipio'])[1] ?? 'RO') . '</td>
             </tr>
             <tr>
-                <td colspan="3" class="center">3? SÉRIE</td>
+                <td colspan="3" class="center">3ª SÉRIE</td>
                 <td colspan="3" class="center">' . htmlspecialchars($dadosAdicionais['anoConclusao']) . '</td>
                 <td colspan="10" class="center">' . htmlspecialchars($dadosAdicionais['escola']) . '</td>
                 <td colspan="6" class="center">' . explode(' - ', $dadosAdicionais['municipio'])[0] . '</td>
@@ -637,7 +637,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
 
-        <!-- Logo rodap? -->
+        <!-- Logo rodapé -->
         <div class="footer-logo">
             <img src="https://sested-eja.com/img/logo.jpg" alt="Logo SESTED" />
             <p>SESTED - Sistema de Ensino Superior Tecnológico e Educacional</p>
@@ -660,7 +660,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $dirBase = __DIR__ . '/historicos';
 
             // Criar subpasta com o ID do aluno
-            $idAluno = intval($input['dadosAluno']['id_aluno']); // garante que ? número
+            $idAluno = intval($input['dadosAluno']['id_aluno']); // garante que é número
             $dirAluno = $dirBase . '/' . $idAluno;
 
             if (!is_dir($dirAluno)) {

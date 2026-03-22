@@ -52,15 +52,9 @@ for($i=0; $i < @count($res); $i++){
     $total_diaF = number_format($total_dia, 2, ',', '.');
     $dataF = implode('/', array_reverse(explode('-', $data)));
 
-    $taxa_mpF = number_format($taxa_mp, 1, '.', '.');
-    $taxa_paypalF = number_format($taxa_paypal, 1, '.', '.');
-
-    if($forma_pgto == 'Boleto'){
+    $forma_pgto_norm = strtoupper(trim((string) $forma_pgto));
+    if($forma_pgto_norm == 'BOLETO' || $forma_pgto_norm == 'BOLETO_PARCELADO'){
         $desconto = '(R$ '.$taxa_boleto.')';
-    }else if($forma_pgto == 'MP'){
-        $desconto = '('.$taxa_mpF.')%';
-    }else if($forma_pgto == 'Paypal'){
-        $desconto = '('.$taxa_paypalF.')%';
     }else{
         $desconto = '';
     }

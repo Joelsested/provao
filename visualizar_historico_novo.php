@@ -34,7 +34,8 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
       justify-content: flex-start;
       gap: 10px;
       padding-bottom: 4px;
-      margin-bottom: 34px;
+      margin-top: 16px;
+      margin-bottom: 6px;
     }
 
     .logo-header img {
@@ -149,18 +150,78 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
       font-size: 12px;
       padding: 1px;
       font-weight: bold;
+      white-space: nowrap;
+      text-align: center;
+      padding-left: 8px;
+      padding-right: 8px;
+      min-width: 82px;
+    }
 
+    .ch-data-head {
+      white-space: nowrap;
+      text-align: center;
     }
 
     tr td.data-display:last-of-type {
       /* background: yellow; */
       /* exemplo */
     }
+
+    .historico-carimbo {
+      border: 1px solid #000;
+      text-align: center;
+      font-weight: 700;
+      line-height: 1.05;
+      padding: 6px 4px;
+      margin-bottom: 8px;
+    }
+
+    .historico-carimbo .titulo {
+      font-size: 20px;
+      margin-bottom: 4px;
+    }
+
+    .historico-carimbo .linha {
+      font-size: 12px;
+    }
+
+    .historico-data-texto {
+      font-size: 13px;
+      text-align: left;
+      margin-top: 4px;
+    }
+
+    .print-toolbar {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 9999;
+      display: flex;
+      gap: 8px;
+    }
+
+    .print-btn {
+      border: 1px solid #1f3b57;
+      background: #1f3b57;
+      color: #fff;
+      padding: 8px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    @media print {
+      .print-toolbar {
+        display: none !important;
+      }
+    }
   </style>
 </head>
 
 <body>
-  <button onclick="imprimirModal()">Imprimir</button>
+  <div class="print-toolbar">
+    <button type="button" class="print-btn" onclick="imprimirHistorico()">Imprimir / Salvar em PDF</button>
+  </div>
   <div class="document-container" id="conteudoModal">
     <div class="logo-header">
       <img src="https://sested-eja.com/img/logo.jpg" alt="Logo SESTED" />
@@ -170,7 +231,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
       <tr>
         <td colspan="3" class="" style="padding: 3px;">NOME: <b>SESTED</b></td>
         <td colspan="22" class="">
-          AUTORIZAÇÃO: <b>PARECER CEB/CEE/RO N? 041/18 e RESOLUÇÃO CEB/CEE/RO N?
+          AUTORIZAÇÃO: <b>PARECER CEB/CEE/RO Nº 041/18 e RESOLUÇÃO CEB/CEE/RO N°
             1296/21</b>
         </td>
       </tr>
@@ -204,7 +265,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
       <tr>
         
         <td colspan="10">RG: <b><?php echo $dadosAluno['rg']; ?></b></td>
-        <td colspan="10">ÓRGÃO EXP: <b><?php echo $dadosAluno['orgao_emissor'] ?? ''; ?></b></td>
+        <td colspan="10">ORGÃO EXP: <b><?php echo $dadosAluno['orgao_emissor'] ?? ''; ?></b></td>
         <td colspan="4">EMISSÃO: <b><?php echo $dadosAluno['expedicao'] ?? ''; ?></b></td>
       </tr>
       <tr>
@@ -220,134 +281,64 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
       <!-- Cabeçalho da tabela de notas -->
       <tr class="header-row" ">
    <td rowspan=" 12" colspan="2" class="rotated-text">BASE NACIONAL</td>
-        <td colspan="2" rowspan="3" class="center bold">?REAS DE CONHECIMENTO</td>
+        <td colspan="2" rowspan="3" class="center bold">ÁREAS DE CONHECIMENTO</td>
         <td colspan="7" rowspan="3" class="center bold">COMPONENTES CURRICULARES</td>
         <td colspan="13" class="center bold">ANOS/ CARGA HORÁRIA</td>
       </tr>
       <tr class="header-row">
-        <td colspan="4" class="center bold">1? SÉRIE</td>
-        <td colspan="5" class="center bold">2? SÉRIE</td>
-        <td colspan="4" class="center bold">3? SÉRIE</td>
+        <td colspan="4" class="center bold">1ª SÉRIE</td>
+        <td colspan="5" class="center bold">2ª SÉRIE</td>
+        <td colspan="4" class="center bold">3ª SÉRIE</td>
       </tr>
       <tr class="header-row">
         <td colspan="2" class="center bold">NOTA</td>
-        <td colspan="2" class="center bold small-text">CH<br>DATA</td>
+        <td colspan="2" class="center bold small-text ch-data-head">CH/DATA</td>
         <td colspan="4" class="center bold">NOTA</td>
-        <td class="center bold small-text">CH<br>DATA</td>
+        <td class="center bold small-text ch-data-head">CH/DATA</td>
         <td class="center bold">NOTA</td>
-        <td colspan="3" class="center bold small-text">CH<br>DATA</td>
+        <td colspan="3" class="center bold small-text ch-data-head">CH/DATA</td>
       </tr>
 
       <!-- Linguagens e Tecnologias -->
 <tr>
-  <td colspan="2" rowspan="5" class="bold center">LINGUAGENS e TECNOLOGIAS</td>
-  <td colspan="7" style="padding: 4px;">Língua Portuguesa</td>
-  <td colspan="2" class="bold center">
-    <?php echo $notas['lingua_portuguesa']['serie1'] ?? '' ?>
-  </td>
-  <td colspan="2" class="center data-display" style="white-space: nowrap; padding-left: 10px; padding-right: 10px;">
-    <?php echo isset($notas['lingua_portuguesa']['data']) ? date('d/m/Y', strtotime($notas['lingua_portuguesa']['data'])) : '' ?>
-  </td>
-  <td colspan="4" class="bold center">
-    <?php echo $notas['lingua_portuguesa']['serie2'] ?? '' ?>
-  </td>
-  <td class="center data-display" style="white-space: nowrap; padding-left: 10px; padding-right: 10px;">
-    <?php echo isset($notas['lingua_portuguesa']['data']) ? date('d/m/Y', strtotime($notas['lingua_portuguesa']['data'])) : '' ?>
-  </td>
-  <td class="bold center">
-    <?php echo $notas['lingua_portuguesa']['serie3'] ?? '' ?>
-  </td>
-  <td colspan="3" class="center data-display" style="white-space: nowrap; padding-left: 10px; padding-right: 10px;">
-    <?php echo isset($notas['lingua_portuguesa']['data']) ? date('d/m/Y', strtotime($notas['lingua_portuguesa']['data'])) : '' ?>
-  </td>
+  <td colspan="2" rowspan="4" class="bold center">LINGUAGENS e TECNOLOGIAS</td>
+  <td colspan="7" style="padding: 4px;">Língua Portuguesa/Literatura</td>
+  <td colspan="2" class="bold center"><?php echo $notas['lingua_portuguesa']['serie1'] ?? '' ?></td>
+  <td colspan="2" class="center data-display" style="white-space: nowrap; padding-left: 10px; padding-right: 10px;"><?php echo isset($notas['lingua_portuguesa']['data']) ? date('d-m-Y', strtotime($notas['lingua_portuguesa']['data'])) : '' ?></td>
+  <td colspan="4" class="bold center"><?php echo $notas['lingua_portuguesa']['serie2'] ?? '' ?></td>
+  <td class="center data-display" style="white-space: nowrap; padding-left: 10px; padding-right: 10px;"><?php echo isset($notas['lingua_portuguesa']['data']) ? date('d-m-Y', strtotime($notas['lingua_portuguesa']['data'])) : '' ?></td>
+  <td class="bold center"><?php echo $notas['lingua_portuguesa']['serie3'] ?? '' ?></td>
+  <td colspan="3" class="center data-display" style="white-space: nowrap; padding-left: 10px; padding-right: 10px;"><?php echo isset($notas['lingua_portuguesa']['data']) ? date('d-m-Y', strtotime($notas['lingua_portuguesa']['data'])) : '' ?></td>
 </tr>
 
 <tr>
   <td colspan="7">Arte</td>
-  <td colspan="2" class="bold center">
-    <?php echo $notas['arte']['serie1'] ?? '' ?>
-  </td>
-  <td colspan="2" class="center data-display">
-    <?php echo isset($notas['arte']['data']) ? date('d/m/Y', strtotime($notas['arte']['data'])) : '' ?>
-  </td>
-  <td colspan="4" class="bold center">
-    <?php echo $notas['arte']['serie2'] ?? '' ?>
-  </td>
-  <td class="center data-display">
-    <?php echo isset($notas['arte']['data']) ? date('d/m/Y', strtotime($notas['arte']['data'])) : '' ?>
-  </td>
-  <td class="bold center">
-    <?php echo $notas['arte']['serie3'] ?? '' ?>
-  </td>
-  <td colspan="3" class="center data-display">
-    <?php echo isset($notas['arte']['data']) ? date('d/m/Y', strtotime($notas['arte']['data'])) : '' ?>
-  </td>
+  <td colspan="2" class="bold center"><?php echo $notas['arte']['serie1'] ?? '' ?></td>
+  <td colspan="2" class="center data-display"><?php echo isset($notas['arte']['data']) ? date('d-m-Y', strtotime($notas['arte']['data'])) : '' ?></td>
+  <td colspan="4" class="bold center"><?php echo $notas['arte']['serie2'] ?? '' ?></td>
+  <td class="center data-display"><?php echo isset($notas['arte']['data']) ? date('d-m-Y', strtotime($notas['arte']['data'])) : '' ?></td>
+  <td class="bold center"><?php echo $notas['arte']['serie3'] ?? '' ?></td>
+  <td colspan="3" class="center data-display"><?php echo isset($notas['arte']['data']) ? date('d-m-Y', strtotime($notas['arte']['data'])) : '' ?></td>
 </tr>
 
 <tr>
   <td colspan="7">Língua Inglesa</td>
-  <td colspan="2" class="bold center">
-    <?php echo $notas['lingua_inglesa']['serie1'] ?? '' ?>
-  </td>
-  <td colspan="2" class="center data-display">
-    <?php echo isset($notas['lingua_inglesa']['data']) ? date('d/m/Y', strtotime($notas['lingua_inglesa']['data'])) : '' ?>
-  </td>
-  <td colspan="4" class="bold center">
-    <?php echo $notas['lingua_inglesa']['serie2'] ?? '' ?>
-  </td>
-  <td class="center data-display">
-    <?php echo isset($notas['lingua_inglesa']['data']) ? date('d/m/Y', strtotime($notas['lingua_inglesa']['data'])) : '' ?>
-  </td>
-  <td class="bold center">
-    <?php echo $notas['lingua_inglesa']['serie3'] ?? '' ?>
-  </td>
-  <td colspan="3" class="center data-display">
-    <?php echo isset($notas['lingua_inglesa']['data']) ? date('d/m/Y', strtotime($notas['lingua_inglesa']['data'])) : '' ?>
-  </td>
-</tr>
-
-<tr>
-  <td colspan="7">Língua Espanhola</td>
-  <td colspan="2" class="bold center">
-    <?php echo $notas['lingua_espanhola']['serie1'] ?? '' ?>
-  </td>
-  <td colspan="2" class="center data-display">
-    <?php echo isset($notas['lingua_espanhola']['data']) ? date('d/m/Y', strtotime($notas['lingua_espanhola']['data'])) : '' ?>
-  </td>
-  <td colspan="4" class="bold center">
-    <?php echo $notas['lingua_espanhola']['serie2'] ?? '' ?>
-  </td>
-  <td class="center data-display">
-    <?php echo isset($notas['lingua_espanhola']['data']) ? date('d/m/Y', strtotime($notas['lingua_espanhola']['data'])) : '' ?>
-  </td>
-  <td class="bold center">
-    <?php echo $notas['lingua_espanhola']['serie3'] ?? '' ?>
-  </td>
-  <td colspan="3" class="center data-display">
-    <?php echo isset($notas['lingua_espanhola']['data']) ? date('d/m/Y', strtotime($notas['lingua_espanhola']['data'])) : '' ?>
-  </td>
+  <td colspan="2" class="bold center"><?php echo $notas['lingua_inglesa']['serie1'] ?? '' ?></td>
+  <td colspan="2" class="center data-display"><?php echo isset($notas['lingua_inglesa']['data']) ? date('d-m-Y', strtotime($notas['lingua_inglesa']['data'])) : '' ?></td>
+  <td colspan="4" class="bold center"><?php echo $notas['lingua_inglesa']['serie2'] ?? '' ?></td>
+  <td class="center data-display"><?php echo isset($notas['lingua_inglesa']['data']) ? date('d-m-Y', strtotime($notas['lingua_inglesa']['data'])) : '' ?></td>
+  <td class="bold center"><?php echo $notas['lingua_inglesa']['serie3'] ?? '' ?></td>
+  <td colspan="3" class="center data-display"><?php echo isset($notas['lingua_inglesa']['data']) ? date('d-m-Y', strtotime($notas['lingua_inglesa']['data'])) : '' ?></td>
 </tr>
 
 <tr>
   <td colspan="7">Educação Física</td>
-  <td colspan="2" class="bold center">
-    <?php echo $notas['educacao_fisica']['serie1'] ?? '' ?>
-  </td>
-  <td colspan="2" class="center data-display">
-    <?php echo isset($notas['educacao_fisica']['data']) ? date('d/m/Y', strtotime($notas['educacao_fisica']['data'])) : '' ?>
-  </td>
-  <td colspan="4" class="bold center">
-    <?php echo $notas['educacao_fisica']['serie2'] ?? '' ?>
-  </td>
-  <td class="center data-display">
-    <?php echo isset($notas['educacao_fisica']['data']) ? date('d/m/Y', strtotime($notas['educacao_fisica']['data'])) : '' ?>
-  </td>
-  <td class="bold center">
-    <?php echo $notas['educacao_fisica']['serie3'] ?? '' ?>
-  </td>
-  <td colspan="3" class="center data-display">
-    <?php echo isset($notas['educacao_fisica']['data']) ? date('d/m/Y', strtotime($notas['educacao_fisica']['data'])) : '' ?>
-  </td>
+  <td colspan="2" class="bold center"><?php echo $notas['educacao_fisica']['serie1'] ?? '' ?></td>
+  <td colspan="2" class="center data-display"><?php echo isset($notas['educacao_fisica']['data']) ? date('d-m-Y', strtotime($notas['educacao_fisica']['data'])) : '' ?></td>
+  <td colspan="4" class="bold center"><?php echo $notas['educacao_fisica']['serie2'] ?? '' ?></td>
+  <td class="center data-display"><?php echo isset($notas['educacao_fisica']['data']) ? date('d-m-Y', strtotime($notas['educacao_fisica']['data'])) : '' ?></td>
+  <td class="bold center"><?php echo $notas['educacao_fisica']['serie3'] ?? '' ?></td>
+  <td colspan="3" class="center data-display"><?php echo isset($notas['educacao_fisica']['data']) ? date('d-m-Y', strtotime($notas['educacao_fisica']['data'])) : '' ?></td>
 </tr>
 
 <!-- Matemática -->
@@ -358,19 +349,19 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
     <?php echo $notas['matematica']['serie1'] ?? '' ?>
   </td>
   <td colspan="2" class="center data-display">
-    <?php echo isset($notas['matematica']['data']) ? date('d/m/Y', strtotime($notas['matematica']['data'])) : '' ?>
+    <?php echo isset($notas['matematica']['data']) ? date('d-m-Y', strtotime($notas['matematica']['data'])) : '' ?>
   </td>
   <td colspan="4" class="bold center">
     <?php echo $notas['matematica']['serie2'] ?? '' ?>
   </td>
   <td class="center data-display">
-    <?php echo isset($notas['matematica']['data']) ? date('d/m/Y', strtotime($notas['matematica']['data'])) : '' ?>
+    <?php echo isset($notas['matematica']['data']) ? date('d-m-Y', strtotime($notas['matematica']['data'])) : '' ?>
   </td>
   <td class="bold center">
     <?php echo $notas['matematica']['serie3'] ?? '' ?>
   </td>
   <td colspan="3" class="center data-display">
-    <?php echo isset($notas['matematica']['data']) ? date('d/m/Y', strtotime($notas['matematica']['data'])) : '' ?>
+    <?php echo isset($notas['matematica']['data']) ? date('d-m-Y', strtotime($notas['matematica']['data'])) : '' ?>
   </td>
 </tr>
 
@@ -382,19 +373,19 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
     <?php echo $notas['quimica']['serie1'] ?? '' ?>
   </td>
   <td colspan="2" class="center data-display">
-    <?php echo isset($notas['quimica']['data']) ? date('d/m/Y', strtotime($notas['quimica']['data'])) : '' ?>
+    <?php echo isset($notas['quimica']['data']) ? date('d-m-Y', strtotime($notas['quimica']['data'])) : '' ?>
   </td>
   <td colspan="4" class="bold center">
     <?php echo $notas['quimica']['serie2'] ?? '' ?>
   </td>
   <td class="center data-display">
-    <?php echo isset($notas['quimica']['data']) ? date('d/m/Y', strtotime($notas['quimica']['data'])) : '' ?>
+    <?php echo isset($notas['quimica']['data']) ? date('d-m-Y', strtotime($notas['quimica']['data'])) : '' ?>
   </td>
   <td class="bold center">
     <?php echo $notas['quimica']['serie3'] ?? '' ?>
   </td>
   <td colspan="3" class="center data-display">
-    <?php echo isset($notas['quimica']['data']) ? date('d/m/Y', strtotime($notas['quimica']['data'])) : '' ?>
+    <?php echo isset($notas['quimica']['data']) ? date('d-m-Y', strtotime($notas['quimica']['data'])) : '' ?>
   </td>
 </tr>
 
@@ -404,19 +395,19 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
     <?php echo $notas['fisica']['serie1'] ?? '' ?>
   </td>
   <td colspan="2" class="center data-display">
-    <?php echo isset($notas['fisica']['data']) ? date('d/m/Y', strtotime($notas['fisica']['data'])) : '' ?>
+    <?php echo isset($notas['fisica']['data']) ? date('d-m-Y', strtotime($notas['fisica']['data'])) : '' ?>
   </td>
   <td colspan="4" class="bold center">
     <?php echo $notas['fisica']['serie2'] ?? '' ?>
   </td>
   <td class="center data-display">
-    <?php echo isset($notas['fisica']['data']) ? date('d/m/Y', strtotime($notas['fisica']['data'])) : '' ?>
+    <?php echo isset($notas['fisica']['data']) ? date('d-m-Y', strtotime($notas['fisica']['data'])) : '' ?>
   </td>
   <td class="bold center">
     <?php echo $notas['fisica']['serie3'] ?? '' ?>
   </td>
   <td colspan="3" class="center data-display">
-    <?php echo isset($notas['fisica']['data']) ? date('d/m/Y', strtotime($notas['fisica']['data'])) : '' ?>
+    <?php echo isset($notas['fisica']['data']) ? date('d-m-Y', strtotime($notas['fisica']['data'])) : '' ?>
   </td>
 </tr>
 
@@ -426,19 +417,19 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
     <?php echo $notas['biologia']['serie1'] ?? '' ?>
   </td>
   <td colspan="2" class="center data-display">
-    <?php echo isset($notas['biologia']['data']) ? date('d/m/Y', strtotime($notas['biologia']['data'])) : '' ?>
+    <?php echo isset($notas['biologia']['data']) ? date('d-m-Y', strtotime($notas['biologia']['data'])) : '' ?>
   </td>
   <td colspan="4" class="bold center">
     <?php echo $notas['biologia']['serie2'] ?? '' ?>
   </td>
   <td class="center data-display">
-    <?php echo isset($notas['biologia']['data']) ? date('d/m/Y', strtotime($notas['biologia']['data'])) : '' ?>
+    <?php echo isset($notas['biologia']['data']) ? date('d-m-Y', strtotime($notas['biologia']['data'])) : '' ?>
   </td>
   <td class="bold center">
     <?php echo $notas['biologia']['serie3'] ?? '' ?>
   </td>
   <td colspan="3" class="center data-display">
-    <?php echo isset($notas['biologia']['data']) ? date('d/m/Y', strtotime($notas['biologia']['data'])) : '' ?>
+    <?php echo isset($notas['biologia']['data']) ? date('d-m-Y', strtotime($notas['biologia']['data'])) : '' ?>
   </td>
 </tr>
 
@@ -451,19 +442,19 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
     <?php echo $notas['historia']['serie1'] ?? '' ?>
   </td>
   <td colspan="2" class="center data-display">
-    <?php echo isset($notas['historia']['data']) ? date('d/m/Y', strtotime($notas['historia']['data'])) : '' ?>
+    <?php echo isset($notas['historia']['data']) ? date('d-m-Y', strtotime($notas['historia']['data'])) : '' ?>
   </td>
   <td colspan="4" class="bold center">
     <?php echo $notas['historia']['serie2'] ?? '' ?>
   </td>
   <td class="center data-display">
-    <?php echo isset($notas['historia']['data']) ? date('d/m/Y', strtotime($notas['historia']['data'])) : '' ?>
+    <?php echo isset($notas['historia']['data']) ? date('d-m-Y', strtotime($notas['historia']['data'])) : '' ?>
   </td>
   <td class="bold center">
     <?php echo $notas['historia']['serie3'] ?? '' ?>
   </td>
   <td colspan="3" class="center data-display">
-    <?php echo isset($notas['historia']['data']) ? date('d/m/Y', strtotime($notas['historia']['data'])) : '' ?>
+    <?php echo isset($notas['historia']['data']) ? date('d-m-Y', strtotime($notas['historia']['data'])) : '' ?>
   </td>
 </tr>
 
@@ -473,43 +464,43 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
     <?php echo $notas['geografia']['serie1'] ?? '' ?>
   </td>
   <td colspan="2" class="center data-display">
-    <?php echo isset($notas['geografia']['data']) ? date('d/m/Y', strtotime($notas['geografia']['data'])) : '' ?>
+    <?php echo isset($notas['geografia']['data']) ? date('d-m-Y', strtotime($notas['geografia']['data'])) : '' ?>
   </td>
   <td colspan="4" class="bold center">
     <?php echo $notas['geografia']['serie2'] ?? '' ?>
   </td>
   <td class="center data-display">
-    <?php echo isset($notas['geografia']['data']) ? date('d/m/Y', strtotime($notas['geografia']['data'])) : '' ?>
+    <?php echo isset($notas['geografia']['data']) ? date('d-m-Y', strtotime($notas['geografia']['data'])) : '' ?>
   </td>
   <td class="bold center">
     <?php echo $notas['geografia']['serie3'] ?? '' ?>
   </td>
   <td colspan="3" class="center data-display">
-    <?php echo isset($notas['geografia']['data']) ? date('d/m/Y', strtotime($notas['geografia']['data'])) : '' ?>
+    <?php echo isset($notas['geografia']['data']) ? date('d-m-Y', strtotime($notas['geografia']['data'])) : '' ?>
   </td>
 </tr>
 
 <!-- Parte Diversificada -->
 <tr>
-  <td rowspan="5" colspan="2" class="rotated-text">PARTE DIVERSIFICADA</td>
+  <td rowspan="3" colspan="2" class="rotated-text">PARTE DIVERSIFICADA</td>
   <td colspan="7">Sociologia</td>
   <td colspan="2" class="bold center">
     <?php echo $notas['sociologia']['serie1'] ?? '' ?>
   </td>
   <td colspan="2" class="center data-display">
-    <?php echo isset($notas['sociologia']['data']) ? date('d/m/Y', strtotime($notas['sociologia']['data'])) : '' ?>
+    <?php echo isset($notas['sociologia']['data']) ? date('d-m-Y', strtotime($notas['sociologia']['data'])) : '' ?>
   </td>
   <td colspan="4" class="bold center">
     <?php echo $notas['sociologia']['serie2'] ?? '' ?>
   </td>
   <td class="center data-display">
-    <?php echo isset($notas['sociologia']['data']) ? date('d/m/Y', strtotime($notas['sociologia']['data'])) : '' ?>
+    <?php echo isset($notas['sociologia']['data']) ? date('d-m-Y', strtotime($notas['sociologia']['data'])) : '' ?>
   </td>
   <td class="bold center">
     <?php echo $notas['sociologia']['serie3'] ?? '' ?>
   </td>
   <td colspan="3" class="center data-display">
-    <?php echo isset($notas['sociologia']['data']) ? date('d/m/Y', strtotime($notas['sociologia']['data'])) : '' ?>
+    <?php echo isset($notas['sociologia']['data']) ? date('d-m-Y', strtotime($notas['sociologia']['data'])) : '' ?>
   </td>
 </tr>
 
@@ -519,19 +510,19 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
     <?php echo $notas['filosofia']['serie1'] ?? '' ?>
   </td>
   <td colspan="2" class="center data-display">
-    <?php echo isset($notas['filosofia']['data']) ? date('d/m/Y', strtotime($notas['filosofia']['data'])) : '' ?>
+    <?php echo isset($notas['filosofia']['data']) ? date('d-m-Y', strtotime($notas['filosofia']['data'])) : '' ?>
   </td>
   <td colspan="4" class="bold center">
     <?php echo $notas['filosofia']['serie2'] ?? '' ?>
   </td>
   <td class="center data-display">
-    <?php echo isset($notas['filosofia']['data']) ? date('d/m/Y', strtotime($notas['filosofia']['data'])) : '' ?>
+    <?php echo isset($notas['filosofia']['data']) ? date('d-m-Y', strtotime($notas['filosofia']['data'])) : '' ?>
   </td>
   <td class="bold center">
     <?php echo $notas['filosofia']['serie3'] ?? '' ?>
   </td>
   <td colspan="3" class="center data-display">
-    <?php echo isset($notas['filosofia']['data']) ? date('d/m/Y', strtotime($notas['filosofia']['data'])) : '' ?>
+    <?php echo isset($notas['filosofia']['data']) ? date('d-m-Y', strtotime($notas['filosofia']['data'])) : '' ?>
   </td>
 </tr>
 
@@ -545,87 +536,45 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
   <td colspan="3" class="center">-</td>
 </tr>
 
-<tr>
-  <td colspan="7">História do Estado de Rondônia</td>
-  <td colspan="2" class="bold center">
-    <?php echo $notas['historia_do_estado_de_rondonia']['serie1'] ?? '' ?>
-  </td>
-  <td colspan="2" class="center data-display">
-    <?php echo isset($notas['historia_do_estado_de_rondonia']['data']) ? date('d/m/Y', strtotime($notas['historia_do_estado_de_rondonia']['data'])) : '' ?>
-  </td>
-  <td colspan="4" class="bold center">
-    <?php echo $notas['historia_do_estado_de_rondonia']['serie2'] ?? '' ?>
-  </td>
-  <td class="center data-display">
-    <?php echo isset($notas['historia_do_estado_de_rondonia']['data']) ? date('d/m/Y', strtotime($notas['historia_do_estado_de_rondonia']['data'])) : '' ?>
-  </td>
-  <td class="bold center">
-    <?php echo $notas['historia_do_estado_de_rondonia']['serie3'] ?? '' ?>
-  </td>
-  <td colspan="3" class="center data-display">
-    <?php echo isset($notas['historia_do_estado_de_rondonia']['data']) ? date('d/m/Y', strtotime($notas['historia_do_estado_de_rondonia']['data'])) : '' ?>
-  </td>
-</tr>
 
-<tr>
-  <td colspan="7">Geografia do Estado de Rondônia</td>
-  <td colspan="2" class="bold center">
-    <?php echo $notas['geografia_do_estado_de_rondonia']['serie1'] ?? '' ?>
-  </td>
-  <td colspan="2" class="center data-display">
-    <?php echo isset($notas['geografia_do_estado_de_rondonia']['data']) ? date('d/m/Y', strtotime($notas['geografia_do_estado_de_rondonia']['data'])) : '' ?>
-  </td>
-  <td colspan="4" class="bold center">
-    <?php echo $notas['geografia_do_estado_de_rondonia']['serie2'] ?? '' ?>
-  </td>
-  <td class="center data-display">
-    <?php echo isset($notas['geografia_do_estado_de_rondonia']['data']) ? date('d/m/Y', strtotime($notas['geografia_do_estado_de_rondonia']['data'])) : '' ?>
-  </td>
-  <td class="bold center">
-    <?php echo $notas['geografia_do_estado_de_rondonia']['serie3'] ?? '' ?>
-  </td>
-  <td colspan="3" class="center data-display">
-    <?php echo isset($notas['geografia_do_estado_de_rondonia']['data']) ? date('d/m/Y', strtotime($notas['geografia_do_estado_de_rondonia']['data'])) : '' ?>
-  </td>
-</tr>
 
 
       <!-- Totalizadores -->
       <tr>
-        <td colspan="12" class="bold center">Dias Letivos</td>
+        <td colspan="6" class="bold center">Dias Letivos</td>
         <td colspan="2" class="center">-</td>
         <td colspan="2" class="center">-</td>
         <td colspan="4" class="center">-</td>
         <td class="center">-</td>
         <td class="center bold">-</td>
-        <td colspan="3" class="center">-</td>
+        <td colspan="5" class="center">-</td>
       </tr>
       <tr>
-        <td colspan="12" class="bold center">Carga Horária Anual</td>
+        <td colspan="6" class="bold center">Carga Horária Anual</td>
         <td colspan="2" class="center">-</td>
         <td colspan="2" class="center">-</td>
         <td colspan="4" class="center">-</td>
         <td class="center">-</td>
         <td class="center bold">-</td>
-        <td colspan="3" class="center">-</td>
+        <td colspan="5" class="center">-</td>
       </tr>
       <tr>
-        <td colspan="12" class="bold center">Carga Horária Total</td>
+        <td colspan="6" class="bold center">Carga Horária Total</td>
         <td colspan="2" class="center">-</td>
         <td colspan="2" class="center">-</td>
         <td colspan="4" class="center">-</td>
         <td class="center">-</td>
         <td class="center">-</td>
-        <td colspan="3" class="center">-</td>
+        <td colspan="5" class="center">-</td>
       </tr>
       <tr>
-        <td colspan="12" class="bold center">RESULTADO FINAL</td>
+        <td colspan="6" class="bold center">RESULTADO FINAL</td>
         <td colspan="2" class="center">-</td>
         <td colspan="2" class="center">-</td>
         <td colspan="4" class="center">-</td>
         <td class="center">-</td>
         <td class="center">-</td>
-        <td colspan="3" class="center bold" style="font-weight: bold;">
+        <td colspan="5" class="center bold" style="font-weight: bold;">
           <?php echo $dadosAdicionais['situacao'] ?? '' ?>
         </td>
       </tr>
@@ -640,7 +589,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
         <td colspan="2" class="center bold">UF</td>
       </tr>
       <tr>
-        <td colspan="2" class="center">1? SÉRIE</td>
+        <td colspan="2" class="center">1ª SÉRIE</td>
         <td colspan="3" class="center">
           <?php echo $dadosAdicionais['anoConclusao'] ?? '' ?>
         </td>
@@ -655,7 +604,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
         </td>
       </tr>
       <tr>
-        <td colspan="2" class="center">2? SÉRIE</td>
+        <td colspan="2" class="center">2ª SÉRIE</td>
         <td colspan="3" class="center">
           <?php echo $dadosAdicionais['anoConclusao'] ?? '' ?>
         </td>
@@ -670,7 +619,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
         </td>
       </tr>
       <tr>
-        <td colspan="2" class="center">3? SÉRIE</td>
+        <td colspan="2" class="center">3ª SÉRIE</td>
         <td colspan="3" class="center">
           <?php echo $dadosAdicionais['anoConclusao'] ?? '' ?>
         </td>
@@ -685,7 +634,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
         </td>
       </tr>
 
-      <!-- S?ntese e Observações -->
+      <!-- Síntese e Observações -->
       <tr>
         <td colspan="25">SÍNTESE DO SISTEMA DE AVALIAÇÃO: Será aprovado quando obtiver média igual ou superior a
           6,0(seis), nos Exames de Conclusão de Etapas do Ensino Fundamental e do Ensino Médio.</td>
@@ -704,18 +653,32 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
       <!-- Data e Assinaturas -->
       <tr>
         <td colspan="3" style="text-align: left; padding: 5px;">
-          Buritis/RO, <?php echo $dadosAdicionais['data_historico_extenso'] ?? ($dadosAdicionais['data_historico'] ?? '') ?>
+          <div class="historico-carimbo">
+            <div class="titulo">SESTED</div>
+            <div class="linha">Autorizacao de Funcionamento</div>
+            <div class="linha">Parecer CEB/CEE/RO n&ordm; 003/24</div>
+            <div class="linha">Resolucao n&ordm; 011/23 - CEE/RO</div>
+            <div class="linha">CNPJ 07.158.229/0001-06</div>
+            <div class="linha">BURITIS - RO</div>
+          </div>
+          <div class="historico-data-texto">
+            <?php
+            $municipioData = trim((string) ($dadosAdicionais['municipio'] ?? ''));
+            $dataHistoricoTxt = (string) ($dadosAdicionais['data_historico_extenso'] ?? ($dadosAdicionais['data_historico'] ?? ''));
+            echo ($municipioData !== '' ? ($municipioData . ' - ') : '') . $dataHistoricoTxt;
+            ?>
+          </div>
         </td>
         <td colspan="22">
           <table style="width: 100%; text-align: center; border: none; margin: auto;">
             <tr>
-              <td style="border: none; width: 50%; text-align: center;  padding: 10px;">
+              <td style="border: none; width: 50%; text-align: center; padding: 10px; padding-top: 32px;">
                 ______________________________<br>
                 Laura Maria Jonjob de Souza<br>
                 RG: 757423 SESDEC/RO<br>
                 <strong>Diretora</strong>
               </td>
-              <td style="border: none; width: 50%; text-align: center;">
+              <td style="border: none; width: 50%; text-align: center; padding-top: 32px;">
                 ______________________________<br>
                 Daniely Jonjob da Silva<br>
                 RG: 1480635 SESDEC/RO<br>
@@ -730,172 +693,18 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
   </div>
 
   <script>
-    function imprimirModal() {
-      // Pega o conteúdo do modal
-      var conteudo = document.getElementById("conteudoModal").innerHTML;
-
-      // Abre uma nova janela temporária
-      var tela_impressao = window.open('', '', '');
-
-      tela_impressao.document.write('<html><head><title>Impressão</title>');
-      // se precisar de CSS, você pode importar aqui:
-      tela_impressao.document.write('<link rel="stylesheet" href="seu-estilo.css">');
-      tela_impressao.document.write(`
-              <style>
-    @page {
-      size: A4;
-      margin: 4mm;
+    function imprimirHistorico() {
+      window.print();
     }
 
-    * {
-      box-sizing: border-box;
-    }
-
-
-
-    .document-container {
-      width: 100%;
-      max-width: 210mm;
-      margin: 0 auto;
-    }
-
-    .logo-header {
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 10px;
-      padding-bottom: 4px;
-      margin-bottom: 34px !important;
-    }
-
-    .logo-header img {
-      width: 50px;
-      height: 50px;
-      flex-shrink: 0;
-    }
-
-    .logo-header span {
-      font-size: 18px;
-      font-weight: bold;
-      text-transform: uppercase;
-      line-height: 1.2;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      border: 1px solid black;
-      font-size: 12px;
-    }
-
-    td,
-    th {
-      border: 0.5px solid black;
-      padding: 1px 2px;
-      /* vertical-align: top; */
-      text-align: left;
-      line-height: 1.1;
-    }
-
-    .header-row {
-      background-color: #f0f0f0;
-    }
-
-    .bold {
-      font-weight: bold;
-    }
-
-    .center {
-      text-align: center;
-    }
-
-    .small-text {
-      font-size: 9px;
-    }
-
-    .rotated-text {
-      writing-mode: vertical-lr;
-      text-orientation: mixed;
-      text-align: center;
-      width: 18px;
-      font-size: 9px;
-      padding: 1px;
-    }
-
-    .grades-section td {
-      text-align: center;
-      font-weight: bold;
-    }
-
-    .subject-area {
-      background-color: #f9f9f9;
-      font-weight: bold;
-      text-align: center;
-      writing-mode: vertical-lr;
-      text-orientation: mixed;
-      font-size: 9px;
-      width: 22px;
-    }
-
-    .signature-section {
-      text-align: center;
-      padding-top: 3px;
-    }
-
-    .signature-section p {
-      margin: 2px 0;
-      font-size: 9px;
-    }
-
-    .final-logo {
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 5px;
-      margin: 2px 0;
-    }
-
-    .final-logo img {
-      width: 25px;
-      height: 25px;
-    }
-
-    .final-logo span {
-      font-size: 10px;
-      font-weight: bold;
-    }
-
-    /* Media query para impressão */
-
-
-    .uppercase {
-      text-transform: uppercase;
-    }
-
-    .historic-title {
-      padding: 20px;
-    }
-
-    .data-display {
-      font-size: 12px;
-      padding: 1px;
-      font-weight: bold;
-
-    }
-
-    tr td.data-display:last-of-type {
-      /* background: yellow; */
-      /* exemplo */
-    }
-  </style>`);
-      tela_impressao.document.write('</head><body>');
-      tela_impressao.document.write(conteudo);
-      tela_impressao.document.write('</body></html>');
-
-      tela_impressao.document.close(); // fecha escrita
-      tela_impressao.print(); // chama impressão
-    }
-
+    window.addEventListener("DOMContentLoaded", () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("download") === "1" || urlParams.get("print") === "1") {
+        setTimeout(() => {
+          imprimirHistorico();
+        }, 250);
+      }
+    });
   </script>
 
 </body>

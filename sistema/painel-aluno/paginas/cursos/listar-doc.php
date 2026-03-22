@@ -20,6 +20,11 @@ if($total_reg_m > 0){
 	$arquivo = @$res_m[$i_m]['arquivo'];
 	$descricao = @$res_m[$i_m]['descricao'];	
 	$arquivo_url = rawurlencode((string) $arquivo);
+	$urlAbrir = $url_sistema . '/sistema/painel-aluno/paginas/cursos/abrir-apostila.php?arquivo=' . $arquivo_url . '&download=0';
+	$urlBaixar = $url_sistema . '/sistema/painel-aluno/paginas/cursos/abrir-apostila.php?arquivo=' . $arquivo_url . '&download=1';
+	$urlAbrirJs = json_encode($urlAbrir, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	$urlBaixarJs = json_encode($urlBaixar, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	$descricaoJs = json_encode((string) $descricao, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
 	
 
@@ -54,7 +59,9 @@ echo <<<HTML
 		<td>
 		
 
-		<a class="" href="$url_sistema/sistema/painel-aluno/paginas/cursos/abrir-apostila.php?arquivo={$arquivo_url}&download=1" target="_blank" ><i class="fa  fa-file-pdf-o" style="display: inline-block;" title="Baixar Gabarito"></i></a>
+	<button type="button" class="btn btn-xs btn-primary" onclick='return abrirArquivoNoApp({$urlAbrirJs}, {$descricaoJs});' title="Abrir aqui no app"><i class="fa fa-eye" style="display: inline-block;"></i> Abrir</button>
+	&nbsp;
+	<button type="button" class="btn btn-xs btn-success" onclick='return baixarArquivoNoApp({$urlBaixarJs});' title="Baixar Gabarito"><i class="fa fa-download" style="display: inline-block;"></i> Baixar</button>
 
 
 

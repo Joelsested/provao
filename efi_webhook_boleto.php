@@ -85,12 +85,45 @@ function extrairNotificationToken(string $rawBody): string
     return '';
 }
 
+function normalizeWebhookPaymentDate(?string $raw): ?string
+{
+    $valor = trim((string) $raw);
+    if ($valor === '' || $valor === '0000-00-00' || $valor === '0000-00-00 00:00:00') {
+        return null;
+    }
+
+    try {
+        $dt = new DateTime($valor);
+        return $dt->format('Y-m-d H:i:s');
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+function garantirColunaDataPagamentoPagamentosBoleto(PDO $pdo): bool
+{
+    try {
+        $stmt = $pdo->query("SHOW COLUMNS FROM pagamentos_boleto LIKE 'data_pagamento'");
+        $temColuna = (bool) ($stmt ? $stmt->fetch(PDO::FETCH_ASSOC) : false);
+        if ($temColuna) {
+            return true;
+        }
+
+        $pdo->exec("ALTER TABLE pagamentos_boleto ADD COLUMN data_pagamento DATETIME NULL");
+        return true;
+    } catch (Throwable $e) {
+        fileWebhookLog('Falha ao garantir coluna data_pagamento em pagamentos_boleto: ' . $e->getMessage());
+        return false;
+    }
+}
+
 /**
  * Atualiza status do pagamento e matricula com idempotencia.
  */
-function atualizarStatusBoleto(PDO $pdo, int $chargeId, string $statusGateway): array
+function atualizarStatusBoleto(PDO $pdo, int $chargeId, string $statusGateway, ?string $dataPagamentoRaw = null): array
 {
     $statusGateway = strtolower(trim($statusGateway));
+    $dataPagamentoMysql = normalizeWebhookPaymentDate($dataPagamentoRaw);
 
     $stmtPg = $pdo->prepare("SELECT id, id_matricula, status FROM pagamentos_boleto WHERE charge_id = :charge_id LIMIT 1");
     $stmtPg->execute([':charge_id' => $chargeId]);
@@ -106,11 +139,34 @@ function atualizarStatusBoleto(PDO $pdo, int $chargeId, string $statusGateway): 
 
     $idMatricula = (int) ($pagamento['id_matricula'] ?? 0);
 
-    $stmtUpdPg = $pdo->prepare("UPDATE pagamentos_boleto SET status = :status WHERE id = :id");
-    $stmtUpdPg->execute([
-        ':status' => $statusGateway,
-        ':id' => (int) $pagamento['id'],
-    ]);
+    $statusPago = in_array($statusGateway, ['paid', 'settled'], true);
+    $temColunaDataPagamento = garantirColunaDataPagamentoPagamentosBoleto($pdo);
+
+    if ($temColunaDataPagamento) {
+        $stmtUpdPg = $pdo->prepare("
+            UPDATE pagamentos_boleto
+            SET
+                status = :status,
+                data_pagamento = CASE
+                    WHEN :status_pago = 1 THEN IFNULL(data_pagamento, COALESCE(:data_pagamento, NOW()))
+                    ELSE data_pagamento
+                END
+            WHERE id = :id
+        ");
+        $stmtUpdPg->execute([
+            ':status' => $statusGateway,
+            ':status_pago' => $statusPago ? 1 : 0,
+            ':data_pagamento' => $dataPagamentoMysql,
+            ':id' => (int) $pagamento['id'],
+        ]);
+    } else {
+        // Fallback para ambientes que nao permitem alteracao de estrutura.
+        $stmtUpdPg = $pdo->prepare("UPDATE pagamentos_boleto SET status = :status WHERE id = :id");
+        $stmtUpdPg->execute([
+            ':status' => $statusGateway,
+            ':id' => (int) $pagamento['id'],
+        ]);
+    }
 
     $matriculaAtualizada = false;
     if ($idMatricula > 0 && in_array($statusGateway, ['paid', 'settled'], true)) {
@@ -213,6 +269,14 @@ try {
     $ultimo = end($eventos);
     $chargeId = (int) (($ultimo['identifiers']['charge_id'] ?? 0));
     $status = (string) ($ultimo['status']['current'] ?? '');
+    $dataPagamentoEvento = (string) (
+        $ultimo['status']['paid_at']
+        ?? $ultimo['status']['update_at']
+        ?? $ultimo['status']['updated_at']
+        ?? $ultimo['status']['created_at']
+        ?? $ultimo['received_by_bank_at']
+        ?? ''
+    );
 
     if ($chargeId <= 0 || $status === '') {
         webhookLog($pdo, 'boleto_webhook_evento_invalido', [
@@ -226,7 +290,7 @@ try {
 
     $pdo->beginTransaction();
     try {
-        $resultado = atualizarStatusBoleto($pdo, $chargeId, $status);
+        $resultado = atualizarStatusBoleto($pdo, $chargeId, $status, $dataPagamentoEvento);
         $pdo->commit();
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {

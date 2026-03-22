@@ -85,7 +85,7 @@ $html = '
 <table class="header-table">
     <tr>
         <td colspan="7"><strong>NOME: SESTED</strong></td>
-        <td colspan="18"><strong>AUTORIZAÇÃO: PARECER CEB/CEE/RO N? 041/18 e RESOLUÇÃO CEB/CEE/RO N? 1296/21</strong></td>
+        <td colspan="18"><strong>AUTORIZAÇÃO: PARECER CEB/CEE/RO Nº 041/18 e RESOLUÇÃO CEB/CEE/RO N° 1296/21</strong></td>
     </tr>
     <tr>
         <td colspan="4"><strong>CNPJ: 07.158.229/0001-06</strong></td>
@@ -93,7 +93,7 @@ $html = '
         <td colspan="7"><strong>CNPJ: 07.158.229/0001-06</strong></td>
     </tr>
     <tr>
-        <td colspan="13"><strong>ENDEREÇO: RUA NOVA UNIÃO ? 2024 SETOR 02</strong></td>
+        <td colspan="13"><strong>ENDEREÇO: RUA NOVA UNIÃO – 2024 SETOR 02</strong></td>
         <td colspan="12"><strong>TEL.: 69 -9 - 92474696</strong></td>
     </tr>
     <tr>
@@ -111,7 +111,7 @@ $html = '
     <tr>
         <td colspan="6">CPF: ' . $dadosAluno['cpf'] . '</td>
         <td colspan="5">RG: ' . $dadosAluno['rg'] . '</td>
-        <td colspan="8">ÓRGÃO EXP: SESDEC/RO</td>
+        <td colspan="8">ORGÃO EXP: SESDEC/RO</td>
         <td colspan="6">EMISSÃO: ' . date('d/m/Y') . '</td>
     </tr>
     <tr>
@@ -129,14 +129,14 @@ $html = '
 <table class="historico-table">
     <tr>
         <th rowspan="3" style="width: 8%;">Base Nacional</th>
-        <th rowspan="3" style="width: 20%;">?REAS DE CONHECIMENTO</th>
+        <th rowspan="3" style="width: 20%;">ÁREAS DE CONHECIMENTO</th>
         <th rowspan="3" style="width: 25%;">COMPONENTES CURRICULARES</th>
         <th colspan="9">ANOS/ CARGA HORÁRIA</th>
     </tr>
     <tr>
-        <th colspan="3">1? SÉRIE</th>
-        <th colspan="3">2? SÉRIE</th>
-        <th colspan="3">3? SÉRIE</th>
+        <th colspan="3">1ª SÉRIE</th>
+        <th colspan="3">2ª SÉRIE</th>
+        <th colspan="3">3ª SÉRIE</th>
     </tr>
     <tr>
         <th>NOTA</th>
@@ -150,7 +150,7 @@ $html = '
         <th>DATA</th>
     </tr>';
 
-// Matérias por ?rea
+// Matérias por área
 $areas = [
     [
         'nome' => 'LINGUAGENS e TECNOLOGIAS',
@@ -190,7 +190,7 @@ foreach ($areas as $area) {
             $primeiraLinha = false;
         }
 
-        // Se ? a primeira matéria da ?rea, mostra o nome da ?rea
+        // Se é a primeira matéria da área, mostra o nome da área
         if ($area['nome'] == 'LINGUAGENS e TECNOLOGIAS' || $area['nome'] == 'CIÊNCIAS DA NATUREZA' || $area['nome'] == 'CIÊNCIAS HUMANAS') {
             if ($materia == $area['materias'][0]) {
                 $html .= '<td rowspan="' . $rowspan . '" class="area-header">' . $area['nome'] . '</td>';
@@ -247,21 +247,21 @@ $html .= '
     </tr>
     <tr>
         <td rowspan="3">Estudos Realizados</td>
-        <td>1? SÉRIE</td>
+        <td>1ª SÉRIE</td>
         <td>' . date('Y') . '</td>
         <td>SESTED</td>
         <td>BURITIS</td>
         <td>RO</td>
     </tr>
     <tr>
-        <td>2? SÉRIE</td>
+        <td>2ª SÉRIE</td>
         <td>' . date('Y') . '</td>
         <td>SESTED</td>
         <td>BURITIS</td>
         <td>RO</td>
     </tr>
     <tr>
-        <td>3? SÉRIE</td>
+        <td>3ª SÉRIE</td>
         <td>' . date('Y') . '</td>
         <td>SESTED</td>
         <td>BURITIS</td>
@@ -279,7 +279,7 @@ $html .= '
 
 <div style="font-size: 8px;">
     <strong>OBSERVAÇÕES:</strong><br>
-    O (a) Aluno (a) acima est? com toda documentação arquivada.
+    O (a) Aluno (a) acima está com toda documentação arquivada.
 </div>
 
 <br><br>

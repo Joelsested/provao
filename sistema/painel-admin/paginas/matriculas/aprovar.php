@@ -1,7 +1,7 @@
 <?php
 
 require_once("../../../conexao.php");
-require_once(__DIR__ . "/../../../../../helpers.php");
+require_once(__DIR__ . "/../../../../helpers.php");
 @session_start();
 $hoje = date('Y-m-d');
 $mes_atual = Date('m');
@@ -110,7 +110,7 @@ if(@count($res) > 0){
     $idade_aluno = idadeCompletaEmAnos($nascimento_aluno);
     $eh_menor = ($idade_aluno >= 0 && $idade_aluno < 18);
     if ($eh_menor && !$liberado_menor && $nivel_usuario_logado !== 'Administrador') {
-        echo 'Aluno menor de 18 anos. Só admin pode liberar matrículas para alunos menores.';
+        echo 'Aluno menor de 18 anos. So admin pode liberar matriculas para alunos menores.';
         exit;
     }
     if ($eh_menor && $nivel_usuario_logado === 'Administrador' && !$liberado_menor) {
@@ -146,7 +146,7 @@ if(@count($res) > 0){
 
 
 
-//ATUALIZANDO A MATRÍCULA
+//ATUALIZANDO A MATRICULA
 $query = $pdo->prepare("UPDATE matriculas SET status = 'Matriculado', forma_pgto = :forma_pgto, total_recebido = :total_recebido, data = curDate(), obs = :obs  where id = :id");
 
 $query->bindValue(":total_recebido", "$total_recebido");
@@ -157,7 +157,7 @@ $query->execute();
 
 
 if($cartao == 'Sim'){
-	//ADICIONAR MAIS UM CARTÇŸO PARA O ALUNO
+	//ADICIONAR MAIS UM CARTAO PARA O ALUNO
 $cartoes += 1;
 	$stmtCartao = $pdo->prepare("UPDATE alunos SET cartao = ? WHERE id = ?");
 	$stmtCartao->execute([(int) $cartoes, (int) $id_pessoa_aluno]);
@@ -193,11 +193,11 @@ if($pacote == 'Sim'){
 
 		if(@count($res3) > 0){	
 			$id_mat = @$res3[0]['id'];
-			//excluir a matrÇðcula do curso se ela jÇ­ existir
+			//excluir a matricula do curso se ela ja existir
 			$stmtDelete = $pdo->prepare("DELETE FROM matriculas WHERE id = ?");
 			$stmtDelete->execute([(int) $id_mat]);
 		}
-			//inserir a matrÇðcula do curso caso ela nÇœo exista
+			//inserir a matricula do curso caso ela nao exista
 			$stmtInsertMat = $pdo->prepare("INSERT INTO matriculas SET id_curso = :curso, aluno = :aluno, professor = :professor, aulas_concluidas = '1', data = curDate(), status = 'Matriculado', pacote = 'Nao', id_pacote = :id_pacote, obs = 'Pacote' ");
 			$stmtInsertMat->bindValue(":curso", (int) $id_do_curso, PDO::PARAM_INT);
 			$stmtInsertMat->bindValue(":aluno", (int) $aluno, PDO::PARAM_INT);
@@ -260,7 +260,7 @@ if($nivel_do_usu == 'Professor'){
 
 
 
-//LANÇÎAR COMISSÇŸO DO PROFESSOR
+//LANCAR COMISSAO DO PROFESSOR
 $valor_comissao_pagar = ($valor_comissao * $subtotal) / 100;
 if(strtotime($hoje) < strtotime($data_pgto_comissao)){
 	$data_venc = $data_pgto_comissao;
@@ -270,16 +270,13 @@ if(strtotime($hoje) < strtotime($data_pgto_comissao)){
 }
 
 if($valor_comissao_pagar > 0){
-	var_dump('teste');
 
-	$stmtComissao = $pdo->prepare("INSERT INTO pagar SET descricao = 'ComissÇœo',  valor = :valor, data = curDate(), vencimento = :vencimento, pago = 'NÇœo', arquivo = 'sem-foto.png', professor = :professor, curso = :curso");
+	$stmtComissao = $pdo->prepare("INSERT INTO pagar SET descricao = 'Comissao',  valor = :valor, data = curDate(), vencimento = :vencimento, pago = 'Nao', arquivo = 'sem-foto.png', professor = :professor, curso = :curso");
 	$stmtComissao->bindValue(":valor", $valor_comissao_pagar);
 	$stmtComissao->bindValue(":vencimento", $data_venc);
 	$stmtComissao->bindValue(":professor", (int) $usuario_comissao, PDO::PARAM_INT);
 	$stmtComissao->bindValue(":curso", $nome_curso);
 	$stmtComissao->execute();
-}else{
-	echo "string";
 }
 
 

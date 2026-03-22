@@ -196,6 +196,38 @@ $fallbackConfig = [
 
 $cfg = $dbConfig ?: $fallbackConfig;
 
+// Sanidade de ambiente: evita usar credencial de producao com sandbox (e vice-versa).
+$envHClientId = trim((string) env('EFI_CLIENT_ID_HOMOLOG', ''));
+$envHClientSecret = trim((string) env('EFI_CLIENT_SECRET_HOMOLOG', ''));
+$envPClientId = trim((string) env('EFI_CLIENT_ID_PROD', ''));
+$envPClientSecret = trim((string) env('EFI_CLIENT_SECRET_PROD', ''));
+
+$cfgClientId = trim((string) ($cfg['clientId'] ?? ''));
+$cfgClientSecret = trim((string) ($cfg['clientSecret'] ?? ''));
+$cfgSandbox = (bool) ($cfg['sandbox'] ?? false);
+
+if (
+    $cfgSandbox
+    && $envHClientId !== ''
+    && $envHClientSecret !== ''
+    && $cfgClientId === $envPClientId
+    && $cfgClientSecret === $envPClientSecret
+) {
+    $cfg['clientId'] = $envHClientId;
+    $cfg['clientSecret'] = $envHClientSecret;
+}
+
+if (
+    !$cfgSandbox
+    && $envPClientId !== ''
+    && $envPClientSecret !== ''
+    && $cfgClientId === $envHClientId
+    && $cfgClientSecret === $envHClientSecret
+) {
+    $cfg['clientId'] = $envPClientId;
+    $cfg['clientSecret'] = $envPClientSecret;
+}
+
 return [
     'clientId' => (string) ($cfg['clientId'] ?? ''),
     'clientSecret' => (string) ($cfg['clientSecret'] ?? ''),

@@ -75,7 +75,11 @@ if (!$responsavel) {
     exit();
 }
 $nivelResponsavelSelecionado = (string) ($responsavel['nivel'] ?? '');
-if (in_array($nivelResponsavelSelecionado, ['Tutor', 'Secretario'], true) && (int) ($responsavel['id'] ?? 0) !== (int) $id_user) {
+if (
+    in_array($nivelResponsavelSelecionado, ['Tutor', 'Secretario'], true) &&
+    !in_array($userNivel, ['Administrador', 'Secretario'], true) &&
+    (int) ($responsavel['id'] ?? 0) !== (int) $id_user
+) {
     echo 'Atendente so pode ser responsavel quando faz a propria matricula.';
     exit();
 }

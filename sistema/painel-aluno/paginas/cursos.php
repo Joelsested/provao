@@ -37,7 +37,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 				<span id="link-drive" class="text-muted"><small><small><a title="Assistir pelo Google Drive"
 								id="link_drive_curso" href="" target="_blank"><i class="fa fa-link"
 									aria-hidden="true"></i>
-								Assistir pelo Google Drive</a> (Ao Finalizar solicitar liberaÃ§Ã£o do
+								Assistir pelo Google Drive</a> (Ao Finalizar solicitar liberação do
 							Certificado)</small></small></span>
 
 
@@ -123,7 +123,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 					</a>
 
 					<a href="#" onclick="proximo()" class="cinza_escuro" id="btn-proximo">
-						<span style="margin-right:10px">PrÃ³ximo<i class="fa fa-arrow-right"
+						<span style="margin-right:10px">Próximo<i class="fa fa-arrow-right"
 								style="font-size:20px;margin-left:3px"></i>
 						</span>
 					</a>
@@ -173,7 +173,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 
 							<div class="col-md-6">
 								<div class="form-group">
-									<label>NÃºmero da Aula <small>(Se NecessÃ¡rio)</small></label>
+									<label>Número da Aula <small>(Se Necessário)</small></label>
 									<input type="number" class="form-control" name="num_aula" id="num_aula">
 								</div>
 							</div>
@@ -197,7 +197,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 
 						<hr>
 						<div align="center" class="text-muted">
-							<small>Se preferir mande sua dÃºvida diretamente em nosso whatsapp <a
+							<small>Se preferir mande sua dúvida diretamente em nosso whatsapp <a
 									href="http://api.whatsapp.com/send?1=pt_BR&phone=<?php echo $tel_whatsapp ?>"
 									title="Chamar no Whatsapp" target="_blank"><i
 										class="fa fa-whatsapp"></i><?php echo $tel_sistema ?></a></small>
@@ -327,7 +327,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 
 						<div class="col-md-12">
 							<div class="form-group">
-								<label>Mensagem da AvaliaÃ§Ã£o<small>(Max 500 Caracteres)</small></label>
+								<label>Mensagem da Avaliação<small>(Max 500 Caracteres)</small></label>
 								<textarea maxlength="500" class="form-control" name="avaliacao"
 									id="avaliacao"></textarea>
 							</div>
@@ -554,7 +554,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 		if (window.Swal) {
 			Swal.fire({
 				icon: 'info',
-				title: 'AtenÃ§Ã£o',
+				title: 'Atenção',
 				text: mensagem
 			});
 			return;
@@ -566,6 +566,64 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 		var $btn = $(seletor);
 		$btn.prop('disabled', !habilitado);
 		$btn.css('opacity', habilitado ? '1' : '0.6');
+	}
+
+	function normalizarUrlArquivo(url) {
+		return String(url || '').replace(/([^:]\/)\/+/g, '$1');
+	}
+
+	function baixarArquivoNoApp(url) {
+		var destino = normalizarUrlArquivo(url);
+		if (!destino) {
+			mostrarAvisoAcoesCurso('Arquivo invalido para download.');
+			return false;
+		}
+
+		var link = document.createElement('a');
+		link.href = destino;
+		link.setAttribute('download', '');
+		link.rel = 'noopener';
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		return false;
+	}
+
+	function abrirArquivoNoApp(url, titulo) {
+		var destino = normalizarUrlArquivo(url);
+		if (!destino) {
+			mostrarAvisoAcoesCurso('Arquivo invalido.');
+			return false;
+		}
+
+		var nome = String(titulo || 'Visualizar Arquivo');
+		var semQuery = destino.split('?')[0];
+		var partes = semQuery.split('.');
+		var ext = partes.length > 1 ? String(partes.pop()).toLowerCase() : '';
+		var ehImagem = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].indexOf(ext) !== -1;
+
+		var conteudo;
+		if (ehImagem) {
+			conteudo = '<div style="height:78vh;min-height:520px;display:flex;align-items:center;justify-content:center;">'
+				+ '<img src="' + destino + '" alt="' + nome + '" style="max-width:100%;max-height:74vh;object-fit:contain;">'
+				+ '</div>';
+		} else {
+			conteudo = '<iframe src="' + destino + '" style="width:100%;height:78vh;border:none;min-height:520px;"></iframe>';
+		}
+
+		if (window.Swal) {
+			Swal.fire({
+				title: nome,
+				html: conteudo,
+				width: '92%',
+				showCloseButton: true,
+				showConfirmButton: false
+			});
+		} else {
+			window.location.href = destino;
+		}
+
+		return false;
 	}
 
 	function abrirModalAcoesCursoPorBotao(botao) {
@@ -624,7 +682,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 		ajustarBotaoAcaoCurso('#btn-acao-apostilas', contextoAcoesCurso.podeAcessar && contextoAcoesCurso.temApostila);
 		ajustarBotaoAcaoCurso('#btn-acao-gabarito', contextoAcoesCurso.podeAcessar && contextoAcoesCurso.temGabarito);
 		ajustarBotaoAcaoCurso('#btn-acao-avaliacoes', true);
-		// MantÃ©m clicÃ¡vel para exibir aviso quando a prova ainda nÃ£o estiver liberada.
+		// Mantém clicável para exibir aviso quando a prova ainda não estiver liberada.
 		ajustarBotaoAcaoCurso('#btn-acao-prova', true);
 
 		$('#modalAcoesCurso').modal('show');
@@ -632,11 +690,11 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 
 	function acaoVerVideosCurso() {
 		if (!contextoAcoesCurso.podeAcessar) {
-			mostrarAvisoAcoesCurso('Este curso ainda nÃ£o estÃ¡ liberado.');
+			mostrarAvisoAcoesCurso('Este curso ainda não está liberado.');
 			return;
 		}
 		if (contextoAcoesCurso.idPrimeiraAula <= 0) {
-			mostrarAvisoAcoesCurso('Este curso nÃ£o possui aulas cadastradas.');
+			mostrarAvisoAcoesCurso('Este curso não possui aulas cadastradas.');
 			return;
 		}
 		$('#id_da_matricula').val(contextoAcoesCurso.idMatricula);
@@ -659,11 +717,11 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 
 	function acaoAbrirApostilaCurso() {
 		if (!contextoAcoesCurso.podeAcessar) {
-			mostrarAvisoAcoesCurso('Este curso ainda nÃ£o estÃ¡ liberado.');
+			mostrarAvisoAcoesCurso('Este curso ainda não está liberado.');
 			return;
 		}
 		if (!contextoAcoesCurso.temApostila || !contextoAcoesCurso.urlApostila) {
-			mostrarAvisoAcoesCurso('Este curso nÃ£o possui apostila cadastrada.');
+			mostrarAvisoAcoesCurso('Este curso não possui apostila cadastrada.');
 			return;
 		}
 		$('#nome-curso-apostilas').text(contextoAcoesCurso.nomeCurso);
@@ -685,11 +743,11 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 
 	function acaoAbrirGabaritoCurso() {
 		if (!contextoAcoesCurso.podeAcessar) {
-			mostrarAvisoAcoesCurso('Este curso ainda nÃ£o estÃ¡ liberado.');
+			mostrarAvisoAcoesCurso('Este curso ainda não está liberado.');
 			return;
 		}
 		if (!contextoAcoesCurso.temGabarito) {
-			mostrarAvisoAcoesCurso('Este curso nÃ£o possui gabarito/arquivo cadastrado.');
+			mostrarAvisoAcoesCurso('Este curso não possui gabarito/arquivo cadastrado.');
 			return;
 		}
 		$('#nome-curso-gabarito').text(contextoAcoesCurso.nomeCurso);
@@ -699,7 +757,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 
 	function acaoAbrirAvaliacoesCurso() {
 		if (!contextoAcoesCurso.urlAvaliacoes) {
-			mostrarAvisoAcoesCurso('NÃ£o foi possÃ­vel carregar as avaliaÃ§Ãµes deste curso.');
+			mostrarAvisoAcoesCurso('Não foi possível carregar as avaliações deste curso.');
 			return;
 		}
 		modalAvaliacao(contextoAcoesCurso.urlAvaliacoes);
@@ -707,20 +765,20 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 
 	function acaoFazerProvaCurso() {
 		if (!contextoAcoesCurso.podeAcessar) {
-			mostrarAvisoAcoesCurso('Este curso ainda nÃ£o estÃ¡ liberado.');
+			mostrarAvisoAcoesCurso('Este curso ainda não está liberado.');
 			return;
 		}
 		if (contextoAcoesCurso.provaAprovada) {
 			var nota10 = contextoAcoesCurso.notaEscala10.toFixed(1).replace('.', ',');
 			var notaPerc = contextoAcoesCurso.notaPercentual.toFixed(2).replace('.', ',');
-			var msgAprovado = 'Prova ja feita com aprovacao. Nota: ' + nota10 + ' (' + notaPerc + '%).';
+			var msgAprovado = 'Prova já feita com aprovação. Nota: ' + nota10 + ' (' + notaPerc + '%).';
 			if (window.Swal) {
 				Swal.fire({
 					icon: 'success',
-					title: 'Prova ja realizada',
+					title: 'Prova já realizada',
 					text: msgAprovado,
 					showCancelButton: true,
-					confirmButtonText: 'Ver Avaliacoes',
+					confirmButtonText: 'Ver Avaliações',
 					cancelButtonText: 'Fechar'
 				}).then(function (result) {
 					if (result.isConfirmed && contextoAcoesCurso.urlAvaliacoes) {
@@ -735,14 +793,14 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 		if (!contextoAcoesCurso.podeProva) {
 			var aulasConcluidas = parseInt(contextoAcoesCurso.aulasConcluidas || 0, 10);
 			var totalAulas = parseInt(contextoAcoesCurso.totalAulas || 0, 10);
-			var mensagem = 'Prova ainda nÃ£o liberada. VocÃª concluiu ' + aulasConcluidas + ' de ' + totalAulas + ' aulas. Assista todas as aulas em VÃ­deos para liberar a prova.';
+			var mensagem = 'Prova ainda não liberada. Você concluiu ' + aulasConcluidas + ' de ' + totalAulas + ' aulas. Assista todas as aulas em Vídeos para liberar a prova.';
 			if (window.Swal) {
 				Swal.fire({
 					icon: 'info',
-					title: 'Prova nÃ£o liberada',
+					title: 'Prova não liberada',
 					text: mensagem,
 					showCancelButton: true,
-					confirmButtonText: 'Ir para VÃ­deos',
+					confirmButtonText: 'Ir para Vídeos',
 					cancelButtonText: 'Fechar'
 				}).then(function (result) {
 					if (result.isConfirmed) {
@@ -855,12 +913,13 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 
 	function abrirAula(id, aula) {
 		var questionario = "<?= $questionario_config ?>";
+		var idMatriculaAtual = $('#id_da_matricula').val();
 
 		$('#id_da_aula').val(id);
 		$.ajax({
 			url: 'paginas/' + pag + "/listar-video.php",
 			method: 'POST',
-			data: { id, aula, _ts: Date.now() },
+			data: { id, aula, id_mat: idMatriculaAtual, _ts: Date.now() },
 			cache: false,
 			dataType: "html",
 
@@ -868,7 +927,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 				//alert(result)
 				if (result.trim() === 'Curso Finalizado') {
 
-					$('#nome_da_aula').text('ParabÃ©ns, vocÃª concluiu a Disciplina');
+					$('#nome_da_aula').text('Parabéns, você concluiu a Disciplina');
 
 
 
@@ -878,10 +937,10 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 					$('#numero_da_aula').text('');
 					$('#nome_da_sessao').text('');
 
-				} else if (result.trim() === 'Aulas ConcluÃ­das') {
+				} else if (result.trim() === 'Aulas Concluídas') {
 
-					$('#nome_da_aula').text('ParabÃ©ns, vocÃª concluiu as aulas, agora vÃ¡ para a avaliaÃ§Ã£o final!');
-					$('#texto-finalizado').text('Responda o questionÃ¡rio final para ser aprovado na Disciplina.');
+					$('#nome_da_aula').text('Parabéns, você concluiu as aulas, agora vá para a avaliação final!');
+					$('#texto-finalizado').text('Responda o questionário final para ser aprovado na Disciplina.');
 
 					document.getElementById('btn-anterior').style.display = 'none';
 					document.getElementById('btn-proximo').style.display = 'none';
@@ -898,7 +957,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 
 					var res = result.split('***');
 					if (res.length < 4) {
-						$('#texto-finalizado').text('NÃ£o foi possÃ­vel abrir esta aula agora.');
+						$('#texto-finalizado').text('Não foi possível abrir esta aula agora.');
 						document.getElementById('target-video-aula').style.display = 'none';
 						$('#target-video-aula').attr('src', '');
 						exibirFallbackVideo('');
@@ -910,13 +969,13 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 					if (linkAula === '') {
 						document.getElementById('target-video-aula').style.display = 'none';
 						$('#target-video-aula').attr('src', '');
-						$('#texto-finalizado').text('Esta aula nÃ£o possui vÃ­deo cadastrado. Clique em PrÃ³xima para continuar.');
+						$('#texto-finalizado').text('Esta aula não possui vídeo cadastrado. Clique em Próxima para continuar.');
 						exibirFallbackVideo('');
 					} else {
 						document.getElementById('target-video-aula').style.display = 'inline-block';
 						$('#target-video-aula').attr('src', 'about:blank');
 						$('#target-video-aula').attr('src', linkAula);
-						$('#texto-finalizado').text('Se o vÃ­deo nÃ£o carregar no painel, use o botÃ£o para abrir em nova aba.');
+						$('#texto-finalizado').text('Se o vídeo não carregar no painel, use o botão para abrir em nova aba.');
 						exibirFallbackVideo(linkAula);
 					}
 					$('#numero_da_aula').text('Aula - ' + res[0]);
@@ -1052,7 +1111,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 			dataType: "text",
 
 			success: function (mensagem) {
-				if (mensagem.trim() == "ExcluÃ­do com Sucesso") {
+				if (mensagem.trim() == "Excluído com Sucesso" || mensagem.trim() == "ExcluÃ­do com Sucesso") {
 					listarPerguntas(id_curso);
 				} else {
 					$('#mensagem-excluir').addClass('text-danger')
@@ -1174,7 +1233,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 			dataType: "text",
 
 			success: function (mensagem) {
-				if (mensagem.trim() == "ExcluÃ­do com Sucesso") {
+				if (mensagem.trim() == "Excluído com Sucesso" || mensagem.trim() == "ExcluÃ­do com Sucesso") {
 					listarRespostas(id_pergunta);
 				} else {
 					$('#mensagem-resposta').addClass('text-danger')
@@ -1256,13 +1315,13 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 		}
 		if (!idMat || idMat.toLowerCase() === 'undefined' || idMat.toLowerCase() === 'null') {
 			$('#mensagem-excluir').addClass('text-danger')
-			$('#mensagem-excluir').text('MatrÃ­cula invÃ¡lida.')
+			$('#mensagem-excluir').text('Matrícula inválida.')
 			return;
 		}
 		idMat = idMat.replace(/[^0-9]/g, '');
 		if (!idMat) {
 			$('#mensagem-excluir').addClass('text-danger')
-			$('#mensagem-excluir').text('MatrÃ­cula invÃ¡lida.')
+			$('#mensagem-excluir').text('Matrícula inválida.')
 			return;
 		}
 		$.ajax({
@@ -1310,7 +1369,7 @@ if (@$_SESSION['nivel'] != 'Aluno') {
 			success: function (result) {
 				const html = (result || '').trim();
 				if (!html) {
-					$("#quest").html('<div class="alert alert-danger" style="margin: 15px;">NÃ£o foi possÃ­vel carregar o questionÃ¡rio.</div>');
+					$("#quest").html('<div class="alert alert-danger" style="margin: 15px;">Não foi possível carregar o questionário.</div>');
 					return;
 				}
 				$("#quest").html(html);

@@ -33,7 +33,7 @@ if (@$_GET['pagina'] != "") {
 
 
 
-//RECUPERAR DADOS DO USUÃƒÂRIO
+//RECUPERAR DADOS DO USUÃRIO
 
 $query = $pdo->prepare("SELECT * FROM usuarios where id = :id");
 $query->execute([':id' => $id_usuario]);
@@ -531,7 +531,7 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 							
 								<li class="treeview <?= $pagina === 'parcelas_cartao' ? 'active' : '' ?>">
 								<a href="index.php?pagina=parcelas_cartao">
-									<i class="fa fa-credit-card" aria-hidden="true"></i> <span>Parcelas CartÃ£o</span>
+									<i class="fa fa-credit-card" aria-hidden="true"></i> <span>Parcelas Cartão</span>
 								</a>
 							</li>
 
@@ -639,7 +639,7 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 												<input type="hidden" name="vendedor_usuario_id_resgate" value="<?php echo (int) $id_retorno_resgate; ?>">
 											<?php endif; ?>
 											<button type="submit" style="border:0;background:transparent;width:100%;text-align:left;padding:6px 20px;color:#333;">
-												<i class="fa fa-exchange"></i> Entra como Vendedor
+												<i class="fa fa-exchange"></i> Voltar para conta anterior
 											</button>
 										</form>
 									</li>
@@ -963,7 +963,7 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 
 								<label>Documento:<small><small> ( RG, CTPS, etc)</small></small></label>
 
-								<input type="text" class="form-control" name="rg_usu" value="<?php echo $rg_usu ?>" placeholder="Documento pra certificaÃ§Ã£o">
+								<input type="text" class="form-control" name="rg_usu" value="<?php echo $rg_usu ?>" placeholder="Documento pra certificação">
 
 							</div>
 
@@ -973,9 +973,9 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 
 							<div class="form-group">
 
-								<label>OrgÃ£o Expedidor:</label>
+								<label>Orgão Expedidor:</label>
 
-								<input type="text" class="form-control" id="expedidor_usu" name="expedidor_usu" value="<?php echo $expedidor_usu ?>" placeholder="OrgÃ£o Expedidor">
+								<input type="text" class="form-control" id="expedidor_usu" name="expedidor_usu" value="<?php echo $expedidor_usu ?>" placeholder="Orgão Expedidor">
 
 							</div>
 
@@ -987,9 +987,9 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 
 							<div class="form-group">
 
-								<label>Data de Expedicao:</label>
+								<label>Data de Expedição:</label>
 
-								<input type="text" class="form-control" id="expedicao_usu" name="expedicao_usu" value="<?php echo $expedicao_usu ?>" placeholder="Data de ExpediÃ§Ã£o">
+								<input type="text" class="form-control" id="expedicao_usu" name="expedicao_usu" value="<?php echo $expedicao_usu ?>" placeholder="Data de Expedição">
 
 							</div>
 
@@ -1035,9 +1035,9 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 
 							<div class="form-group">
 
-								<label>EndereÃ§o:<small><small> (Rua, NÃºmero e Bairro)</small></small></label>
+								<label>Endereço:<small><small> (Rua, Número e Bairro)</small></small></label>
 
-								<input type="text" class="form-control" id="endereco_usu" name="endereco_usu" name="endereco_usu" value="<?php echo $endereco_usu ?>" placeholder="Rua X NÃºmero 50 Bairro X">
+								<input type="text" class="form-control" id="endereco_usu" name="endereco_usu" name="endereco_usu" value="<?php echo $endereco_usu ?>" placeholder="Rua X Número 50 Bairro X">
 
 							</div>
 
@@ -1049,7 +1049,7 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 
 							<div class="form-group">
 
-								<label>NÃºmero:</label>
+								<label>Número:</label>
 
 								<input type="text" class="form-control" id="numero_usu" name="numero_usu" value="<?php echo $numero_usu ?>" placeholder="Numero">
 
@@ -1113,7 +1113,7 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 
 							<div class="form-group">
 
-								<label>Nome da MÃ£e:</label>
+								<label>Nome da Mãe:</label>
 
 								<input type="text" class="form-control" id="mae_usu" name="mae_usu" value="<?php echo $mae_usu ?>" placeholder="Nome da Mae">
 
@@ -1294,9 +1294,9 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 
 							<div class="form-group">
 
-								<label>DescriÃƒÂ§ÃƒÂ£o</label>
+								<label>Descrição</label>
 
-								<input value="" type="text" class="form-control" id="descricao" name="descricao" placeholder="DescriÃƒÂ§ÃƒÂ£o" required>
+								<input value="" type="text" class="form-control" id="descricao" name="descricao" placeholder="Descrição" required>
 
 							</div>
 
@@ -1316,7 +1316,7 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 
 									<div id="divImg">
 
-										<img src="img/arquivos/sem-arquivo.png" width="130px" id="target_2">
+										<img src="../painel-admin/img/arquivos/sem-arquivo.png" width="130px" id="target_2">
 
 									</div>
 
@@ -1499,11 +1499,36 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 
 <script type="text/javascript">
 
-	$("#form-arq").submit(function() {
+	function limparMensagemUploadArquivo(mensagem) {
+		var texto = (mensagem || '').toString();
+		texto = texto.replace(/<br\s*\/?>/gi, '\n');
+		texto = texto.replace(/<[^>]+>/g, ' ');
+		texto = texto.replace(/\s+/g, ' ').trim();
 
-		$("#form-arq").val()
+		// Remove aviso padrao do PHP quando estoura post_max_size (com ou sem prefixo "Warning:").
+		texto = texto.replace(/(?:warning:\s*)?post content-length[\s\S]*?in\s+unknown\s+on\s+line\s*\d+\.?/i, '').trim();
 
-		event.preventDefault();
+		// Remove prefixos residuais de warning/fatal.
+		texto = texto.replace(/^(warning|fatal error)\s*:\s*/i, '').trim();
+
+		return texto;
+	}
+
+	$("#form-arq").submit(function(e) {
+
+		e.preventDefault();
+
+		var $msg = $('#mensagem_arquivo');
+		if (!$msg.length) {
+			$msg = $('#mensagem-usu');
+		}
+		$msg.removeClass().addClass('text-danger').text('');
+
+		var arquivoInput = document.getElementById('arquivo_2');
+		if (!arquivoInput || !arquivoInput.files || arquivoInput.files.length === 0) {
+			$msg.text('Selecione um arquivo para enviar.');
+			return false;
+		}
 
 		var formData = new FormData(this);
 
@@ -1519,13 +1544,14 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 
 
 
-			success: function(mensagem) {
+				success: function(mensagem) {
 
-				$('#mensagem-usu').text('');
+					$msg.text('');
+					$msg.removeClass();
 
-				$('#mensagem-usu').removeClass()
+					var resposta = limparMensagemUploadArquivo(mensagem);
 
-				if (mensagem.trim() == "Salvo com Sucesso") {
+					if (resposta == "Salvo com Sucesso") {
 
 
 
@@ -1535,21 +1561,27 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 
 
 
-				} else {
+					} else if (resposta !== '') {
+
+						$msg.addClass('text-danger');
+						$msg.text(resposta);
+
+					} else {
+						$msg.addClass('text-danger');
+						$msg.text('Nao foi possivel inserir o arquivo. Tente novamente.');
+
+					}
 
 
 
-					$('#mensagem-usu').addClass('text-danger')
-
-					$('#mensagem-usu').text(mensagem)
-
-				}
 
 
-
-
-
-			},
+				},
+				error: function(xhr) {
+					$msg.removeClass().addClass('text-danger');
+					var respostaErro = (xhr && xhr.responseText) ? limparMensagemUploadArquivo(xhr.responseText) : '';
+					$msg.text(respostaErro !== '' ? respostaErro : 'Falha ao enviar arquivo.');
+				},
 
 
 
@@ -1597,7 +1629,7 @@ $bg_menu_hover = $coress['bg_menu_hover'];
 
 
 
-				if (mensagem.trim() == "ExcluÃƒÂ­do com Sucesso") {
+				if (mensagem.trim() == "ExcluÃ­do com Sucesso") {
 
 					location.reload();
 
@@ -1846,7 +1878,7 @@ if (@count($res) > 0) {
 
 						<div class="col-md-12">
 
-							<span class="neutra"><a id="link_mostrar_rod" target="_blank"><i>Clique aqui</i></a> para comprar ou ver mais detalhes sobre nossa promoÃƒÂ§ÃƒÂ£o!!</span>
+							<span class="neutra"><a id="link_mostrar_rod" target="_blank"><i>Clique aqui</i></a> para comprar ou ver mais detalhes sobre nossa promoÃ§Ã£o!!</span>
 
 
 
@@ -2061,31 +2093,48 @@ if (@count($res) > 0) {
 <script type="text/javascript">
 
 	function carregarImg2() {
-
-
-
 		var target = document.getElementById('target_2');
-
 		var file = document.querySelector("#arquivo_2").files[0];
+		var iconePadrao = '../painel-admin/img/arquivos/sem-arquivo.png';
+		var iconePdf = '../painel-admin/img/arquivos/pdf.png';
+		var iconeCompactado = '../painel-admin/img/rar.png';
 
-
-
-		var arquivo = file['name'];
-
-		resultado = arquivo.split(".", 2);
-
-
-
-
-
-		if (resultado[1] === 'pdf') {
-
-			$('#target_2').attr('src', "img/arquivos/pdf.PNG");
-
-
-
+		if (!target) {
+			return;
 		}
 
+		if (!file) {
+			target.src = iconePadrao;
+			return;
+		}
+
+		var nomeArquivo = (file.name || '').toLowerCase();
+		var extensao = '';
+		var posicaoUltimoPonto = nomeArquivo.lastIndexOf('.');
+		if (posicaoUltimoPonto > -1) {
+			extensao = nomeArquivo.substring(posicaoUltimoPonto + 1);
+		}
+
+		if (['jpg', 'jpeg', 'png', 'gif', 'webp'].indexOf(extensao) !== -1) {
+			var reader = new FileReader();
+			reader.onload = function(e) {
+				target.src = e.target.result;
+			};
+			reader.readAsDataURL(file);
+			return;
+		}
+
+		if (extensao === 'pdf') {
+			target.src = iconePdf;
+			return;
+		}
+
+		if (extensao === 'zip' || extensao === 'rar') {
+			target.src = iconeCompactado;
+			return;
+		}
+
+		target.src = iconePadrao;
 	}
 
 </script>

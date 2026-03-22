@@ -145,7 +145,7 @@ if(@count($res) > 0 || $codigo_cartao == 'aprovado'){
 
 	echo 'Cupom Utilizado-'.$valor_descontoF.'-'.$valor_pixF;
 }else{
-	echo 'CÇüdigo Incorreto, cupom Inexistente!';
+	echo 'Código Incorreto, cupom Inexistente!';
 }
 
 ?>

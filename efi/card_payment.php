@@ -118,8 +118,21 @@ function montarNotificationUrlLocal(string $baseSistema, string $relativePath = 
         $candidatas[] = $fallback;
     }
 
+    $token = '';
+    foreach (['WEBHOOK_TOKEN_EJA_PROD', 'WEBHOOK_TOKEN_EJA', 'WEBHOOK_TOKEN'] as $key) {
+        $value = trim((string) env($key, ''));
+        if ($value !== '') {
+            $token = $value;
+            break;
+        }
+    }
+
     foreach ($candidatas as $url) {
         if (stripos($url, 'https://') === 0) {
+            if ($token !== '') {
+                $sep = strpos($url, '?') === false ? '?' : '&';
+                $url .= $sep . 'token=' . urlencode($token);
+            }
             return $url;
         }
     }
@@ -342,6 +355,12 @@ function statusRecorrenciaGatewayParaInterno(string $statusGateway): string
     }
 
     return 'PENDENTE';
+}
+
+function statusGatewayPagamentoConfirmadoLocal(string $statusGateway): bool
+{
+    $status = strtoupper(trim($statusGateway));
+    return in_array($status, ['PAID', 'APPROVED', 'SETTLED', 'ACTIVE'], true);
 }
 
 function registrarPlanoRecorrenciaCartaoLocal(
@@ -929,7 +948,10 @@ try {
 
     $formaPgtoMatricula = $isRecorrente ? 'CARTAO_RECORRENTE' : 'CARTAO_DE_CREDITO';
     $statusGateway = strtoupper((string) ($resultado['status'] ?? ''));
-    $descricaoLog = $isRecorrente ? 'Pagamento cartao recorrente aprovado' : 'Pagamento cartao de credito aprovado';
+    $statusPagamentoConfirmado = statusGatewayPagamentoConfirmadoLocal($statusGateway);
+    $descricaoLog = $isRecorrente
+        ? ($statusPagamentoConfirmado ? 'Pagamento cartao recorrente aprovado' : 'Pagamento cartao recorrente pendente')
+        : ($statusPagamentoConfirmado ? 'Pagamento cartao de credito aprovado' : 'Pagamento cartao de credito pendente');
     $idMatriculaAtual = (int) ($matricula['id'] ?? 0);
 
     $stmtForma = $pdo->prepare("UPDATE {$tabelaMatricula} SET forma_pgto = :forma_pgto WHERE id = :id");
@@ -958,7 +980,7 @@ try {
         (array) ($resultado['payment_data'] ?? [])
     );
 
-    $deveAprovarMatricula = ((string) ($matricula['status'] ?? '') !== 'Matriculado');
+    $deveAprovarMatricula = $statusPagamentoConfirmado && ((string) ($matricula['status'] ?? '') !== 'Matriculado');
     $matriculaAprovada = false;
     if ($deveAprovarMatricula) {
         $matriculaAprovada = aprovarMatriculaCartaoLocal(
@@ -1012,6 +1034,8 @@ try {
             'payment_data' => $resultado['payment_data'] ?? null,
         ],
         'matricula_processada' => $deveAprovarMatricula ? $matriculaAprovada : true
+        ,
+        'pagamento_confirmado' => $statusPagamentoConfirmado
     ]);
     exit;
 } catch (Exception $e) {

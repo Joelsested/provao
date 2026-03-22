@@ -1,6 +1,6 @@
 <?php 
 require_once("../../../conexao.php");
-require_once(__DIR__ . "/../../../config/upload.php");
+require_once(__DIR__ . "/../../../../config/upload.php");
 $tabela = 'aulas';
 
 $num_aula = $_POST['num_aula'];

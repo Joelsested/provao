@@ -13,6 +13,21 @@ require_once("../../config/env.php");
 
 @session_start();
 
+function formatarDataPagamento($data): string
+{
+    $valor = trim((string) $data);
+    if ($valor === '' || $valor === '0000-00-00' || $valor === '0000-00-00 00:00:00') {
+        return '-';
+    }
+
+    try {
+        $dt = new DateTime($valor);
+        return $dt->format('d/m/Y H:i');
+    } catch (Exception $e) {
+        return '-';
+    }
+}
+
 $id_do_aluno = @$_SESSION['id'];
 $temRecorrenciaEfi = false;
 try {
@@ -147,9 +162,21 @@ $resposta_consulta_matriculas_boleto = $consulta_matriculas_boleto->fetchAll(PDO
 
 
 
-$selectRecorrenciaCartao = "1 AS quantidade_parcelas, 0 AS parcelas_pagas, 0 AS parcelas_pendentes, 0 AS subscription_id";
+$temLogsPagamentos = (bool) $pdo->query("SHOW TABLES LIKE 'logs_pagamentos'")->fetch(PDO::FETCH_NUM);
+$selectDataPagamentoCartao = $temLogsPagamentos
+    ? "(SELECT MAX(lp.data) FROM logs_pagamentos lp WHERE lp.id_matricula = matriculas.id AND UPPER(COALESCE(lp.status, '')) IN ('PAID','APPROVED','SETTLED','ACTIVE')) AS data_pagamento_cartao"
+    : "NULL AS data_pagamento_cartao";
+$selectRecorrenciaCartao = "1 AS quantidade_parcelas, 0 AS parcelas_pagas, 0 AS parcelas_pendentes, 0 AS subscription_id, {$selectDataPagamentoCartao}";
 $joinRecorrenciaCartao = "";
 if ($temRecorrenciaEfi) {
+    $partesDataPgtoCartao = [
+        "(SELECT MAX(ep.data_pagamento) FROM efi_assinaturas_cartao_parcelas ep WHERE ep.id_matricula = matriculas.id AND ep.status = 'PAGA')",
+    ];
+    if ($temLogsPagamentos) {
+        $partesDataPgtoCartao[] = "(SELECT MAX(lp.data) FROM logs_pagamentos lp WHERE lp.id_matricula = matriculas.id AND UPPER(COALESCE(lp.status, '')) IN ('PAID','APPROVED','SETTLED','ACTIVE'))";
+    }
+    $selectDataPagamentoCartao = "COALESCE(" . implode(', ', $partesDataPgtoCartao) . ") AS data_pagamento_cartao";
+
     $selectRecorrenciaCartao = "
         COALESCE(ea.quantidade_parcelas, 1) AS quantidade_parcelas,
         COALESCE(ea.subscription_id, 0) AS subscription_id,
@@ -164,7 +191,8 @@ if ($temRecorrenciaEfi) {
             FROM efi_assinaturas_cartao_parcelas ep
             WHERE ep.id_matricula = matriculas.id
               AND ep.status IN ('PENDENTE', 'ATRASADA')
-        ) AS parcelas_pendentes
+        ) AS parcelas_pendentes,
+        {$selectDataPagamentoCartao}
     ";
     $joinRecorrenciaCartao = "LEFT JOIN efi_assinaturas_cartao ea ON ea.id_matricula = matriculas.id";
 }
@@ -413,7 +441,7 @@ foreach ($transactions as $registro) {
                     <tr>
                         <th>ID</th>
                         <th>Curso / Pacote</th>
-                        <th>Data</th>
+                        <th>Data Pagamento</th>
                         <th>Forma de pagamento</th>
                         <th>Parcelas</th>
                         <th>Valor</th>
@@ -506,7 +534,13 @@ foreach ($transactions as $registro) {
                             <td style="max-width: 130px; overflow: hidden;"><?php echo json_decode('"' . $registro['nome_curso'] . '"');
                             ; ?>
                             </td>
-                            <td><?php echo (new DateTime($registro['data']))->format('d/m/Y'); ?></td>
+                            <?php
+                            $dataPagamentoCartao = formatarDataPagamento((string) ($registro['data_pagamento_cartao'] ?? ''));
+                            if ($dataPagamentoCartao === '-') {
+                                $dataPagamentoCartao = formatarDataPagamento((string) ($registro['data'] ?? ''));
+                            }
+                            ?>
+                            <td><?php echo htmlspecialchars($dataPagamentoCartao, ENT_QUOTES, 'UTF-8'); ?></td>
                             <td style="max-width: 130px;">
                                 <?php echo ($registro['forma_pgto'] ?? '') === 'CARTAO_RECORRENTE' ? 'Cartão recorrente' : 'Cartão de crédito'; ?>
                             </td>

@@ -14,7 +14,7 @@ if(@$_SESSION['nivel'] != 'Administrador' and @$_SESSION['nivel'] != 'Professor'
  ?>
 
 
-  <button onclick="inserir()" type="button" class="btn btn-primary btn-flat btn-pri"><i class="fa fa-plus" aria-hidden="true"></i> Novo Curso</button>
+  <button onclick="inserir()" type="button" class="btn btn-primary btn-flat btn-pri" title="Caminho: sistema/painel-admin/paginas/cursos.php (acao: inserir)"><i class="fa fa-plus" aria-hidden="true"></i> Novo Curso</button>
 
 
  <div class="bs-example widget-shadow" style="padding:15px" id="listar">
@@ -875,6 +875,28 @@ if(@$_SESSION['nivel'] != 'Administrador' and @$_SESSION['nivel'] != 'Professor'
 		}
 		</script>
 
+<script type="text/javascript">
+	function abrirArquivoAdminNoApp(url, titulo) {
+		var destino = String(url || '').replace(/([^:]\/)\/+/g, '$1');
+		if (!destino) {
+			return false;
+		}
+
+		if (window.Swal) {
+			Swal.fire({
+				title: titulo || 'Visualizar Arquivo',
+				html: '<iframe src="' + destino + '" style="width:100%; height:78vh; border:none; min-height:520px;"></iframe>',
+				width: '90%',
+				showCloseButton: true,
+				showConfirmButton: false
+			});
+		} else {
+			window.location.href = destino;
+		}
+		return false;
+	}
+</script>
+
 
 
 
@@ -931,20 +953,27 @@ $("#form-niceEdit").submit(function () {
 			success: function (mensagem) {
 				
 				
-				$('#mensagem-usu').text('');
-				$('#mensagem-usu').removeClass()
+				$('#mensagem_arquivo').text('');
+				$('#mensagem_arquivo').removeClass()
 				if (mensagem.trim() == "Salvo com Sucesso") {
 					
 					location.reload();
 					//$('#btn-fechar-usu').click();						
 
 				} else {
-
-					$('#mensagem-usu').addClass('text-danger')
-					$('#mensagem-usu').text(mensagem)
+					var msg = mensagem;
+					if (mensagem.trim() === 'Nao autorizado.' || mensagem.trim() === 'Não autorizado.') {
+						msg = 'Sessão expirada ou inválida. Atualize a página e faça login novamente.';
+					}
+					$('#mensagem_arquivo').addClass('text-danger')
+					$('#mensagem_arquivo').text(msg)
 				}
 
 
+			},
+			error: function (xhr) {
+				$('#mensagem_arquivo').addClass('text-danger');
+				$('#mensagem_arquivo').text((xhr && xhr.responseText) ? xhr.responseText : 'Falha ao inserir o documento.');
 			},
 
 			cache: false,
