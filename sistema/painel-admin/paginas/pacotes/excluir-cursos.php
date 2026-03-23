@@ -1,16 +1,17 @@
-<?php 
+<?php
 require_once("../../../conexao.php");
 $tabela = 'cursos_pacotes';
 
-$id = $_POST['id'];
-$id = (int) $id;
+$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 
-if ($id > 0) {
-	$stmt = $pdo->prepare("DELETE FROM $tabela WHERE id = ?");
-	$stmt->execute([$id]);
+if ($id <= 0) {
+	echo 'ID invalido.';
+	exit();
 }
 
-echo 'Excluído com Sucesso';
+$stmt = $pdo->prepare("DELETE FROM $tabela WHERE id = ? LIMIT 1");
+$stmt->execute([$id]);
+
+echo 'Excluido com Sucesso';
 
 ?>
-

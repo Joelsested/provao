@@ -177,20 +177,38 @@ class EFIBoletoPayment
             throw new Exception('Telefone do cliente inválido para boleto. Use DDD + número com 10 ou 11 dígitos.');
         }
 
+        $nome = trim((string) ($dados['nome'] ?? ''));
+        $email = trim((string) ($dados['email'] ?? ''));
+        $cpf = preg_replace('/\D/', '', (string) ($dados['cpf'] ?? ''));
+        $nascimento = trim((string) ($dados['nascimento'] ?? ''));
+
+        if ($nome === '' || mb_strlen($nome) < 3) {
+            throw new Exception('Nome do cliente inválido para boleto.');
+        }
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new Exception('E-mail do cliente inválido para boleto.');
+        }
+        if (strlen($cpf) !== 11) {
+            throw new Exception('CPF do cliente inválido para boleto.');
+        }
+
         $body = [
             'payment' => [
                 'banking_billet' => [
                     'expire_at' => $vencimento,
                     'customer' => [
-                        'name' => $dados['nome'],
-                        'email' => $dados['email'],
-                        'cpf' => preg_replace('/\D/', '', $dados['cpf']),
-                        'birth' => $dados['nascimento'] ?? null,
+                        'name' => $nome,
+                        'email' => $email,
+                        'cpf' => $cpf,
                         'phone_number' => $telefone
                     ]
                 ]
             ]
         ];
+
+        if ($nascimento !== '') {
+            $body['payment']['banking_billet']['customer']['birth'] = $nascimento;
+        }
 
         // Adicionar endereço se fornecido
         if (isset($dados['endereco'])) {
@@ -250,6 +268,11 @@ class EFIBoletoPayment
         curl_close($ch);
 
         if ($httpCode !== 200) {
+            $erroDecodificado = json_decode((string) $response, true);
+            $codigo = (string) ($erroDecodificado['code'] ?? '');
+            if ($codigo === '4600142') {
+                throw new Exception('Dados cadastrais incoerentes para gerar boleto. Revise nome, CPF, e-mail e telefone no cadastro do aluno.');
+            }
             throw new Exception('Erro ao definir forma de pagamento: ' . $response);
         }
 

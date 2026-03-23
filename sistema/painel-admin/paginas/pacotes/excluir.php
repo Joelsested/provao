@@ -26,7 +26,7 @@ if (isset($_POST['id'])) {
 	$hasId = true;
 }
 
-if (!$hasId || $id < 0) {
+if (!$hasId || $id <= 0) {
 	echo 'ID invalido.';
 	exit();
 }

@@ -84,7 +84,18 @@ try {
         $quantidadeParcelas = 1;
     }
 
-    if (!$id_usuario || !$id_curso || !$forma_pgto) {
+    if (!$id_usuario || !$forma_pgto) {
+        throw new Exception("Dados incompletos");
+    }
+
+    $id_curso = (int) $id_curso;
+    $id_matricula = (int) $id_matricula;
+    if ($id_curso <= 0 && $id_matricula > 0) {
+        $stmtMatBase = $pdo->prepare("SELECT id_curso FROM $tabela WHERE id = :id LIMIT 1");
+        $stmtMatBase->execute([':id' => $id_matricula]);
+        $id_curso = (int) ($stmtMatBase->fetchColumn() ?: 0);
+    }
+    if ($id_curso <= 0) {
         throw new Exception("Dados incompletos");
     }
 

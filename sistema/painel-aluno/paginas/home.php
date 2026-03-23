@@ -289,11 +289,17 @@ if($total_m > 0){
 							$query2 = $pdo->prepare("SELECT * FROM {$tab} where id = :id");
 							$query2->execute([':id' => $id_curso]);
 							$res2 = $query2->fetchAll(PDO::FETCH_ASSOC);
-							$nome_curso = $res2[0]['nome'];
-							$foto_curso = $res2[0]['imagem'];
-							$nome_curso = mb_strimwidth($nome_curso, 0, 20, "...");
-							$nome_url = $res2[0]['nome_url'];
-							$url_do_curso = $link.$nome_url;
+                            if (@count($res2) > 0) {
+							    $nome_curso = $res2[0]['nome'];
+							    $foto_curso = $res2[0]['imagem'];
+							    $nome_curso = mb_strimwidth($nome_curso, 0, 20, "...");
+							    $nome_url = $res2[0]['nome_url'];
+							    $url_do_curso = $link.$nome_url;
+                            } else {
+                                $nome_curso = 'Curso indisponível';
+                                $foto_curso = 'sem-foto.jpg';
+                                $url_do_curso = '#';
+                            }
 
 							if($pacote != 'Sim'){
 								$query2 = $pdo->prepare("SELECT * FROM aulas where curso = :curso");

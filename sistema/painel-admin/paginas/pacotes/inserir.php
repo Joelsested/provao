@@ -35,7 +35,7 @@ $nome_novo = strtolower( preg_replace("[^a-zA-Z0-9-]", "-",
         "aaaaeeiooouuncAAAAEEIOOOUUNC-")) );
 $url = preg_replace('/[ -]+/' , '-' , $nome_novo);
 
-$id = $_POST['id'] ?? '';
+$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 
 //retirar espaços vazios e possívels aspas simples do textarea
 $desc_longa = str_replace(array("\n", "\r", "'"), ' ', $desc_longa);
@@ -45,7 +45,7 @@ $query = $pdo->prepare("SELECT * FROM $tabela where nome = :nome");
 $query->execute([':nome' => $nome]);
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 $total_reg = @count($res);
-if($total_reg > 0 and $res[0]['id'] != $id){
+if($total_reg > 0 and (int)$res[0]['id'] != $id){
 	echo 'Pacote j? Cadastrado com este nome, escolha Outro!';
 	exit();
 }
@@ -80,13 +80,19 @@ if (empty($upload['skipped'])) {
 }
 
 
-if($id == ""){
+if($id <= 0){
+	$queryMax = $pdo->query("SELECT MAX(id) as max_id FROM $tabela");
+	$resMax = $queryMax->fetch(PDO::FETCH_ASSOC);
+	$novo_id = (int)($resMax['max_id'] ?? 0) + 1;
 
-	$query = $pdo->prepare("INSERT INTO $tabela SET nome = :nome, desc_rapida = :desc_rapida, desc_longa = :desc_longa, valor = :valor, professor = '$id_usuario', linguagem = '$linguagem', imagem = '$foto', ano = '$ano_atual', palavras = :palavras, grupo = '$grupo', nome_url = '$url', promocao = :promocao, video = :video, comissao = '$comissao'");
+	$query = $pdo->prepare("INSERT INTO $tabela SET id = :id, nome = :nome, desc_rapida = :desc_rapida, desc_longa = :desc_longa, valor = :valor, professor = '$id_usuario', linguagem = '$linguagem', imagem = '$foto', ano = '$ano_atual', palavras = :palavras, grupo = '$grupo', nome_url = '$url', promocao = :promocao, video = :video, comissao = '$comissao'");
 }else{
 	$query = $pdo->prepare("UPDATE $tabela SET nome = :nome, desc_rapida = :desc_rapida, desc_longa = :desc_longa, valor = :valor, professor = '$id_usuario', linguagem = '$linguagem', imagem = '$foto', palavras = :palavras, grupo = '$grupo', nome_url = '$url', promocao = :promocao, video = :video, comissao = '$comissao'  WHERE id = '$id'");
 }
 
+if ($id <= 0) {
+	$query->bindValue(":id", $novo_id, PDO::PARAM_INT);
+}
 $query->bindValue(":nome", "$nome");
 $query->bindValue(":desc_rapida", "$desc_rapida");
 $query->bindValue(":desc_longa", "$desc_longa");

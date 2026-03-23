@@ -489,13 +489,14 @@ if($_SESSION['nivel'] == 'Administrador'){
 
 
 <script type="text/javascript">
-	function listarCursos(){
+function listarCursos(){
 	var id_pacote = $('#id_pacote').val();
+	var csrf_token = (typeof getCsrfToken === 'function') ? getCsrfToken() : '';
 	
     $.ajax({
         url: 'paginas/' + pag + "/listar-cursos.php",
         method: 'POST',
-        data: {id_pacote},
+        data: {id_pacote, csrf_token},
         dataType: "html",
 
         success:function(result){
@@ -510,13 +511,14 @@ if($_SESSION['nivel'] == 'Administrador'){
 
 
 <script type="text/javascript">
-	function add(id_curso){
+function add(id_curso){
 	var id_pacote = $('#id_pacote').val();
+	var csrf_token = (typeof getCsrfToken === 'function') ? getCsrfToken() : '';
 	
     $.ajax({
         url: 'paginas/' + pag + "/inserir-cursos.php",
         method: 'POST',
-        data: {id_curso, id_pacote},
+        data: {id_curso, id_pacote, csrf_token},
         dataType: "html",
 
        success: function (mensagem) {

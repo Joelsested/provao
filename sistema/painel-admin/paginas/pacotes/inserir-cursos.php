@@ -1,24 +1,39 @@
-<?php 
+<?php
 require_once("../../../conexao.php");
 $tabela = 'cursos_pacotes';
 
+$id_pacote = isset($_POST['id_pacote']) ? (int) $_POST['id_pacote'] : 0;
+$id_curso = isset($_POST['id_curso']) ? (int) $_POST['id_curso'] : 0;
 
-$id_pacote = $_POST['id_pacote'];
-$id_curso = $_POST['id_curso'];
+if ($id_pacote <= 0 || $id_curso <= 0) {
+	echo 'Dados incompletos para vincular curso ao pacote.';
+	exit();
+}
 
-//validar num aula duplicado
-$query = $pdo->prepare("SELECT * FROM $tabela where id_curso = :id_curso and id_pacote = :id_pacote");
+$query = $pdo->prepare("SELECT id FROM pacotes WHERE id = :id LIMIT 1");
+$query->execute([':id' => $id_pacote]);
+if (!$query->fetch(PDO::FETCH_ASSOC)) {
+	echo 'Pacote invalido para vincular curso.';
+	exit();
+}
+
+$query = $pdo->prepare("SELECT id FROM cursos WHERE id = :id LIMIT 1");
+$query->execute([':id' => $id_curso]);
+if (!$query->fetch(PDO::FETCH_ASSOC)) {
+	echo 'Curso invalido para vincular no pacote.';
+	exit();
+}
+
+$query = $pdo->prepare("SELECT id FROM $tabela WHERE id_curso = :id_curso AND id_pacote = :id_pacote LIMIT 1");
 $query->execute([
 	':id_curso' => $id_curso,
 	':id_pacote' => $id_pacote,
 ]);
-$res = $query->fetchAll(PDO::FETCH_ASSOC);
-$total_reg = @count($res);
-if($total_reg > 0){
-	echo 'Curso Já Adicionado ao Pacote!';
+
+if ($query->fetch(PDO::FETCH_ASSOC)) {
+	echo 'Curso ja adicionado ao pacote.';
 	exit();
 }
-
 
 $query = $pdo->prepare("INSERT INTO $tabela SET id_pacote = :id_pacote, id_curso = :id_curso");
 $query->execute([
@@ -26,8 +41,6 @@ $query->execute([
 	':id_curso' => $id_curso,
 ]);
 
-
 echo 'Salvo com Sucesso';
 
- ?>
-
+?>

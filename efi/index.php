@@ -230,6 +230,11 @@ function montarUrlWebhook($url)
 }
 
 $baseWebhook = rtrim((string) ($url_sistema ?? ''), '/');
+if ($baseWebhook !== '') {
+    // Quando o fluxo roda em /efi/index.php, a base pode vir com /efi.
+    $baseWebhook = preg_replace('#/(efi|sistema)$#i', '', $baseWebhook);
+    $baseWebhook = rtrim((string) $baseWebhook, '/');
+}
 if ($baseWebhook === '' || stripos($baseWebhook, 'https://') !== 0) {
     $baseWebhook = 'https://www.sested-eja.com';
 }

@@ -76,8 +76,8 @@ for($i=0; $i < $total_reg; $i++){
 	$nome_grupo = $res2[0]['nome'];
 
 
-	$query2 = $pdo->prepare("SELECT * FROM matriculas where id_curso = :id_curso and status != 'Aguardando'");
-	$query2->execute([':id_curso' => $id]);
+	$query2 = $pdo->prepare("SELECT * FROM matriculas where id_pacote = :id_pacote and pacote = 'Sim' and status != 'Aguardando'");
+	$query2->execute([':id_pacote' => $id]);
 	$res2 = $query2->fetchAll(PDO::FETCH_ASSOC);
 	$alunos = @count($res2);
 
@@ -150,7 +150,7 @@ echo <<<HTML
 		</ul>
 		</li>
 
-		<big><a href="#" onclick="cursos('{$id}', '{$nome}', '$cursos')" title="Inserir Cursos no Pacote"><i class="fa fa-book verde"></i></a></big>
+		<big><a href="#" onclick="cursos('{$id}', '{$nome}', '{$cursos}')" title="Inserir Cursos no Pacote"><i class="fa fa-book verde"></i></a></big>
 		
 
 		</td>

@@ -76,6 +76,33 @@ function normalizarTelefoneBoleto($telefone)
     return $telefone;
 }
 
+function normalizarNomeBoleto($nome): string
+{
+    $nome = trim((string) $nome);
+    $nome = preg_replace('/\s+/', ' ', $nome);
+    return $nome ?: '';
+}
+
+function validarCpfBoleto(string $cpf): bool
+{
+    $cpf = preg_replace('/\D/', '', $cpf);
+    if (strlen($cpf) !== 11 || preg_match('/^(\d)\1{10}$/', $cpf)) {
+        return false;
+    }
+
+    for ($t = 9; $t < 11; $t++) {
+        $d = 0;
+        for ($c = 0; $c < $t; $c++) {
+            $d += ((int) $cpf[$c]) * (($t + 1) - $c);
+        }
+        $d = ((10 * $d) % 11) % 10;
+        if ((int) $cpf[$c] !== $d) {
+            return false;
+        }
+    }
+    return true;
+}
+
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['valor_parcela'])) {
@@ -155,12 +182,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             die("Erro: Payload do boleto invalido.");
         }
         $payload['notification_url'] = $webhookBoletoParceladoUrl;
-        $payload['nome'] = $nome_aluno ?? ($payload['nome'] ?? '');
-        $payload['email'] = $email_aluno ?? ($payload['email'] ?? '');
-        $payload['cpf'] = $cpf_aluno ?? ($payload['cpf'] ?? '');
+        $payload['nome'] = normalizarNomeBoleto($nome_aluno ?? ($payload['nome'] ?? ''));
+        $payload['email'] = trim((string) ($email_aluno ?? ($payload['email'] ?? '')));
+        $payload['cpf'] = preg_replace('/\D/', '', (string) ($cpf_aluno ?? ($payload['cpf'] ?? '')));
         $telefoneFonteAluno = normalizarTelefoneBoleto($phone_aluno ?? '');
         $telefoneFontePayload = normalizarTelefoneBoleto($payload['telefone'] ?? '');
         $payload['telefone'] = $telefoneFonteAluno !== '' ? $telefoneFonteAluno : $telefoneFontePayload;
+        if ($payload['nome'] === '' || mb_strlen($payload['nome']) < 3) {
+            die('Erro: Atualize o nome completo no seu cadastro antes de gerar o boleto.');
+        }
+        if ($payload['email'] === '' || !filter_var($payload['email'], FILTER_VALIDATE_EMAIL)) {
+            die('Erro: Atualize o e-mail no seu cadastro antes de gerar o boleto.');
+        }
+        if (!validarCpfBoleto($payload['cpf'])) {
+            die('Erro: Atualize o CPF válido no seu cadastro antes de gerar o boleto.');
+        }
         if ($payload['telefone'] === '') {
             die('Erro: Atualize o número de telefone no seu cadastro. Formato obrigatório: DDD + número (10 ou 11 dígitos, sem 55).');
         }
@@ -333,6 +369,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo "Erro na requisição: " . $e->getMessage();
         } catch (Exception $e) {
             $mensagemErro = $e->getMessage();
+            if (strpos($mensagemErro, '4600142') !== false || stripos($mensagemErro, 'incoerência nos dados cadastrais') !== false) {
+                $mensagemErro = 'Dados cadastrais incoerentes para gerar boleto. Revise nome, CPF, e-mail e telefone no cadastro do aluno.';
+            }
             if (stripos($mensagemErro, 'Telefone do cliente inválido') !== false) {
                 $mensagemErro = 'Atualize o número de telefone no seu cadastro. Formato obrigatório: DDD + número (10 ou 11 dígitos, sem 55).';
             }

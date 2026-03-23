@@ -107,6 +107,9 @@ function montarNotificationUrlLocal(string $baseSistema, string $relativePath = 
 
     $baseSistema = trim($baseSistema);
     if ($baseSistema !== '') {
+        $baseSistema = preg_replace('#/(efi|sistema)/?$#i', '', rtrim($baseSistema, '/'));
+    }
+    if ($baseSistema !== '') {
         $candidatas[] = rtrim($baseSistema, '/') . '/' . ltrim($relativePath, '/');
     }
 
