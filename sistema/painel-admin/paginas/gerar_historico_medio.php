@@ -844,6 +844,39 @@ if (!$aluno_error) {
 
 
         };
+        function normalizarTextoComparacao(texto) {
+            return (texto || '')
+                .toString()
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]+/g, '_')
+                .replace(/^_+|_+$/g, '');
+        }
+
+        function normalizarChaveCurso(chave) {
+            return normalizarTextoComparacao(chave).replace(/_(medio|fundamental)$/g, '');
+        }
+
+        function obterCursoPorMateria(materia) {
+            const materiaNormalizada = normalizarChaveCurso(materia);
+
+            for (let nomeCurso in notasExistentes) {
+                const materiaMapeada = mapeamentoCursos[nomeCurso] || nomeCurso;
+                const mapeadaNormalizada = normalizarChaveCurso(materiaMapeada);
+                const cursoNormalizado = normalizarChaveCurso(nomeCurso);
+
+                if (mapeadaNormalizada === materiaNormalizada || cursoNormalizado === materiaNormalizada) {
+                    return {
+                        nomeCurso,
+                        dados: notasExistentes[nomeCurso]
+                    };
+                }
+            }
+
+            return null;
+        }
+
 
         function abrirFormularioCompleto() {
             if (!dadosAluno.nome) {
@@ -894,26 +927,12 @@ if (!$aluno_error) {
         }
 
         function obterNotaExistente(materia, serie) {
-            // console.log(`Buscando nota para: ${materia} - Série: ${serie}`);
-
-            // Buscar nota existente no banco através do mapeamento
-            for (let nomeCurso in notasExistentes) {
-                let materiaCorrespondente = mapeamentoCursos[nomeCurso];
-
-                // console.log(`Curso: ${nomeCurso} -> Matéria: ${materiaCorrespondente}`);
-
-                if (materiaCorrespondente === materia) {
-                    const nota = notasExistentes[nomeCurso].nota;
-                    // console.log(`Nota encontrada: ${nota} para ${materia}`);
-
-                    // Por enquanto, aplicar a mesma nota para todas as séries
-                    // Você pode adaptar esta lógica se tiver notas por série específica
-                    return nota || '';
-                }
+            const curso = obterCursoPorMateria(materia);
+            if (!curso || !curso.dados) {
+                return '';
             }
 
-            // console.log(`Nenhuma nota encontrada para: ${materia}`);
-            return '';
+            return curso.dados.nota || '';
         }
 
         function formatarMateria2(materia) {
@@ -997,8 +1016,9 @@ if (!$aluno_error) {
                 const valorCampo1 = notaSalva1 || nota1 || (temNotaExistente(materia) ? obterNotaExistente(materia, '1') : '');
                 const valorCampo2 = notaSalva2 || nota2 || (temNotaExistente(materia) ? obterNotaExistente(materia, '2') : '');
                 const valorCampo3 = notaSalva3 || nota3 || (temNotaExistente(materia) ? obterNotaExistente(materia, '3') : '');
-                const dataCertificado = (temNotaExistente(materia) && notasExistentes[nomeMateria] && notasExistentes[nomeMateria]['data_certificado'])
-                    ? notasExistentes[nomeMateria]['data_certificado'].split('-').reverse().join('-')
+                const cursoMateria = obterCursoPorMateria(materia);
+                const dataCertificado = (cursoMateria && cursoMateria.dados && cursoMateria.dados['data_certificado'])
+                    ? cursoMateria.dados['data_certificado'].split('-').reverse().join('-')
                     : '';
                 const dataInputValue = dataSalva || dataCertificado || '';
 
@@ -1049,8 +1069,9 @@ if (!$aluno_error) {
                 const valorCampo1 = notaSalva1 || nota1 || (temNotaExistente(materia) ? obterNotaExistente(materia, '1') : '');
                 const valorCampo2 = notaSalva2 || nota2 || (temNotaExistente(materia) ? obterNotaExistente(materia, '2') : '');
                 const valorCampo3 = notaSalva3 || nota3 || (temNotaExistente(materia) ? obterNotaExistente(materia, '3') : '');
-                const dataCertificado = (temNotaExistente(materia) && notasExistentes[nomeMateria] && notasExistentes[nomeMateria]['data_certificado'])
-                    ? notasExistentes[nomeMateria]['data_certificado'].split('-').reverse().join('-')
+                const cursoMateria = obterCursoPorMateria(materia);
+                const dataCertificado = (cursoMateria && cursoMateria.dados && cursoMateria.dados['data_certificado'])
+                    ? cursoMateria.dados['data_certificado'].split('-').reverse().join('-')
                     : '';
                 const dataInputValue = dataSalva || dataCertificado || '';
 
@@ -1088,8 +1109,9 @@ if (!$aluno_error) {
                 const valorCampo1 = notaSalva1 || nota1 || (temNotaExistente(materia) ? obterNotaExistente(materia, '1') : '');
                 const valorCampo2 = notaSalva2 || nota2 || (temNotaExistente(materia) ? obterNotaExistente(materia, '2') : '');
                 const valorCampo3 = notaSalva3 || nota3 || (temNotaExistente(materia) ? obterNotaExistente(materia, '3') : '');
-                const dataCertificado = (temNotaExistente(materia) && notasExistentes[nomeMateria] && notasExistentes[nomeMateria]['data_certificado'])
-                    ? notasExistentes[nomeMateria]['data_certificado'].split('-').reverse().join('-')
+                const cursoMateria = obterCursoPorMateria(materia);
+                const dataCertificado = (cursoMateria && cursoMateria.dados && cursoMateria.dados['data_certificado'])
+                    ? cursoMateria.dados['data_certificado'].split('-').reverse().join('-')
                     : '';
                 const dataInputValue = dataSalva || dataCertificado || '';
 
@@ -1127,8 +1149,9 @@ if (!$aluno_error) {
                 const valorCampo1 = notaSalva1 || nota1 || (temNotaExistente(materia) ? obterNotaExistente(materia, '1') : '');
                 const valorCampo2 = notaSalva2 || nota2 || (temNotaExistente(materia) ? obterNotaExistente(materia, '2') : '');
                 const valorCampo3 = notaSalva3 || nota3 || (temNotaExistente(materia) ? obterNotaExistente(materia, '3') : '');
-                const dataCertificado = (temNotaExistente(materia) && notasExistentes[nomeMateria] && notasExistentes[nomeMateria]['data_certificado'])
-                    ? notasExistentes[nomeMateria]['data_certificado'].split('-').reverse().join('-')
+                const cursoMateria = obterCursoPorMateria(materia);
+                const dataCertificado = (cursoMateria && cursoMateria.dados && cursoMateria.dados['data_certificado'])
+                    ? cursoMateria.dados['data_certificado'].split('-').reverse().join('-')
                     : '';
                 const dataInputValue = dataSalva || dataCertificado || '';
 
@@ -1166,8 +1189,9 @@ if (!$aluno_error) {
                 const valorCampo1 = notaSalva1 || nota1 || (temNotaExistente(materia) ? obterNotaExistente(materia, '1') : '');
                 const valorCampo2 = notaSalva2 || nota2 || (temNotaExistente(materia) ? obterNotaExistente(materia, '2') : '');
                 const valorCampo3 = notaSalva3 || nota3 || (temNotaExistente(materia) ? obterNotaExistente(materia, '3') : '');
-                const dataCertificado = (temNotaExistente(materia) && notasExistentes[nomeMateria] && notasExistentes[nomeMateria]['data_certificado'])
-                    ? notasExistentes[nomeMateria]['data_certificado'].split('-').reverse().join('-')
+                const cursoMateria = obterCursoPorMateria(materia);
+                const dataCertificado = (cursoMateria && cursoMateria.dados && cursoMateria.dados['data_certificado'])
+                    ? cursoMateria.dados['data_certificado'].split('-').reverse().join('-')
                     : '';
                 const dataInputValue = dataSalva || dataCertificado || '';
 
@@ -1225,13 +1249,7 @@ if (!$aluno_error) {
         }
 
         function temNotaExistente(materia) {
-            for (let nomeCurso in notasExistentes) {
-                let materiaCorrespondente = mapeamentoCursos[nomeCurso];
-                if (materiaCorrespondente === materia) {
-                    return true;
-                }
-            }
-            return false;
+            return !!obterCursoPorMateria(materia);
         }
 
         function coletarNotas() {
