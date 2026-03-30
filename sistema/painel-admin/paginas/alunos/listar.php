@@ -1411,34 +1411,56 @@ window.mostrarAluno = function(data) {
 			<input type="number" id="ano_certificado" class="swal2-input" style="width: 50%;" min="1900" max="2100" step="1" placeholder="Ex: 2025">
 			<br>
 			<br>
-			<label for="data_certificado">Selecione a data do certificado:</label>
-			<input type="date" id="data_certificado" class="swal2-input">
-		`,
+				<label for="data_certificado">Selecione a data do certificado:</label>
+				<input type="date" id="data_certificado" class="swal2-input">
+				<br>
+				<label for="numero_registro_certificado">N&ordm; do Registro:</label>
+				<input type="text" id="numero_registro_certificado" class="swal2-input" maxlength="30" placeholder="Ex: 125">
+				<label for="folha_livro_certificado">Folha (FL):</label>
+				<input type="text" id="folha_livro_certificado" class="swal2-input" maxlength="20" placeholder="Ex: 18">
+				<label for="numero_livro_certificado">N&ordm; do Livro:</label>
+				<input type="text" id="numero_livro_certificado" class="swal2-input" maxlength="20" placeholder="Ex: 03">
+			`,
 			showCancelButton: true,
 			confirmButtonText: "Gerar Certificado",
 			cancelButtonText: "Cancelar",
-			preConfirm: () => {
-				const anoCertificado = document.getElementById("ano_certificado").value;
-				const dataCertificado = document.getElementById("data_certificado").value;
+				preConfirm: () => {
+					const anoCertificado = document.getElementById("ano_certificado").value;
+					const dataCertificado = document.getElementById("data_certificado").value;
+					const numeroRegistro = (document.getElementById("numero_registro_certificado").value || "").trim();
+					const folhaLivro = (document.getElementById("folha_livro_certificado").value || "").trim();
+					const numeroLivro = (document.getElementById("numero_livro_certificado").value || "").trim();
 
 				if (!anoCertificado || anoCertificado.length !== 4) {
 					Swal.showValidationMessage("Por favor, insira um ano válido (ex: 2025).");
 					return false;
 				}
-				if (!dataCertificado) {
-					Swal.showValidationMessage("Por favor, selecione uma data.");
-					return false;
-				}
+					if (!dataCertificado) {
+						Swal.showValidationMessage("Por favor, selecione uma data.");
+						return false;
+					}
+					if (!numeroRegistro) {
+						Swal.showValidationMessage("Por favor, informe o nÃºmero do registro.");
+						return false;
+					}
+					if (!folhaLivro) {
+						Swal.showValidationMessage("Por favor, informe a folha (FL).");
+						return false;
+					}
+					if (!numeroLivro) {
+						Swal.showValidationMessage("Por favor, informe o nÃºmero do livro.");
+						return false;
+					}
 
-				return { ano: anoCertificado, data: dataCertificado };
-			}
-		}).then((result) => {
-			if (result.isConfirmed) {
-				const { ano, data } = result.value;
-				const url = `${baseUrl}sistema/rel/rel_certificado.php?id=${id}&ano=${encodeURIComponent(ano)}&data=${encodeURIComponent(data)}`;
-				window.open(url, "_blank"); // Abre em uma nova guia
-			}
-		});
+					return { ano: anoCertificado, data: dataCertificado, numeroRegistro, folhaLivro, numeroLivro };
+				}
+			}).then((result) => {
+				if (result.isConfirmed) {
+					const { ano, data, numeroRegistro, folhaLivro, numeroLivro } = result.value;
+					const url = `${baseUrl}sistema/rel/rel_certificado.php?id=${id}&ano=${encodeURIComponent(ano)}&data=${encodeURIComponent(data)}&numero_registro=${encodeURIComponent(numeroRegistro)}&folha_livro=${encodeURIComponent(folhaLivro)}&numero_livro=${encodeURIComponent(numeroLivro)}`;
+					window.open(url, "_blank"); // Abre em uma nova guia
+				}
+			});
 	}
 
 	function gerarDeclaracaoFundamentalAluno(id) {

@@ -3,6 +3,9 @@ $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 $id_mat = isset($_GET['id_mat']) ? (int) $_GET['id_mat'] : 0;
 $data_certificado = $_GET['data'] ?? null;
 $ano_certificado = $_GET['ano'] ?? null;
+$numero_registro = trim((string) ($_GET['numero_registro'] ?? ''));
+$folha_livro = trim((string) ($_GET['folha_livro'] ?? ''));
+$numero_livro = trim((string) ($_GET['numero_livro'] ?? ''));
 include('../conexao.php');
 
 date_default_timezone_set('America/Porto_Velho');
@@ -44,6 +47,46 @@ if (!empty($data_certificado)) {
 } else {
 	$data_formatada = formatar_data_extenso_ptbr('today');
 }
+
+if ($numero_registro !== '') {
+	$numero_registro = mb_substr(preg_replace('/\s+/u', ' ', $numero_registro), 0, 30);
+}
+if ($folha_livro !== '') {
+	$folha_livro = mb_substr(preg_replace('/\s+/u', ' ', $folha_livro), 0, 20);
+}
+if ($numero_livro !== '') {
+	$numero_livro = mb_substr(preg_replace('/\s+/u', ' ', $numero_livro), 0, 20);
+}
+
+if ($numero_registro === '' || $folha_livro === '' || $numero_livro === '') {
+	try {
+		$stmtRegistroLivro = $pdo->prepare("
+			SELECT numero_registro, folha_livro, numero_livro
+			FROM certificados_livro_registro
+			WHERE aluno_id = :aluno_id AND categoria = 'medio'
+			LIMIT 1
+		");
+		$stmtRegistroLivro->execute([':aluno_id' => $id]);
+		$registroLivro = $stmtRegistroLivro->fetch(PDO::FETCH_ASSOC);
+		if ($registroLivro) {
+			if ($numero_registro === '') {
+				$numero_registro = (string) ($registroLivro['numero_registro'] ?? '');
+			}
+			if ($folha_livro === '') {
+				$folha_livro = (string) ($registroLivro['folha_livro'] ?? '');
+			}
+			if ($numero_livro === '') {
+				$numero_livro = (string) ($registroLivro['numero_livro'] ?? '');
+			}
+		}
+	} catch (Throwable $e) {
+		// Nao interrompe o certificado se a tabela ainda nao existir.
+	}
+}
+
+$numero_registro_exibir = $numero_registro !== '' ? htmlspecialchars($numero_registro, ENT_QUOTES, 'UTF-8') : '---';
+$folha_livro_exibir = $folha_livro !== '' ? htmlspecialchars($folha_livro, ENT_QUOTES, 'UTF-8') : '---';
+$numero_livro_exibir = $numero_livro !== '' ? htmlspecialchars($numero_livro, ENT_QUOTES, 'UTF-8') : '---';
 
 
 
@@ -201,6 +244,19 @@ $data_hoje = formatar_data_extenso_ptbr('today');
 		font-size: 14px;
 		font-weight: 700;
 	}
+
+	.conteudo {
+		position: absolute;
+		top: 130px;
+		left: 45px;
+		width: 720px;
+		text-align: center;
+		color: #000;
+		font-size: 20px;
+		font-weight: 700;
+		font-family: "Times New Roman", Times, serif;
+		line-height: 1.35;
+	}
 </style>
 
 <!DOCTYPE html>
@@ -235,9 +291,8 @@ $data_hoje = formatar_data_extenso_ptbr('today');
 			<div class="linha">CNPJ 07.158.229/0001-06</div>
 			<div class="linha">BURITIS - RO</div>
 		</div>
-		<div class="conteudo">zzzzzzzzzzzzz
-
-
+		<div class="conteudo">
+			Registro N&ordm; <?php echo $numero_registro_exibir; ?> &nbsp;&nbsp;&nbsp; FL <?php echo $folha_livro_exibir; ?> &nbsp;&nbsp;&nbsp; Livro N&ordm; <?php echo $numero_livro_exibir; ?>
 		</div>
 		<div class="data2"> Buritis - <?php echo ($data_formatada); ?>
 		</div>

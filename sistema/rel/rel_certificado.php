@@ -78,6 +78,88 @@ if (empty($id)) {
 $data_certificado = $_GET['data'] ?? $_POST['data'] ?? null;
 
 $ano_certificado = $_GET['ano'] ?? $_POST['ano'] ?? null;
+$numero_registro = trim((string) ($_GET['numero_registro'] ?? $_POST['numero_registro'] ?? ''));
+$folha_livro = trim((string) ($_GET['folha_livro'] ?? $_POST['folha_livro'] ?? ''));
+$numero_livro = trim((string) ($_GET['numero_livro'] ?? $_POST['numero_livro'] ?? ''));
+
+if ($numero_registro !== '') {
+    $numero_registro = mb_substr(preg_replace('/\s+/u', ' ', $numero_registro), 0, 30);
+}
+if ($folha_livro !== '') {
+    $folha_livro = mb_substr(preg_replace('/\s+/u', ' ', $folha_livro), 0, 20);
+}
+if ($numero_livro !== '') {
+    $numero_livro = mb_substr(preg_replace('/\s+/u', ' ', $numero_livro), 0, 20);
+}
+
+$pdo->exec("
+    CREATE TABLE IF NOT EXISTS certificados_livro_registro (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        aluno_id INT NOT NULL,
+        categoria VARCHAR(30) NOT NULL DEFAULT 'medio',
+        matricula_id INT NULL,
+        ano_certificado VARCHAR(4) NULL,
+        data_certificado DATE NULL,
+        numero_registro VARCHAR(30) NOT NULL,
+        folha_livro VARCHAR(20) NOT NULL,
+        numero_livro VARCHAR(20) NOT NULL,
+        criado_em DATETIME NOT NULL,
+        atualizado_em DATETIME NOT NULL,
+        criado_por INT NULL,
+        atualizado_por INT NULL,
+        UNIQUE KEY uk_aluno_categoria (aluno_id, categoria)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+");
+
+$stmtRegistroSalvo = $pdo->prepare("
+    SELECT numero_registro, folha_livro, numero_livro
+    FROM certificados_livro_registro
+    WHERE aluno_id = :aluno_id AND categoria = 'medio'
+    LIMIT 1
+");
+$stmtRegistroSalvo->execute([':aluno_id' => (int) $id]);
+$registroSalvo = $stmtRegistroSalvo->fetch(PDO::FETCH_ASSOC);
+
+if ($registroSalvo) {
+    if ($numero_registro === '') {
+        $numero_registro = (string) ($registroSalvo['numero_registro'] ?? '');
+    }
+    if ($folha_livro === '') {
+        $folha_livro = (string) ($registroSalvo['folha_livro'] ?? '');
+    }
+    if ($numero_livro === '') {
+        $numero_livro = (string) ($registroSalvo['numero_livro'] ?? '');
+    }
+}
+
+if ($numero_registro !== '' && $folha_livro !== '' && $numero_livro !== '') {
+    $stmtUpsertRegistro = $pdo->prepare("
+        INSERT INTO certificados_livro_registro
+            (aluno_id, categoria, matricula_id, ano_certificado, data_certificado, numero_registro, folha_livro, numero_livro, criado_em, atualizado_em, criado_por, atualizado_por)
+        VALUES
+            (:aluno_id, 'medio', :matricula_id, :ano_certificado, :data_certificado, :numero_registro, :folha_livro, :numero_livro, NOW(), NOW(), :criado_por, :atualizado_por)
+        ON DUPLICATE KEY UPDATE
+            matricula_id = VALUES(matricula_id),
+            ano_certificado = VALUES(ano_certificado),
+            data_certificado = VALUES(data_certificado),
+            numero_registro = VALUES(numero_registro),
+            folha_livro = VALUES(folha_livro),
+            numero_livro = VALUES(numero_livro),
+            atualizado_em = NOW(),
+            atualizado_por = VALUES(atualizado_por)
+    ");
+    $stmtUpsertRegistro->execute([
+        ':aluno_id' => (int) $id,
+        ':matricula_id' => !empty($id_mat) ? (int) $id_mat : null,
+        ':ano_certificado' => $ano_certificado ?: null,
+        ':data_certificado' => $data_certificado ?: null,
+        ':numero_registro' => $numero_registro,
+        ':folha_livro' => $folha_livro,
+        ':numero_livro' => $numero_livro,
+        ':criado_por' => $_SESSION['id'] ?? null,
+        ':atualizado_por' => $_SESSION['id'] ?? null
+    ]);
+}
 
 //CARREGAR DOMPDF
 require_once '../dompdf/autoload.inc.php';
@@ -96,7 +178,15 @@ $pdf = new DOMPDF($options);
 
 //ALIMENTAR OS DADOS NO RELATÓRIO
 // $html = utf8_encode(file_get_contents($url_sistema."sistema/rel/certificado.php?id=".$id));
-$html = utf8_encode(file_get_contents($url_sistema . "sistema/rel/certificado.php?id=" . $id . "&data=" . urlencode($data_certificado) . "&ano=" . urlencode($ano_certificado) . "&id_mat=" . urlencode($id_mat)));
+$html = utf8_encode(file_get_contents(
+    $url_sistema . "sistema/rel/certificado.php?id=" . $id .
+    "&data=" . urlencode($data_certificado) .
+    "&ano=" . urlencode($ano_certificado) .
+    "&id_mat=" . urlencode($id_mat) .
+    "&numero_registro=" . urlencode($numero_registro) .
+    "&folha_livro=" . urlencode($folha_livro) .
+    "&numero_livro=" . urlencode($numero_livro)
+));
 
 
 
