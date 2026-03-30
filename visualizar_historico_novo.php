@@ -34,8 +34,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
       justify-content: flex-start;
       gap: 10px;
       padding-bottom: 4px;
-      margin-top: 16px;
-      margin-bottom: 6px;
+      margin-bottom: 34px;
     }
 
     .logo-header img {
@@ -150,16 +149,6 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
       font-size: 12px;
       padding: 1px;
       font-weight: bold;
-      white-space: nowrap;
-      text-align: center;
-      padding-left: 8px;
-      padding-right: 8px;
-      min-width: 82px;
-    }
-
-    .ch-data-head {
-      white-space: nowrap;
-      text-align: center;
     }
 
     tr td.data-display:last-of-type {
@@ -280,7 +269,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
 
       <!-- Cabeçalho da tabela de notas -->
       <tr class="header-row">
-   <td rowspan="9" colspan="2" class="rotated-text">BASE NACIONAL</td>
+   <td rowspan="8" colspan="2" class="rotated-text">BASE NACIONAL</td>
         <td colspan="2" rowspan="3" class="center bold">ÁREAS DE CONHECIMENTO</td>
         <td colspan="7" rowspan="3" class="center bold">COMPONENTES CURRICULARES</td>
         <td colspan="13" class="center bold">ANOS/ CARGA HORÁRIA</td>
@@ -292,23 +281,23 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
       </tr>
       <tr class="header-row">
         <td colspan="2" class="center bold">NOTA</td>
-        <td colspan="2" class="center bold small-text ch-data-head">CH/DATA</td>
+        <td colspan="2" class="center bold small-text">CH<br>DATA</td>
         <td colspan="4" class="center bold">NOTA</td>
-        <td class="center bold small-text ch-data-head">CH/DATA</td>
+        <td class="center bold small-text">CH<br>DATA</td>
         <td class="center bold">NOTA</td>
-        <td colspan="3" class="center bold small-text ch-data-head">CH/DATA</td>
+        <td colspan="3" class="center bold small-text">CH<br>DATA</td>
       </tr>
 
       <!-- Linguagens e Tecnologias -->
 <tr>
-  <td colspan="2" rowspan="5" class="bold center">LINGUAGENS e TECNOLOGIAS</td>
-  <td colspan="7" style="padding: 4px;">Língua Portuguesa/Literatura</td>
+  <td colspan="2" rowspan="4" class="bold center">LINGUAGENS e TECNOLOGIAS</td>
+  <td colspan="7" style="padding: 4px;">Língua Portuguesa</td>
   <td colspan="2" class="bold center"><?php echo $notas['lingua_portuguesa']['serie1'] ?? '' ?></td>
-  <td colspan="2" class="center data-display" style="white-space: nowrap; padding-left: 10px; padding-right: 10px;"><?php echo isset($notas['lingua_portuguesa']['data']) ? date('d-m-Y', strtotime($notas['lingua_portuguesa']['data'])) : '' ?></td>
+  <td colspan="2" class="center data-display" style=" padding-left: 10px; padding-right: 10px;"><?php echo isset($notas['lingua_portuguesa']['data']) ? date('d-m-Y', strtotime($notas['lingua_portuguesa']['data'])) : '' ?></td>
   <td colspan="4" class="bold center"><?php echo $notas['lingua_portuguesa']['serie2'] ?? '' ?></td>
-  <td class="center data-display" style="white-space: nowrap; padding-left: 10px; padding-right: 10px;"><?php echo isset($notas['lingua_portuguesa']['data']) ? date('d-m-Y', strtotime($notas['lingua_portuguesa']['data'])) : '' ?></td>
+  <td class="center data-display" style=" padding-left: 10px; padding-right: 10px;"><?php echo isset($notas['lingua_portuguesa']['data']) ? date('d-m-Y', strtotime($notas['lingua_portuguesa']['data'])) : '' ?></td>
   <td class="bold center"><?php echo $notas['lingua_portuguesa']['serie3'] ?? '' ?></td>
-  <td colspan="3" class="center data-display" style="white-space: nowrap; padding-left: 10px; padding-right: 10px;"><?php echo isset($notas['lingua_portuguesa']['data']) ? date('d-m-Y', strtotime($notas['lingua_portuguesa']['data'])) : '' ?></td>
+  <td colspan="3" class="center data-display" style=" padding-left: 10px; padding-right: 10px;"><?php echo isset($notas['lingua_portuguesa']['data']) ? date('d-m-Y', strtotime($notas['lingua_portuguesa']['data'])) : '' ?></td>
 </tr>
 
 <tr>
@@ -329,16 +318,6 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
   <td class="center data-display"><?php echo isset($notas['lingua_inglesa']['data']) ? date('d-m-Y', strtotime($notas['lingua_inglesa']['data'])) : '' ?></td>
   <td class="bold center"><?php echo $notas['lingua_inglesa']['serie3'] ?? '' ?></td>
   <td colspan="3" class="center data-display"><?php echo isset($notas['lingua_inglesa']['data']) ? date('d-m-Y', strtotime($notas['lingua_inglesa']['data'])) : '' ?></td>
-</tr>
-
-<tr>
-  <td colspan="7">Língua Espanhola</td>
-  <td colspan="2" class="bold center"><?php echo $notas['lingua_espanhola']['serie1'] ?? '' ?></td>
-  <td colspan="2" class="center data-display"><?php echo isset($notas['lingua_espanhola']['data']) ? date('d-m-Y', strtotime($notas['lingua_espanhola']['data'])) : '' ?></td>
-  <td colspan="4" class="bold center"><?php echo $notas['lingua_espanhola']['serie2'] ?? '' ?></td>
-  <td class="center data-display"><?php echo isset($notas['lingua_espanhola']['data']) ? date('d-m-Y', strtotime($notas['lingua_espanhola']['data'])) : '' ?></td>
-  <td class="bold center"><?php echo $notas['lingua_espanhola']['serie3'] ?? '' ?></td>
-  <td colspan="3" class="center data-display"><?php echo isset($notas['lingua_espanhola']['data']) ? date('d-m-Y', strtotime($notas['lingua_espanhola']['data'])) : '' ?></td>
 </tr>
 
 <tr>
@@ -551,40 +530,40 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
 
       <!-- Totalizadores -->
       <tr>
-        <td colspan="6" class="bold center">Dias Letivos</td>
+        <td colspan="12" class="bold center">Dias Letivos</td>
         <td colspan="2" class="center">-</td>
         <td colspan="2" class="center">-</td>
         <td colspan="4" class="center">-</td>
         <td class="center">-</td>
         <td class="center bold">-</td>
-        <td colspan="5" class="center">-</td>
+        <td colspan="3" class="center">-</td>
       </tr>
       <tr>
-        <td colspan="6" class="bold center">Carga Horária Anual</td>
+        <td colspan="12" class="bold center">Carga Horária Anual</td>
         <td colspan="2" class="center">-</td>
         <td colspan="2" class="center">-</td>
         <td colspan="4" class="center">-</td>
         <td class="center">-</td>
         <td class="center bold">-</td>
-        <td colspan="5" class="center">-</td>
+        <td colspan="3" class="center">-</td>
       </tr>
       <tr>
-        <td colspan="6" class="bold center">Carga Horária Total</td>
+        <td colspan="12" class="bold center">Carga Horária Total</td>
         <td colspan="2" class="center">-</td>
         <td colspan="2" class="center">-</td>
         <td colspan="4" class="center">-</td>
         <td class="center">-</td>
         <td class="center">-</td>
-        <td colspan="5" class="center">-</td>
+        <td colspan="3" class="center">-</td>
       </tr>
       <tr>
-        <td colspan="6" class="bold center">RESULTADO FINAL</td>
+        <td colspan="12" class="bold center">RESULTADO FINAL</td>
         <td colspan="2" class="center">-</td>
         <td colspan="2" class="center">-</td>
         <td colspan="4" class="center">-</td>
         <td class="center">-</td>
         <td class="center">-</td>
-        <td colspan="5" class="center bold" style="font-weight: bold;">
+        <td colspan="3" class="center bold" style="font-weight: bold;">
           <?php echo $dadosAdicionais['situacao'] ?? '' ?>
         </td>
       </tr>

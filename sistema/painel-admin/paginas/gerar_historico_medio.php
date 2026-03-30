@@ -760,7 +760,6 @@ if (!$aluno_error) {
                 'Língua Portuguesa',
                 'Arte',
                 'Língua Inglesa',
-                'Língua Espanhola',
                 'Educação Física'
             ],
             'matematica': ['Matemática'],
@@ -831,7 +830,6 @@ if (!$aluno_error) {
             'arte_fundamental': 'Arte',
             'lingua_inglesa_fundamental': 'Língua Inglesa',
             'lingua_inglesa_medio': 'Língua Inglesa',
-            'lingua_espanhola_medio': 'Língua Espanhola',
             'educacao_fisica_medio': 'Educação Física',
             'biologia_medio': 'Biologia',
             'geografia_medio': 'Geografia',
