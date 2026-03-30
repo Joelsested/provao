@@ -36,7 +36,7 @@ if (!function_exists('formatar_data_extenso_ptbr')) {
 
 if (!empty($data_certificado)) {
 	$timestamp = strtotime($data_certificado);
-	// Se a data for invÃ¡lida ou vazia, usa a data atual
+	// Se a data for inválida ou vazia, usa a data atual
 	if ($timestamp === false) {
 		$timestamp = strtotime('today');
 	}
@@ -217,8 +217,8 @@ $data_hoje = formatar_data_extenso_ptbr('today');
 	<div class="nome-aluno"> <b><br><br><?php echo mb_strtoupper($nome_aluno); ?></b></div>
 
 	<div class="descricao"><br><br> <?php echo $identidade_texto; ?>, Nacionalidade Brasileiro(a), Natural de <?php echo $naturalidade ?>, Nascido(a) em, <?php echo $nascimento ?>, o presente
-		CERTIFICADO por haver concluÃ­do no ano de <?php echo $ano_certificado; ?> o Ensino MÃ©dio, nos Exames de FinalizaÃ§Ã£o de Etapas â€“ EJA â€“
-		EducaÃ§Ã£o e Jovens e Adultos. </div>
+		CERTIFICADO por haver concluído no ano de <?php echo $ano_certificado; ?> o Ensino Médio, nos Exames de Finalização de Etapas – EJA –
+		Educação e Jovens e Adultos. </div>
 
 
 	<div class="data"> <br><br> Buritis - <?php echo $data_formatada ?></div>
