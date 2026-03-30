@@ -5,18 +5,44 @@ $data_certificado = $_GET['data'] ?? null;
 $ano_certificado = $_GET['ano'] ?? null;
 include('../conexao.php');
 
-setlocale(LC_TIME, 'pt_BR', 'pt_BR.utf-8', 'pt_BR.utf-8', 'portuguese');
 date_default_timezone_set('America/Porto_Velho');
+
+if (!function_exists('formatar_data_extenso_ptbr')) {
+	function formatar_data_extenso_ptbr($data = 'today')
+	{
+		$timestamp = is_int($data) ? $data : strtotime((string) $data);
+		if ($timestamp === false) {
+			$timestamp = strtotime('today');
+		}
+
+		$meses = [
+			1 => 'janeiro',
+			2 => 'fevereiro',
+			3 => 'março',
+			4 => 'abril',
+			5 => 'maio',
+			6 => 'junho',
+			7 => 'julho',
+			8 => 'agosto',
+			9 => 'setembro',
+			10 => 'outubro',
+			11 => 'novembro',
+			12 => 'dezembro',
+		];
+
+		return ((int) date('d', $timestamp)) . ' de ' . ($meses[(int) date('n', $timestamp)] ?? '') . ' de ' . date('Y', $timestamp);
+	}
+}
 
 if (!empty($data_certificado)) {
 	$timestamp = strtotime($data_certificado);
-	// Se a data for inválida ou vazia, usa a data atual
+	// Se a data for invÃ¡lida ou vazia, usa a data atual
 	if ($timestamp === false) {
 		$timestamp = strtotime('today');
 	}
-	$data_formatada = utf8_encode(strftime('%d de %B de %Y', $timestamp));
+	$data_formatada = formatar_data_extenso_ptbr($timestamp);
 } else {
-	$data_formatada = utf8_encode(strftime('%d de %B de %Y', strtotime('today')));
+	$data_formatada = formatar_data_extenso_ptbr('today');
 }
 
 
@@ -55,9 +81,8 @@ if ($expedicao !== '') {
 	$identidade_texto .= ', expedida em ' . $expedicao;
 }
 
-setlocale(LC_TIME, 'pt_BR', 'pt_BR.utf-8', 'pt_BR.utf-8', 'portuguese');
 date_default_timezone_set('America/Porto_Velho');
-$data_hoje = utf8_encode(strftime('%A, %d de %B de %Y', strtotime('today')));
+$data_hoje = formatar_data_extenso_ptbr('today');
 
 
 
@@ -192,8 +217,8 @@ $data_hoje = utf8_encode(strftime('%A, %d de %B de %Y', strtotime('today')));
 	<div class="nome-aluno"> <b><br><br><?php echo mb_strtoupper($nome_aluno); ?></b></div>
 
 	<div class="descricao"><br><br> <?php echo $identidade_texto; ?>, Nacionalidade Brasileiro(a), Natural de <?php echo $naturalidade ?>, Nascido(a) em, <?php echo $nascimento ?>, o presente
-		CERTIFICADO por haver concluído no ano de <?php echo $ano_certificado; ?> o Ensino Médio, nos Exames de Finalização de Etapas – EJA –
-		Educação e Jovens e Adultos. </div>
+		CERTIFICADO por haver concluÃ­do no ano de <?php echo $ano_certificado; ?> o Ensino MÃ©dio, nos Exames de FinalizaÃ§Ã£o de Etapas â€“ EJA â€“
+		EducaÃ§Ã£o e Jovens e Adultos. </div>
 
 
 	<div class="data"> <br><br> Buritis - <?php echo $data_formatada ?></div>

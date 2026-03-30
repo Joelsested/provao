@@ -1,4 +1,4 @@
-﻿<?php 
+<?php 
 $id = $_GET['id'];
 $data_certificado = $_GET['data'];
 $ano_certificado = $_GET['ano'];
@@ -7,8 +7,34 @@ $ano_certificado = $_GET['ano'];
 
 include('../conexao.php');
 
-setlocale(LC_TIME, 'pt_BR', 'pt_BR.utf-8', 'pt_BR.utf-8', 'portuguese');
 date_default_timezone_set('America/Porto_Velho');
+
+if (!function_exists('formatar_data_extenso_ptbr')) {
+	function formatar_data_extenso_ptbr($data = 'today')
+	{
+		$timestamp = is_int($data) ? $data : strtotime((string) $data);
+		if ($timestamp === false) {
+			$timestamp = strtotime('today');
+		}
+
+		$meses = [
+			1 => 'janeiro',
+			2 => 'fevereiro',
+			3 => 'março',
+			4 => 'abril',
+			5 => 'maio',
+			6 => 'junho',
+			7 => 'julho',
+			8 => 'agosto',
+			9 => 'setembro',
+			10 => 'outubro',
+			11 => 'novembro',
+			12 => 'dezembro',
+		];
+
+		return ((int) date('d', $timestamp)) . ' de ' . ($meses[(int) date('n', $timestamp)] ?? '') . ' de ' . date('Y', $timestamp);
+	}
+}
 
 if (!empty($data_certificado)) {
 	$timestamp = strtotime($data_certificado);
@@ -16,9 +42,9 @@ if (!empty($data_certificado)) {
 	if ($timestamp === false) {
 		$timestamp = strtotime('today');
 	}
-	$data_formatada = utf8_encode(strftime('%d de %B de %Y', $timestamp));
+	$data_formatada = formatar_data_extenso_ptbr($timestamp);
 } else {
-	$data_formatada = utf8_encode(strftime('%d de %B de %Y', strtotime('today')));
+	$data_formatada = formatar_data_extenso_ptbr('today');
 }
 
 
@@ -38,9 +64,8 @@ $naturalidade = $res[0]['naturalidade'];
 $pai = $res[0]['pai'];
 $mae = $res[0]['mae'];
 
-setlocale(LC_TIME, 'pt_BR', 'pt_BR.utf-8', 'pt_BR.utf-8', 'portuguese');
 date_default_timezone_set('America/Sao_Paulo');
-$data_hoje = utf8_encode(strftime('%d de %B de %Y', strtotime('today')));
+$data_hoje = formatar_data_extenso_ptbr('today');
 
 
 ?>
@@ -164,4 +189,7 @@ font-weight: 700;
 </body>
 
 </html>
+
+
+
 

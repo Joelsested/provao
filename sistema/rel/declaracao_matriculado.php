@@ -1,21 +1,47 @@
-﻿<?php
+<?php
 $id = $_GET['id'];
 $data_certificado = $_GET['data'];
 $ano_certificado = $_GET['ano'];
 
 include('../conexao.php');
 
-setlocale(LC_TIME, 'pt_BR', 'pt_BR.utf-8', 'pt_BR.utf-8', 'portuguese');
 date_default_timezone_set('America/Porto_Velho');
+
+if (!function_exists('formatar_data_extenso_ptbr')) {
+	function formatar_data_extenso_ptbr($data = 'today')
+	{
+		$timestamp = is_int($data) ? $data : strtotime((string) $data);
+		if ($timestamp === false) {
+			$timestamp = strtotime('today');
+		}
+
+		$meses = [
+			1 => 'janeiro',
+			2 => 'fevereiro',
+			3 => 'março',
+			4 => 'abril',
+			5 => 'maio',
+			6 => 'junho',
+			7 => 'julho',
+			8 => 'agosto',
+			9 => 'setembro',
+			10 => 'outubro',
+			11 => 'novembro',
+			12 => 'dezembro',
+		];
+
+		return ((int) date('d', $timestamp)) . ' de ' . ($meses[(int) date('n', $timestamp)] ?? '') . ' de ' . date('Y', $timestamp);
+	}
+}
 
 if (!empty($data_certificado)) {
 	$timestamp = strtotime($data_certificado);
 	if ($timestamp === false) {
 		$timestamp = strtotime('today');
 	}
-	$data_formatada = utf8_encode(strftime('%d de %B de %Y', $timestamp));
+	$data_formatada = formatar_data_extenso_ptbr($timestamp);
 } else {
-	$data_formatada = utf8_encode(strftime('%d de %B de %Y', strtotime('today')));
+	$data_formatada = formatar_data_extenso_ptbr('today');
 }
 
 $query = $pdo->prepare("SELECT * from usuarios where id_pessoa = :id_pessoa order by id desc ");
@@ -38,9 +64,8 @@ $naturalidade = $res[0]['naturalidade'];
 $pai = $res[0]['pai'];
 $mae = $res[0]['mae'];
 
-setlocale(LC_TIME, 'pt_BR', 'pt_BR.utf-8', 'pt_BR.utf-8', 'portuguese');
 date_default_timezone_set('America/Sao_Paulo');
-$data_hoje = utf8_encode(strftime('%d de %B de %Y', strtotime('today')));
+$data_hoje = formatar_data_extenso_ptbr('today');
 ?>
 
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-wEmeIV1mKuiNpC+IOBjI7aAzPcEZeedi5yW5f2yOq55WWLwNGmvvx4Um1vskeMj0" crossorigin="anonymous">
@@ -157,4 +182,7 @@ font-weight: 700;
 </body>
 
 </html>
+
+
+
 

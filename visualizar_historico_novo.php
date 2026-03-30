@@ -664,7 +664,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
           <div class="historico-data-texto">
             <?php
             $municipioData = trim((string) ($dadosAdicionais['municipio'] ?? ''));
-            $dataHistoricoTxt = (string) ($dadosAdicionais['data_historico_extenso'] ?? ($dadosAdicionais['data_historico'] ?? ''));
+            $dataHistoricoIso = trim((string) ($dadosAdicionais['data_historico_iso'] ?? '')); if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataHistoricoIso)) { $meses = [1 => 'janeiro', 2 => 'fevereiro', 3 => 'março', 4 => 'abril', 5 => 'maio', 6 => 'junho', 7 => 'julho', 8 => 'agosto', 9 => 'setembro', 10 => 'outubro', 11 => 'novembro', 12 => 'dezembro']; $ano = (int) substr($dataHistoricoIso, 0, 4); $mes = (int) substr($dataHistoricoIso, 5, 2); $dia = (int) substr($dataHistoricoIso, 8, 2); $dataHistoricoTxt = $dia . ' de ' . ($meses[$mes] ?? '') . ' de ' . $ano; } else { $dataHistoricoTxt = (string) ($dadosAdicionais['data_historico_extenso'] ?? ($dadosAdicionais['data_historico'] ?? '')); }
             echo ($municipioData !== '' ? ($municipioData . ' - ') : '') . $dataHistoricoTxt;
             ?>
           </div>
