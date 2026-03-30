@@ -279,8 +279,8 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
       </tr>
 
       <!-- Cabeçalho da tabela de notas -->
-      <tr class="header-row" ">
-   <td rowspan=" 12" colspan="2" class="rotated-text">BASE NACIONAL</td>
+      <tr class="header-row">
+   <td rowspan="9" colspan="2" class="rotated-text">BASE NACIONAL</td>
         <td colspan="2" rowspan="3" class="center bold">ÁREAS DE CONHECIMENTO</td>
         <td colspan="7" rowspan="3" class="center bold">COMPONENTES CURRICULARES</td>
         <td colspan="13" class="center bold">ANOS/ CARGA HORÁRIA</td>
@@ -301,7 +301,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
 
       <!-- Linguagens e Tecnologias -->
 <tr>
-  <td colspan="2" rowspan="4" class="bold center">LINGUAGENS e TECNOLOGIAS</td>
+  <td colspan="2" rowspan="5" class="bold center">LINGUAGENS e TECNOLOGIAS</td>
   <td colspan="7" style="padding: 4px;">Língua Portuguesa/Literatura</td>
   <td colspan="2" class="bold center"><?php echo $notas['lingua_portuguesa']['serie1'] ?? '' ?></td>
   <td colspan="2" class="center data-display" style="white-space: nowrap; padding-left: 10px; padding-right: 10px;"><?php echo isset($notas['lingua_portuguesa']['data']) ? date('d-m-Y', strtotime($notas['lingua_portuguesa']['data'])) : '' ?></td>
@@ -329,6 +329,16 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
   <td class="center data-display"><?php echo isset($notas['lingua_inglesa']['data']) ? date('d-m-Y', strtotime($notas['lingua_inglesa']['data'])) : '' ?></td>
   <td class="bold center"><?php echo $notas['lingua_inglesa']['serie3'] ?? '' ?></td>
   <td colspan="3" class="center data-display"><?php echo isset($notas['lingua_inglesa']['data']) ? date('d-m-Y', strtotime($notas['lingua_inglesa']['data'])) : '' ?></td>
+</tr>
+
+<tr>
+  <td colspan="7">Língua Espanhola</td>
+  <td colspan="2" class="bold center"><?php echo $notas['lingua_espanhola']['serie1'] ?? '' ?></td>
+  <td colspan="2" class="center data-display"><?php echo isset($notas['lingua_espanhola']['data']) ? date('d-m-Y', strtotime($notas['lingua_espanhola']['data'])) : '' ?></td>
+  <td colspan="4" class="bold center"><?php echo $notas['lingua_espanhola']['serie2'] ?? '' ?></td>
+  <td class="center data-display"><?php echo isset($notas['lingua_espanhola']['data']) ? date('d-m-Y', strtotime($notas['lingua_espanhola']['data'])) : '' ?></td>
+  <td class="bold center"><?php echo $notas['lingua_espanhola']['serie3'] ?? '' ?></td>
+  <td colspan="3" class="center data-display"><?php echo isset($notas['lingua_espanhola']['data']) ? date('d-m-Y', strtotime($notas['lingua_espanhola']['data'])) : '' ?></td>
 </tr>
 
 <tr>
@@ -436,7 +446,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
 <!-- Ciências Humanas -->
 <tr>
   <td rowspan="2" colspan="2" class="rotated-text">SUB TOTAL</td>
-  <td colspan="2" rowspan="7" class="bold center">CIÊNCIAS HUMANAS</td>
+  <td colspan="2" rowspan="5" class="bold center">CIÊNCIAS HUMANAS</td>
   <td colspan="7">História</td>
   <td colspan="2" class="bold center">
     <?php echo $notas['historia']['serie1'] ?? '' ?>

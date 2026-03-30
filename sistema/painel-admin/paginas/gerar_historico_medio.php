@@ -746,7 +746,7 @@ if (!$aluno_error) {
                 Swal.fire({
                     icon: 'info',
                     title: 'Pop-up bloqueado',
-                    text: 'Permita pop-up para abrir a tela de impressao.'
+                    text: 'Permita pop-up para abrir a tela de impressão.'
                 });
             }
         }
@@ -754,12 +754,13 @@ if (!$aluno_error) {
 
 
     <script>
-        // Dados das matérias por ?rea
+        // Dados das matérias por área
         const materias = {
             'linguagens': [
                 'Língua Portuguesa',
                 'Arte',
                 'Língua Inglesa',
+                'Língua Espanhola',
                 'Educação Física'
             ],
             'matematica': ['Matemática'],
@@ -817,8 +818,8 @@ if (!$aluno_error) {
         // Notas existentes do banco
         const notasExistentes = <?php echo json_encode($notas_existentes); ?>;
         const historicoSalvo = <?php echo json_encode($historico_salvo ?? null, JSON_UNESCAPED_UNICODE); ?>;
-        const notasSalvas = históricoSalvo && (historicoSalvo.notas_raw || historicoSalvo.notas) ? (historicoSalvo.notas_raw || historicoSalvo.notas) : {};
-        const dadosAdicionaisSalvos = históricoSalvo && historicoSalvo.dadosAdicionais ? historicoSalvo.dadosAdicionais : {};
+        const notasSalvas = historicoSalvo && (historicoSalvo.notas_raw || historicoSalvo.notas) ? (historicoSalvo.notas_raw || historicoSalvo.notas) : {};
+        const dadosAdicionaisSalvos = historicoSalvo && historicoSalvo.dadosAdicionais ? historicoSalvo.dadosAdicionais : {};
 
 
         const mapeamentoCursos = {
@@ -830,6 +831,7 @@ if (!$aluno_error) {
             'arte_fundamental': 'Arte',
             'lingua_inglesa_fundamental': 'Língua Inglesa',
             'lingua_inglesa_medio': 'Língua Inglesa',
+            'lingua_espanhola_medio': 'Língua Espanhola',
             'educacao_fisica_medio': 'Educação Física',
             'biologia_medio': 'Biologia',
             'geografia_medio': 'Geografia',
@@ -886,7 +888,7 @@ if (!$aluno_error) {
             };
 
             if (!dadosAluno.nome || !dadosAluno.sexo || !dadosAluno.dataNasc) {
-                swal("Erro!", "Por favor, preencha todos os campos obrigatérios (Nome, Sexo, Data de Nascimento).", "error");
+                swal("Erro!", "Por favor, preencha todos os campos obrigatórios (Nome, Sexo, Data de Nascimento).", "error");
                 return;
             }
 
@@ -1581,7 +1583,7 @@ if (!$aluno_error) {
 
         // Função para formatar CPF durante a digitação
         document.addEventListener('DOMContentLoaded', function () {
-            // Aplicar mêscaras quando o documento carregar
+            // Aplicar máscaras quando o documento carregar
             setTimeout(() => {
                 const cpfInput = document.getElementById('cpf');
                 if (cpfInput) {
