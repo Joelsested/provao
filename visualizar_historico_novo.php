@@ -149,8 +149,9 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
       font-size: 12px;
       padding: 1px;
       font-weight: bold;
-
       text-align: center;
+      white-space: nowrap;
+      min-width: 72px;
 
     }
 
