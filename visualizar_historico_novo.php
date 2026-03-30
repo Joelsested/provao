@@ -55,7 +55,6 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
       border-collapse: collapse;
       border: 1px solid black;
       font-size: 12px;
-      table-layout: fixed;
     }
 
     td,
