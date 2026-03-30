@@ -273,7 +273,7 @@ setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
 
       <!-- Cabeçalho da tabela de notas -->
       <tr class="header-row">
-   <td rowspan="8" colspan="2" class="rotated-text">BASE NACIONAL</td>
+   <td rowspan="11" colspan="2" class="rotated-text">BASE NACIONAL</td>
         <td colspan="2" rowspan="3" class="center bold">ÁREAS DE CONHECIMENTO</td>
         <td colspan="7" rowspan="3" class="center bold">COMPONENTES CURRICULARES</td>
         <td colspan="13" class="center bold">ANOS/ CARGA HORÁRIA</td>
