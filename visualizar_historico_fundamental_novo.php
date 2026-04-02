@@ -1,878 +1,491 @@
 <?php
 setlocale(LC_TIME, 'pt_BR.UTF-8', 'pt_BR', 'Portuguese_Brazil');
 
-if (!headers_sent()) {
-    header('Content-Type: text/html; charset=UTF-8');
-}
-ini_set('default_charset', 'UTF-8');
-
-if (!function_exists('normalizar_chave_historico')) {
-    function normalizar_chave_historico($chave)
+if (!function_exists('h')) {
+    function h($valor): string
     {
-        $chave = mb_strtolower((string) $chave, 'UTF-8');
-        $normalizado = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $chave);
-        if ($normalizado !== false) {
-            $chave = $normalizado;
-        }
-        $chave = preg_replace('/[^a-z0-9]+/', '_', $chave);
-        return trim((string) $chave, '_');
+        return htmlspecialchars((string) $valor, ENT_QUOTES, 'UTF-8');
     }
 }
 
-if (!function_exists('data_nota')) {
-    function data_nota(array $notas, $chave)
+if (!function_exists('normalizar_data_iso')) {
+    function normalizar_data_iso($valor): string
     {
-        $raw = (string) ($notas[$chave]['data'] ?? '');
-        $raw = ltrim($raw, '*');
-        if ($raw === '') {
+        $data = trim((string) $valor);
+        $data = ltrim($data, '*');
+        if ($data === '') {
             return '';
         }
-        $ts = strtotime($raw);
-        return $ts ? date('d-m-Y', $ts) : '';
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $data)) {
+            return $data;
+        }
+
+        if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $data)) {
+            [$dia, $mes, $ano] = explode('/', $data);
+            return "{$ano}-{$mes}-{$dia}";
+        }
+
+        if (preg_match('/^\d{2}-\d{2}-\d{4}$/', $data)) {
+            [$dia, $mes, $ano] = explode('-', $data);
+            return "{$ano}-{$mes}-{$dia}";
+        }
+
+        if (preg_match('/^\d{8}$/', $data)) {
+            $dia = substr($data, 0, 2);
+            $mes = substr($data, 2, 2);
+            $ano = substr($data, 4, 4);
+            return "{$ano}-{$mes}-{$dia}";
+        }
+
+        return '';
     }
 }
 
-if (!function_exists('valor_nota')) {
-    function valor_nota(array $notas, $chave, $serie)
+if (!function_exists('formatar_data_br')) {
+    function formatar_data_br($valor, string $fallback = ''): string
     {
-        $valor = (string) ($notas[$chave][$serie] ?? '0.0');
-        return ltrim($valor, '*');
+        $iso = normalizar_data_iso($valor);
+        if ($iso === '') {
+            return $fallback;
+        }
+        return substr($iso, 8, 2) . '/' . substr($iso, 5, 2) . '/' . substr($iso, 0, 4);
     }
 }
 
-$notas = isset($notas) && is_array($notas) ? $notas : [];
-$notasNormalizadas = [];
-foreach ($notas as $materia => $dadosMateria) {
-    if (!is_array($dadosMateria)) {
-        continue;
-    }
-    $chaveNormalizada = normalizar_chave_historico($materia);
-    if ($chaveNormalizada === '') {
-        continue;
-    }
-    $notasNormalizadas[$chaveNormalizada] = [
-        'serie1' => (string) ($dadosMateria['serie1'] ?? '0.0'),
-        'serie2' => (string) ($dadosMateria['serie2'] ?? '0.0'),
-        'serie3' => (string) ($dadosMateria['serie3'] ?? '0.0'),
-        'data' => (string) ($dadosMateria['data'] ?? ''),
-    ];
-}
-
-$materiasEsperadas = [
-    'lingua_portuguesa',
-    'arte',
-    'educacao_fisica',
-    'matematica',
-    'ciencias',
-    'historia',
-    'geografia',
-    'lingua_inglesa',
-];
-
-foreach ($materiasEsperadas as $materia) {
-    if (!isset($notasNormalizadas[$materia])) {
-        $notasNormalizadas[$materia] = [
-            'serie1' => '0.0',
-            'serie2' => '0.0',
-            'serie3' => '0.0',
-            'data' => '',
+if (!function_exists('formatar_data_extenso')) {
+    function formatar_data_extenso($valor): string
+    {
+        $iso = normalizar_data_iso($valor);
+        if ($iso === '') {
+            return '';
+        }
+        $meses = [
+            1 => 'janeiro',
+            2 => 'fevereiro',
+            3 => 'marco',
+            4 => 'abril',
+            5 => 'maio',
+            6 => 'junho',
+            7 => 'julho',
+            8 => 'agosto',
+            9 => 'setembro',
+            10 => 'outubro',
+            11 => 'novembro',
+            12 => 'dezembro',
         ];
+        $dia = (int) substr($iso, 8, 2);
+        $mes = (int) substr($iso, 5, 2);
+        $ano = (int) substr($iso, 0, 4);
+        return $dia . ' de ' . ($meses[$mes] ?? '') . ' de ' . $ano;
     }
 }
 
-$notas = $notasNormalizadas;
+if (!function_exists('extrair_nota_materia')) {
+    function extrair_nota_materia(array $item): string
+    {
+        $ordem = ['serie1', 'serie2', 'serie3', 'nota'];
+        foreach ($ordem as $campo) {
+            if (!array_key_exists($campo, $item)) {
+                continue;
+            }
+            $valor = ltrim(trim((string) $item[$campo]), '*');
+            if ($valor === '' || $valor === '-') {
+                continue;
+            }
 
+            $numero = str_replace(',', '.', $valor);
+            if (is_numeric($numero)) {
+                return number_format((float) $numero, 1, ',', '');
+            }
+            return $valor;
+        }
+        return '';
+    }
+}
+
+if (!function_exists('chave_materia_canonica')) {
+    function chave_materia_canonica($valor): string
+    {
+        $texto = trim((string) $valor);
+        if ($texto === '') {
+            return '';
+        }
+
+        $texto = mb_strtolower($texto, 'UTF-8');
+        if (class_exists('Normalizer')) {
+            $texto = Normalizer::normalize($texto, Normalizer::FORM_D);
+            $texto = preg_replace('/\pM/u', '', $texto);
+        } else {
+            $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $texto);
+            if ($ascii !== false) {
+                $texto = $ascii;
+            }
+        }
+
+        $texto = preg_replace('/[^a-z0-9]+/', '', (string) $texto);
+        return $texto;
+    }
+}
+
+$dadosAluno = is_array($dadosAluno ?? null) ? $dadosAluno : [];
+$dadosAdicionais = is_array($dadosAdicionais ?? null) ? $dadosAdicionais : [];
+$notas = is_array($notas ?? null) ? $notas : [];
+$notasCanonicas = [];
+foreach ($notas as $chaveMateria => $dadosMateriaTmp) {
+    $canon = chave_materia_canonica($chaveMateria);
+    if ($canon !== '' && is_array($dadosMateriaTmp)) {
+        $notasCanonicas[$canon] = $dadosMateriaTmp;
+    }
+}
+
+$nome = trim((string) ($dadosAluno['nome'] ?? ''));
+$pai = trim((string) ($dadosAluno['pai'] ?? ''));
+$mae = trim((string) ($dadosAluno['mae'] ?? ''));
+$dataNascimento = formatar_data_br($dadosAluno['dataNasc'] ?? ($dadosAluno['nascimento'] ?? ''), '00/00/0000');
+$naturalidade = trim((string) ($dadosAluno['naturalidade'] ?? ''));
+$rg = trim((string) ($dadosAluno['rg'] ?? ''));
+$orgaoEmissor = trim((string) ($dadosAluno['orgao_emissor'] ?? ($dadosAluno['orgao_expedidor'] ?? '')));
+$dataExpedicao = formatar_data_br($dadosAluno['expedicao'] ?? '', '00/00/0000');
+$cpf = trim((string) ($dadosAluno['cpf'] ?? ''));
+$anoConclusao = trim((string) ($dadosAluno['anoConclusao'] ?? ($dadosAluno['ano_conclusao'] ?? ($dadosAdicionais['anoConclusao'] ?? ''))));
+if ($anoConclusao === '') {
+    $anoConclusao = substr((string) date('Y'), 0, 4);
+}
+
+$filiacao = '';
+if ($pai !== '' && $mae !== '') {
+    $filiacao = $pai . ' / ' . $mae;
+} elseif ($pai !== '') {
+    $filiacao = $pai;
+} elseif ($mae !== '') {
+    $filiacao = $mae;
+} else {
+    $filiacao = 'NAO INFORMADO';
+}
+
+$municipioData = trim((string) ($dadosAdicionais['municipio'] ?? 'Buritis - RO'));
+$dataHistorico = trim((string) ($dadosAdicionais['data_historico_iso'] ?? ''));
+if ($dataHistorico === '') {
+    $dataHistorico = trim((string) ($dadosAdicionais['data_historico'] ?? ''));
+}
+$dataHistoricoExtenso = formatar_data_extenso($dataHistorico);
+if ($dataHistoricoExtenso === '') {
+    $dataHistoricoExtenso = trim((string) ($dadosAdicionais['data_historico_extenso'] ?? ''));
+}
+
+$observacoes = trim((string) ($dadosAdicionais['observacoes'] ?? ''));
+$aproveitamentoEstudosAnteriores = trim((string) ($dadosAdicionais['aproveitamento_estudos_anteriores'] ?? ''));
+$situacao = strtoupper(trim((string) ($dadosAdicionais['situacao'] ?? 'APROVADO')));
+if ($situacao === '') {
+    $situacao = 'APROVADO';
+}
+
+$cargaHorariaValor = trim((string) ($dadosAdicionais['cargaHoraria'] ?? '1600'));
+if ($cargaHorariaValor === '') {
+    $cargaHorariaValor = '1600';
+}
+$cargaHorariaTexto = rtrim($cargaHorariaValor, 'hH') . 'h';
+
+$marcaDagua = strtolower(trim((string) ($dadosAdicionais['marca_dagua'] ?? 'sim'))) !== 'nao';
+$classeMarcaDagua = $marcaDagua ? '' : ' sem-marca-dagua';
+
+$componentes = [
+    [
+        'area' => 'LINGUAGENS',
+        'itens' => [
+            ['key' => 'lingua_portuguesa', 'nome' => 'Lingua Portuguesa', 'ch' => '200'],
+            ['key' => 'lingua_inglesa', 'nome' => 'Lingua Inglesa', 'ch' => '100'],
+            ['key' => 'arte', 'nome' => 'Arte', 'ch' => '100'],
+            ['key' => 'educacao_fisica', 'nome' => 'Educacao Fisica', 'ch' => '100'],
+        ],
+    ],
+    [
+        'area' => 'MATEMATICA',
+        'itens' => [
+            ['key' => 'matematica', 'nome' => 'Matematica', 'ch' => '200'],
+        ],
+    ],
+    [
+        'area' => 'NATUREZA',
+        'itens' => [
+            ['key' => 'ciencias', 'nome' => 'Ciencias', 'ch' => '200'],
+        ],
+    ],
+    [
+        'area' => 'CIENCIAS HUMANAS',
+        'itens' => [
+            ['key' => 'historia', 'nome' => 'Historia', 'ch' => '300'],
+            ['key' => 'geografia', 'nome' => 'Geografia', 'ch' => '300'],
+        ],
+    ],
+];
 ?>
-
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Histórico Escolar - SESTED</title>
-    <style>
-        @page {
-            size: A4;
-            margin: 4mm;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Historico Escolar - Fundamental</title>
+  <style>
+    @page { size: A4; margin: 5mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Times New Roman", serif; background: #f2f2f2; }
+    .print-toolbar { position: fixed; top: 8px; right: 8px; z-index: 9999; }
+    .print-btn {
+      border: 1px solid #1f3b57; background: #1f3b57; color: #fff;
+      padding: 8px 12px; border-radius: 4px; font-size: 13px; cursor: pointer;
+    }
+    .pagina {
+      width: 210mm; min-height: 297mm; margin: 8px auto; background: #fff;
+      border: 1px solid #cfcfcf; padding: 10mm; position: relative; overflow: hidden;
+    }
+    .pagina::before {
+      content: "";
+      position: absolute; inset: 0;
+      background: url("https://sested-eja.com/img/logo.jpg") no-repeat center 74%;
+      background-size: 76%;
+      opacity: 0.08;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .pagina.sem-marca-dagua::before { display: none; }
+    .conteudo { position: relative; z-index: 1; }
 
-        * {
-            box-sizing: border-box;
-        }
+    .cabecalho-topo { text-align: center; }
+    .cabecalho-topo img { width: 140px; height: 100px; margin-bottom: 2px; }
+    .cabecalho-topo .titulo {
+      font-weight: 700;
+      font-size: 14px;
+      line-height: 1.05;
+      margin-bottom: 4px;
+    }
+    .cabecalho-topo .linha { font-size: 12px; margin-top: 1px; }
+    .titulo-doc { text-align: center; margin: 7px 0 5px; }
+    .titulo-doc .t1 { font-size: 32px; font-weight: 700; line-height: 1; }
+    .titulo-doc .t2 { font-size: 16px; font-weight: 700; margin-top: 1px; }
 
+    table { width: 100%; border-collapse: collapse; }
+    .dados td, .desempenho td, .desempenho th {
+      border: 1px solid #000; padding: 2px 4px; font-size: 12px; line-height: 1.08;
+    }
+    .dados .label { font-weight: 700; white-space: nowrap; }
+    .dados .valor { text-transform: uppercase; }
 
+    .bloco-titulo {
+      text-align: center; font-weight: 700; font-size: 12px; margin: 9px 0 4px;
+    }
+    .desempenho th {
+      font-weight: 700; background: #ececec; text-align: center;
+      font-size: 11px;
+    }
+    .area {
+      text-align: center; font-weight: 700; font-size: 10px; width: 11%;
+      vertical-align: middle; line-height: 1.05;
+    }
+    .comp { width: 36%; }
+    .nota, .ch, .data, .freq, .res { text-align: center; }
+    .nota { width: 10%; }
+    .ch { width: 10%; }
+    .data { width: 12%; }
+    .freq { width: 10%; color: #000; }
+    .res { width: 11%; }
+    .totais td { font-weight: 700; }
+    .totais .valor { text-align: center; }
 
-        .document-container {
-            width: 100%;
-            max-width: 210mm;
-            margin: 0 auto;
-        }
+    .obs-caixa {
+      text-align: left;
+      vertical-align: top;
+      padding: 6px 8px !important;
+      min-height: 38px;
+      line-height: 1.2;
+      font-weight: 400 !important;
+    }
+    .obs-caixa strong {
+      display: block;
+      margin-bottom: 3px;
+      font-weight: 700;
+    }
 
-        .logo-header {
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            gap: 20px;
-            padding-bottom: 4px;
-            margin-top: 8px;
-            margin-bottom: 10px;
-        }
+    .local-data {
+      text-align: right;
+      margin-top: 8px;
+      font-size: 13px;
+      padding-right: 12mm;
+    }
 
-        .logo-header img {
-            width: 50px;
-            height: 50px;
-            flex-shrink: 0;
-        }
+    .assinaturas {
+      width: 100%; margin-top: 108px; border-collapse: collapse;
+    }
+    .assinaturas td {
+      width: 50%; text-align: center; border: none; font-size: 14px;
+      vertical-align: top;
+    }
+    .linha-assinatura {
+      display: inline-block; width: 86%; border-top: 1px solid #000; margin-bottom: 4px;
+    }
+    .cargo { font-weight: 700; margin-top: 2px; }
 
-        .logo-header span {
-            font-size: 18px;
-            font-weight: bold;
-            text-transform: uppercase;
-            line-height: 1.2;
-        }
+    .rodape-legal {
+      margin-top: 24px; text-align: left; font-size: 11px; font-style: italic;
+    }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 1px solid black;
-            font-size: 12px;
-        }
-
-        td,
-        th {
-            border: 0.5px solid black;
-            padding: 1px 2px;
-            /* vertical-align: top; */
-            text-align: left;
-            line-height: 1.1;
-        }
-
-        .header-row {
-            background-color: #f0f0f0;
-        }
-
-        .bold {
-            font-weight: bold;
-        }
-
-        .center {
-            text-align: center;
-        }
-
-        .small-text {
-            font-size: 9px;
-        }
-
-        .rotated-text {
-            writing-mode: vertical-lr;
-            text-orientation: mixed;
-            text-align: center;
-            width: 18px;
-            font-size: 9px;
-            padding: 1px;
-        }
-
-        .grades-section td {
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .ch-data-head,
-        .ch-data-cell {
-            white-space: nowrap;
-            text-align: center;
-        }
-
-        .subject-area {
-            background-color: #f9f9f9;
-            font-weight: bold;
-            text-align: center;
-            writing-mode: vertical-lr;
-            text-orientation: mixed;
-            font-size: 9px;
-            width: 22px;
-        }
-
-        .signature-section {
-            text-align: center;
-            padding-top: 3px;
-        }
-
-        .signature-section p {
-            margin: 2px 0;
-            font-size: 9px;
-        }
-
-        .final-logo {
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            gap: 5px;
-            margin: 2px 0;
-        }
-
-        .final-logo img {
-            width: 25px;
-            height: 25px;
-        }
-
-        .final-logo span {
-            font-size: 10px;
-            font-weight: bold;
-        }
-
-        /* Media query para impressão */
-
-
-        .uppercase {
-            text-transform: uppercase;
-        }
-
-        .historic-title {
-            padding: 20px;
-        }
-
-        .data-display {
-            font-size: 8px;
-            padding: 1px;
-            font-weight: bold;
-
-        }
-
-        tr td.data-display:last-of-type {
-            /* background: yellow; */
-            /* exemplo */
-        }
-
-        .historico-carimbo {
-            border: 1px solid #000;
-            text-align: center;
-            font-weight: 700;
-            line-height: 1.05;
-            padding: 6px 4px;
-            margin-bottom: 8px;
-        }
-
-        .historico-carimbo .titulo {
-            font-size: 20px;
-            margin-bottom: 4px;
-        }
-
-        .historico-carimbo .linha {
-            font-size: 12px;
-        }
-
-        .historico-data-texto {
-            font-size: 13px;
-            text-align: left;
-            margin-top: 4px;
-        }
-
-        .print-toolbar {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            z-index: 9999;
-            display: flex;
-            gap: 8px;
-        }
-
-        .print-btn {
-            border: 1px solid #1f3b57;
-            background: #1f3b57;
-            color: #fff;
-            padding: 8px 12px;
-            font-size: 13px;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-
-        @media print {
-            .print-toolbar {
-                display: none !important;
-            }
-        }
-    </style>
+    @media print {
+      body { background: #fff; }
+      .print-toolbar { display: none !important; }
+      .pagina { margin: 0; border: none; }
+    }
+  </style>
 </head>
-
 <body>
-    <div class="print-toolbar">
-        <button type="button" class="print-btn" onclick="imprimirHistorico()">Imprimir / Salvar em PDF</button>
+  <div class="print-toolbar">
+    <button type="button" class="print-btn" onclick="window.print()">Imprimir / Salvar em PDF</button>
+  </div>
+
+  <div class="pagina<?php echo $classeMarcaDagua; ?>">
+    <div class="conteudo">
+      <div class="cabecalho-topo">
+        <img src="https://sested-eja.com/img/logo.jpg" alt="Logo SESTED">
+        <div class="titulo">SISTEMA DE ENSINO SUPERIOR TECNOLOGICO E EDUCACIONAL - SESTED</div>
+        <div class="linha">Mantenedora: SESTED - Sistema de Ensino Superior Tecnologico e Educacional - ME</div>
+        <div class="linha">CNPJ: 07.158.229/0001-06</div>
+        <div class="linha">Rua Nova Uniao, n 2024, Setor 02, Buritis/RO - CEP 76880-000</div>
+        <div class="linha">e-mail: sestedcursos@gmail.com | Tel. (69) 99694-538</div>
+        <div class="linha">Credenciado pelo Parecer CEB/CEE/RO n 003/24 e Resolucao CEB/CEE/RO n 909/24</div>
+      </div>
+
+      <div class="titulo-doc">
+        <div class="t1">HISTORICO ESCOLAR</div>
+        <div class="t2">EDUCACAO DE JOVENS E ADULTOS - EJA - ENSINO FUNDAMENTAL - 2o SEGMENTO</div>
+      </div>
+
+      <table class="dados">
+        <tr>
+          <td class="label">Nome do Candidato:</td>
+          <td class="valor" colspan="4"><?php echo h($nome); ?></td>
+          <td class="label">CPF: <?php echo h($cpf); ?></td>
+        </tr>
+        <tr>
+          <td class="label">Filiacao:</td>
+          <td class="valor" colspan="5"><?php echo h($filiacao); ?></td>
+        </tr>
+        <tr>
+          <td class="label">Data de Nascimento:</td>
+          <td class="valor"><?php echo h($dataNascimento); ?></td>
+          <td class="label">Naturalidade:</td>
+          <td class="valor" colspan="3"><?php echo h($naturalidade); ?></td>
+        </tr>
+        <tr>
+          <td class="label">Documento de Identidade:</td>
+          <td class="valor">RG: <?php echo h($rg); ?></td>
+          <td class="label">Orgao Expedidor:</td>
+          <td class="valor"><?php echo h($orgaoEmissor); ?></td>
+          <td class="label">Data de Expedicao:</td>
+          <td class="valor"><?php echo h($dataExpedicao); ?></td>
+        </tr>
+        <tr>
+          <td class="label">Ano de Conclusao:</td>
+          <td class="valor"><?php echo h($anoConclusao); ?></td>
+          <td class="label">Nacionalidade:</td>
+          <td class="valor" colspan="3">Brasileira</td>
+        </tr>
+        <tr>
+          <td class="label">Base Legal:</td>
+          <td colspan="5">Lei Federal n 9.394/96 (Arts. 24, 35, 36 e 38) | Resolucao CEB/CEE/RO n 909/24 e n 1.334/23</td>
+        </tr>
+      </table>
+
+      <div class="bloco-titulo">REGISTRO DE DESEMPENHO ESCOLAR - EXAMES DE CONCLUSAO</div>
+
+      <table class="desempenho">
+        <tr>
+          <th>AREA DO CONHECIMENTO</th>
+          <th>COMPONENTES CURRICULARES</th>
+          <th>NOTA</th>
+          <th>C.H.</th>
+          <th>DATA DO EXAME</th>
+          <th>FREQ.</th>
+          <th>RESULTADO</th>
+        </tr>
+        <?php foreach ($componentes as $grupo): ?>
+          <?php $qtd = count($grupo['itens']); ?>
+          <?php foreach ($grupo['itens'] as $indice => $item): ?>
+            <?php
+              $dadosMateria = [];
+              if (is_array($notas[$item['key']] ?? null)) {
+                  $dadosMateria = $notas[$item['key']];
+              } else {
+                  $chaveCanonicaItem = chave_materia_canonica($item['key']);
+                  if ($chaveCanonicaItem !== '' && is_array($notasCanonicas[$chaveCanonicaItem] ?? null)) {
+                      $dadosMateria = $notasCanonicas[$chaveCanonicaItem];
+                  }
+              }
+              $nota = extrair_nota_materia($dadosMateria);
+              $dataExame = formatar_data_br($dadosMateria['data'] ?? '', '00/00/0000');
+            ?>
+            <tr>
+              <?php if ($indice === 0): ?>
+                <td class="area" rowspan="<?php echo $qtd; ?>"><?php echo h($grupo['area']); ?></td>
+              <?php endif; ?>
+              <td class="comp"><?php echo h($item['nome']); ?></td>
+              <td class="nota"><?php echo h($nota); ?></td>
+              <td class="ch"><?php echo h($item['ch']); ?></td>
+              <td class="data"><?php echo h($dataExame); ?></td>
+              <td class="freq">Dispensa</td>
+              <td class="res"><?php echo h($situacao); ?></td>
+            </tr>
+          <?php endforeach; ?>
+        <?php endforeach; ?>
+        <tr class="totais">
+          <td colspan="3">CARGA HORARIA TOTAL</td>
+          <td class="valor"><?php echo h($cargaHorariaTexto); ?></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td colspan="7" class="obs-caixa">
+            <strong>OBSERVACOES:</strong>
+            <?php echo h($observacoes); ?>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="7" class="obs-caixa">
+            <strong>APROVEITAMENTO DE ESTUDOS ANTERIORES:</strong>
+            <?php echo h($aproveitamentoEstudosAnteriores); ?>
+          </td>
+        </tr>
+      </table>
+
+      <div class="local-data">
+        <?php
+          $localData = trim($municipioData) !== '' ? $municipioData . ' - ' : '';
+          $localData .= $dataHistoricoExtenso !== '' ? $dataHistoricoExtenso : '____ de __________ de ________';
+          echo h($localData);
+        ?>
+      </div>
+
+      <table class="assinaturas">
+        <tr>
+          <td>
+            <span class="linha-assinatura"></span><br>
+            Laura Maria Jonjob de Souza<br>
+            RG: 757423 SESDEC/RO<br>
+            <span class="cargo">Diretora</span>
+          </td>
+          <td>
+            <span class="linha-assinatura"></span><br>
+            Daniely Jonjob da Silva<br>
+            RG: 1480635 SESDEC/RO<br>
+            <span class="cargo">Secretaria Escolar</span>
+          </td>
+        </tr>
+      </table>
+
+      <div class="rodape-legal">
+        Este documento possui validade nacional, conforme Art. 38, paragrafo 1o da Lei Federal no 9.394/96.
+      </div>
     </div>
-    <div class="document-container" id="conteudoModal">
-        <div class="logo-header">
-            <img src="https://sested-eja.com/img/logo.jpg" alt="Logo SESTED" />
-            <span style="font-size: 17px;">SESTED - Sistema de Ensino Superior Tecnológico e Educacional</span>
-        </div>
-        <table>
-            <tr>
-                <td colspan="3" class="" style="padding: 3px;">NOME:
-                    <b><?php echo $dadosAdicionais['escola']; ?></b>
-                </td>
-                <td colspan="22" class="">
-                    AUTORIZAÇÃO: <b>PARECER CEB/CEE/RO Nº 041/18 e RESOLUÇÃO CEB/CEE/RO Nº 1296/21</b>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="3" class="" style="padding: 3px;">CNPJ: <b>07.158.229/0001-06</b></td>
-                <td colspan="14" class="">MUNICÍPIO: <b>BURITIS/RO</b></td>
-                <td colspan="7" class="">CNPJ: <b>07.158.229/0001-06</b></td>
-            </tr>
-            <tr>
-                <td colspan="17" class="" style="padding: 3px;">ENDEREÇO: <b>RUA NOVA UNIÃO - 2024 SETOR 02</b></td>
-                <td colspan="8" class="">TEL.: <b>69 -9-92474696</b></td>
-            </tr>
-            <tr>
-                <td colspan="17" class="uppercase" style="padding: 3px;">ALUNO (a):
-                    <b><?php echo $dadosAluno['nome']; ?></b>
-                </td>
-                <td colspan="8">SEXO: <b><?php echo $dadosAluno['sexo']; ?></b></td>
-            </tr>
-            <tr>
-                <td colspan="4" class="uppercase" style="padding: 3px;">DATA DE NASC:
-                    <b><?php echo $dadosAluno['dataNasc']; ?></b>
-                </td>
-                <td colspan="14" class="uppercase">NATURALIDADE: <b><?php echo $dadosAluno['naturalidade']; ?></b></td>
-                <td colspan="8" class="">NACIONALIDADE: <b>BRASILEIRO(A)</b></td>
-            </tr>
-            <tr>
-                <td colspan="10" style="padding: 3px;">CERTIDÃO DE NASCIMENTO:
-                    <b><?php echo $dadosAdicionais['certidao_nascimento']; ?></b>
-                </td>
-                <td colspan="14" style="padding: 3px;">CPF: <b><?php echo $dadosAluno['cpf']; ?></b></td>
-            </tr>
-            <tr>
-
-                <td colspan="10">RG: <b><?php echo $dadosAluno['rg']; ?></b></td>
-                <td colspan="10">ÓRGÃO EXP: <b><?php echo $dadosAluno['orgao_emissor'] ?? ''; ?></b></td>
-                <td colspan="4">EMISSÃO: <b><?php echo $dadosAluno['expedicao'] ?? ''; ?></b></td>
-            </tr>
-            <tr>
-                <td colspan="12" class="uppercase" style="padding: 3px;">PAI: <b><?php echo $dadosAluno['pai']; ?></b>
-                </td>
-                <td colspan="12" class="uppercase">MÃE: <b><?php echo $dadosAluno['mae']; ?></b></td>
-            </tr>
-
-            <tr>
-                <td colspan="25" class="bold center" style="font-size: 14px; padding: 10px;">HISTÓRICO ESCOLAR DO ENSINO
-                    FUNDAMENTAL</td>
-            </tr>
-
-
-            <tr>
-                <th colspan="12" style="padding: 10px; text-align: center; background-color:rgb(238, 238, 238);">ÁREAS
-                    DE CONHECIMENTO</th>
-                <th colspan="14" style="padding: 10px; text-align: center; background-color:rgb(238, 238, 238);">ANOS /
-                    CARGA HORÁRIA</th>
-            </tr>
-            <tr>
-                <th rowspan="2" colspan="14" style="font-size: 9px; text-align: center;">RESULTADOS FINAIS = RF CARGAS
-                    HORÁRIAS = CH TOTAL DE FALTAS = TF
-                    COMPONENTES
-                    CURRICULARES</th>
-                <th style="padding: 12px; text-align: center; background-color: #f0f0f0;" colspan="2">6º Ano</th>
-                <th style="padding: 12px; text-align: center; background-color: #f0f0f0;" colspan="2">7º Ano</th>
-                <th style="padding: 12px; text-align: center; background-color: #f0f0f0;" colspan="3">8º Ano</th>
-                <th style="padding: 12px; text-align: center; background-color: #f0f0f0;" colspan="3">9º Ano</th>
-            </tr>
-            <tr>
-                <th colspan="1" style="padding: 4px; background-color: #f0f0f0; font-size: 10px; text-align: center;">
-                    NOTA</th>
-                <th colspan="1" class="ch-data-head" style="padding: 4px; background-color: #f0f0f0; font-size: 10px;">CH/DATA</th>
-                <th colspan="1" style="padding: 4px; background-color: #f0f0f0; font-size: 10px; text-align: center;">
-                    NOTA</th>
-                <th colspan="1" class="ch-data-head" style="padding: 4px; background-color: #f0f0f0; font-size: 10px;">CH/DATA</th>
-                <th colspan="1" style="padding: 4px; background-color: #f0f0f0; font-size: 10px; text-align: center;">
-                    NOTA</th>
-                <th colspan="2" class="ch-data-head" style="padding: 4px; background-color: #f0f0f0; font-size: 10px;">CH/DATA</th>
-                <th colspan="1" style="padding: 4px; background-color: #f0f0f0; font-size: 10px; text-align: center;">
-                    NOTA</th>
-                <th colspan="3" class="ch-data-head" style="padding: 4px; background-color: #f0f0f0; font-size: 10px;">CH/DATA</th>
-            </tr>
-            <tr>
-                <td rowspan="7" colspan="3" class="area-name"
-                    style="text-align: center; width: 20%; background-color:rgb(238, 238, 238);"><b>BASE
-                        NACIONAL</b></td>
-                <td colspan="11" class="subject-name">Língua Portuguesa</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'lingua_portuguesa', 'serie1'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; white-space: nowrap;" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'lingua_portuguesa'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'lingua_portuguesa', 'serie2'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; white-space: nowrap;" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'lingua_portuguesa'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">
-                    <?php echo valor_nota($notas, 'lingua_portuguesa', 'serie3'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; white-space: nowrap;" colspan="2" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'lingua_portuguesa'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'lingua_portuguesa', 'serie3'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; white-space: nowrap;" colspan="2" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'lingua_portuguesa'); ?>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="11" class="subject-name">Arte</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'arte', 'serie1'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'arte'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'arte', 'serie2'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'arte'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">
-                    <?php echo valor_nota($notas, 'arte', 'serie3'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'arte'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'arte', 'serie3'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'arte'); ?>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="11" class="subject-name">Educação Física</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'educacao_fisica', 'serie1'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'educacao_fisica'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'educacao_fisica', 'serie2'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'educacao_fisica'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">
-                    <?php echo valor_nota($notas, 'educacao_fisica', 'serie3'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'educacao_fisica'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'educacao_fisica', 'serie3'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'educacao_fisica'); ?>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="11" class="subject-name">Matemática</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'matematica', 'serie1'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'matematica'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'matematica', 'serie2'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'matematica'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">
-                    <?php echo valor_nota($notas, 'matematica', 'serie3'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'matematica'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'matematica', 'serie3'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'matematica'); ?>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="11" class="subject-name">Ciências</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'ciencias', 'serie1'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'ciencias'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'ciencias', 'serie2'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'ciencias'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">
-                    <?php echo valor_nota($notas, 'ciencias', 'serie3'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'ciencias'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'ciencias', 'serie3'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'ciencias'); ?>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="11" class="subject-name">História</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'historia', 'serie1'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'historia'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'historia', 'serie2'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'historia'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">
-                    <?php echo valor_nota($notas, 'historia', 'serie3'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'historia'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'historia', 'serie3'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'historia'); ?>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="11" class="subject-name">Geografia</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'geografia', 'serie1'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'geografia'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'geografia', 'serie2'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'geografia'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">
-                    <?php echo valor_nota($notas, 'geografia', 'serie3'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'geografia'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'geografia', 'serie3'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'geografia'); ?>
-                </td>
-            </tr>
-            <tr class="total-row">
-                <td colspan="3" class="area-name" style="text-align: center; background-color:rgb(238, 238, 238);">
-                    <b>SUB-TOTAL</b>
-                </td>
-                <td colspan="11" class="subject-name" style="text-align: center;">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">-</td>
-            </tr>
-            <tr>
-                <td colspan="3" class="area-name" style="text-align: center; background-color:rgb(238, 238, 238);">
-                    <b>PARTE DIVERSIFICADA</b>
-                </td>
-                <td colspan="11" class="subject-name">Língua Inglesa</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'lingua_inglesa', 'serie1'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'lingua_inglesa'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'lingua_inglesa', 'serie2'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'lingua_inglesa'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">
-                    <?php echo valor_nota($notas, 'lingua_inglesa', 'serie3'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'lingua_inglesa'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">
-                    <?php echo valor_nota($notas, 'lingua_inglesa', 'serie3'); ?>
-                </td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell ch-data-cell">
-                    <?php echo data_nota($notas, 'lingua_inglesa'); ?>
-                </td>
-            </tr>
-            <tr class="total-row">
-                <td colspan="3" class="area-name" style="text-align: center; background-color:rgb(238, 238, 238);">
-                    <b>SUB-TOTAL</b>
-                </td>
-                <td colspan="11" class="subject-name" style="text-align: center;">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">-</td>
-            </tr>
-            <tr class="total-row">
-                <td colspan="3" class="area-name" style="text-align: center; background-color:rgb(238, 238, 238);">
-                    <b>TOTAL GERAL</b>
-                </td>
-                <td colspan="11" class="subject-name" style="text-align: center;">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">-</td>
-            </tr>
-
-
-
-
-
-            <!-- Totalizadores -->
-            <tr>
-                <td colspan="14" class="bold center">Dias Letivos</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">-</td>
-            </tr>
-
-            <tr>
-                <td colspan="14" class="bold center">Carga Horária Anual</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">-</td>
-            </tr>
-
-            <tr>
-                <td colspan="14" class="bold center">Carga Horária Total</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">-</td>
-            </tr>
-
-            <tr>
-                <td colspan="14" class="bold center">RESULTADO FINAL</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px" colspan="2" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" class="grade-cell">-</td>
-                <td style="text-align: center; padding: 2px; font-weight: bold;" colspan="2" class="grade-cell">
-                    <?php echo $dadosAdicionais['situacao'] ?? '' ?>
-                </td>
-
-            </tr>
-
-            <!-- Estudos Realizados -->
-            <tr>
-                <td rowspan="6" colspan="2" class="rotated-text bold">Estudos Realizados</td>
-                <td colspan="2" class="center bold">ANO ESCOLAR</td>
-                <td colspan="3" class="center bold">ANO</td>
-                <td colspan="9" class="center bold">INSTITUIÇÃO DE ENSINO</td>
-                <td colspan="7" class="center bold">MUNICÍPIO</td>
-                <td colspan="1" class="center bold">UF</td>
-            </tr>
-            <tr>
-                <td colspan="2" class="center" style="padding: 4px;">6º Ano</td>
-                <td colspan="3" class="center">
-                    <?php echo $dadosAdicionais['anoConclusao'] ?? '' ?>
-                </td>
-                <td colspan="9" class="center">
-                    <?php echo $dadosAdicionais['escola'] ?? '' ?>
-                </td>
-                <td colspan="7" class="center">
-                    <?php echo $dadosAdicionais['municipio'] ?? '' ?>
-                </td>
-                <td colspan="1" class="center">
-                    <?php echo $dadosAdicionais['uf'] ?? '' ?>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="2" class="center" style="padding: 4px;">7º Ano</td>
-                <td colspan="3" class="center">
-                    <?php echo $dadosAdicionais['anoConclusao'] ?? '' ?>
-                </td>
-                <td colspan="9" class="center">
-                    <?php echo $dadosAdicionais['escola'] ?? '' ?>
-                </td>
-                <td colspan="7" class="center">
-                    <?php echo $dadosAdicionais['municipio'] ?? '' ?>
-                </td>
-                <td colspan="1" class="center">
-                    <?php echo $dadosAdicionais['uf'] ?? '' ?>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="2" class="center" style="padding: 4px;">8º Ano</td>
-                <td colspan="3" class="center">
-                    <?php echo $dadosAdicionais['anoConclusao'] ?? '' ?>
-                </td>
-                <td colspan="9" class="center">
-                    <?php echo $dadosAdicionais['escola'] ?? '' ?>
-                </td>
-                <td colspan="7" class="center">
-                    <?php echo $dadosAdicionais['municipio'] ?? '' ?>
-                </td>
-                <td colspan="1" class="center">
-                    <?php echo $dadosAdicionais['uf'] ?? '' ?>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="2" class="center" style="padding: 4px;">9º Ano</td>
-                <td colspan="3" class="center">
-                    <?php echo $dadosAdicionais['anoConclusao'] ?? '' ?>
-                </td>
-                <td colspan="9" class="center">
-                    <?php echo $dadosAdicionais['escola'] ?? '' ?>
-                </td>
-                <td colspan="7" class="center">
-                    <?php echo $dadosAdicionais['municipio'] ?? '' ?>
-                </td>
-                <td colspan="1" class="center">
-                    <?php echo $dadosAdicionais['uf'] ?? '' ?>
-                </td>
-            </tr>
-
-
-            <tr></tr>
-
-            <!-- Síntese e Observações -->
-            <tr>
-                <td style="padding: 4px;" colspan="25"><b>SÍNTESE DO SISTEMA DE AVALIAÇÃO:</b> Será aprovado quando
-                    obtiver
-                    média igual ou superior a
-                    6,0(seis), nos Exames de Conclusão de Etapas do Ensino Fundamental e do Ensino Médio.</td>
-            </tr>
-            <tr>
-                <td colspan="25" style="padding: 2px;">
-                    <p><strong>OBSERVAÇÕES:</strong></p>
-                    <p>
-                        <?php echo $dadosAdicionais['observacoes'] ?? '' ?>
-                    </p>
-                </td>
-            </tr>
-
-            <tr>
-                <td colspan="25"
-                    style="padding: 2px; text-align: center; font-weight: bold; background-color:rgb(212, 212, 212);">
-                    Certificação</td>
-            </tr>
-            <tr>
-                <td colspan="25" style="padding: 2px;">
-                    <p>
-                        O Diretor da Instituição de ensino Escolar SESTED (SISTEMA DE ENSINO SUPERIOR TECNOLÓGICO E
-                        EDUCACIONAL), CERTIFICA, nos termos do Inciso VII, Artigo 24 da Lei Federal 9394/96, que o(a)
-                        referido(a) aluno(a) concluiu o Ensino Fundamental, no ano de 2026.
-                    </p>
-                </td>
-            </tr>
-
-
-
-            <!-- Data e Assinaturas -->
-            <tr>
-                <td colspan="4" style="text-align: left; padding: 5px; width: 30% !important;">
-                    <div class="historico-carimbo">
-                        <div class="titulo">SESTED</div>
-                        <div class="linha">Autorização de Funcionamento</div>
-                        <div class="linha">Parecer CEB/CEE/RO n&ordm; 003/24</div>
-                        <div class="linha">Resolução n&ordm; 011/23 - CEE/RO</div>
-                        <div class="linha">CNPJ 07.158.229/0001-06</div>
-                        <div class="linha">BURITIS - RO</div>
-                    </div>
-                    <div class="historico-data-texto">
-                        <?php
-                        $municipioData = trim((string) ($dadosAdicionais['municipio'] ?? ''));
-                        $dataHistoricoIso = trim((string) ($dadosAdicionais['data_historico_iso'] ?? '')); if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataHistoricoIso)) { $meses = [1 => 'janeiro', 2 => 'fevereiro', 3 => 'março', 4 => 'abril', 5 => 'maio', 6 => 'junho', 7 => 'julho', 8 => 'agosto', 9 => 'setembro', 10 => 'outubro', 11 => 'novembro', 12 => 'dezembro']; $ano = (int) substr($dataHistoricoIso, 0, 4); $mes = (int) substr($dataHistoricoIso, 5, 2); $dia = (int) substr($dataHistoricoIso, 8, 2); $dataHistoricoTxt = $dia . ' de ' . ($meses[$mes] ?? '') . ' de ' . $ano; } else { $dataHistoricoTxt = (string) ($dadosAdicionais['data_historico_extenso'] ?? ($dadosAdicionais['data_historico'] ?? '')); }
-                        echo ($municipioData !== '' ? ($municipioData . ' - ') : '') . $dataHistoricoTxt;
-                        ?>
-                    </div>
-                </td>
-                <td colspan="22">
-                    <table style="width: 100%; text-align: center; border: none; margin: auto;">
-                        <tr>
-                            <td style="border: none; width: 50%; text-align: center; padding: 10px; padding-top: 32px;">
-                                ______________________________<br>
-                                Laura Maria Jonjob de Souza<br>
-                                RG: 757423 SESDEC/RO<br>
-                                <strong>Diretora</strong>
-                            </td>
-                            <td style="border: none; width: 50%; text-align: center; padding-top: 32px;">
-                                ______________________________<br>
-                                Daniely Jonjob da Silva<br>
-                                RG: 1480635 SESDEC/RO<br>
-                                <strong>Secretária</strong>
-                            </td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
-
-        </table>
-    </div>
-    <script>
-        function imprimirHistorico() {
-            window.print();
-        }
-
-        window.addEventListener("DOMContentLoaded", () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get("download") === "1" || urlParams.get("print") === "1") {
-                setTimeout(() => {
-                    imprimirHistorico();
-                }, 250);
-            }
-        });
-    </script>
-
+  </div>
 </body>
-
 </html>

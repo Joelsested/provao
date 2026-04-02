@@ -7,6 +7,11 @@ if ($nivel !== 'Administrador' && $nivel !== 'Secretario') {
     exit();
 }
 
+if (!headers_sent()) {
+    header('Content-Type: text/html; charset=UTF-8');
+}
+ini_set('default_charset', 'UTF-8');
+
 function removerAcentos($string)
 {
     if ($string === null || $string === '') {
@@ -38,6 +43,16 @@ function formatarNota($valor)
 
     // Caso contrário, sempre retorna com ",0"
     return number_format($nota, 1, '.', '');
+}
+
+function pontuarRegistroHistorico($notaFormatada, $dataCertificado)
+{
+    $notaNumerica = (float) str_replace(',', '.', (string) $notaFormatada);
+    $temNotaValida = $notaNumerica > 0 ? 1 : 0;
+    $temData = !empty(trim((string) $dataCertificado)) ? 1 : 0;
+
+    // Prioriza data configurada + nota válida.
+    return ($temData * 2) + $temNotaValida;
 }
 
 
@@ -108,8 +123,8 @@ if (!$aluno_error) {
 
 
 
-    if (count($res) > 0) {
-        $dados_aluno = $res[0];
+    if (count($res2) > 0) {
+        $dados_aluno = $res1[0];
 
         // Organizar notas por matéria
         foreach ($res2 as $matricula) {
@@ -136,13 +151,33 @@ if (!$aluno_error) {
 
 
 
-            // Armazenar nota (assumindo que é uma nota geral - você pode adaptar conforme sua estrutura)
-            $notas_existentes[$nome_curso] = [
-                'nota' => formatarNota($nota),
+            $notaFormatada = formatarNota($nota);
+            $registroNovo = [
+                'nota' => $notaFormatada,
                 'data_certificado' => $data_certificado,
                 'respostas' => $respostas,
                 'nome_curso_original' => $nome_curso_original
             ];
+
+            if (!isset($notas_existentes[$nome_curso])) {
+                $notas_existentes[$nome_curso] = $registroNovo;
+            } else {
+                $registroAtual = $notas_existentes[$nome_curso];
+
+                $scoreAtual = pontuarRegistroHistorico(
+                    $registroAtual['nota'] ?? '0.0',
+                    $registroAtual['data_certificado'] ?? ''
+                );
+                $scoreNovo = pontuarRegistroHistorico(
+                    $registroNovo['nota'] ?? '0.0',
+                    $registroNovo['data_certificado'] ?? ''
+                );
+
+                // Mantém o registro "melhor" para evitar sobrescrever com linha incompleta.
+                if ($scoreNovo > $scoreAtual) {
+                    $notas_existentes[$nome_curso] = $registroNovo;
+                }
+            }
         }
     }
 
@@ -885,26 +920,64 @@ if (!$aluno_error) {
             abrirFormularioNotas();
         }
 
-        function obterNotaExistente(materia, serie) {
-            // console.log(`Buscando nota para: ${materia} - Série: ${serie}`);
+        function chaveCanonicaMateria(texto) {
+            const base = String(texto || '')
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]+/g, ' ')
+                .trim();
+            const compacto = base.replace(/[^a-z0-9]+/g, '');
 
-            // Buscar nota existente no banco através do mapeamento
-            for (let nomeCurso in notasExistentes) {
-                let materiaCorrespondente = mapeamentoCursos[nomeCurso];
+            if (base.includes('portugues') || compacto.includes('portugues')) return 'lingua_portuguesa';
+            if (base.includes('ingles') || compacto.includes('ingles')) return 'lingua_inglesa';
+            if ((base.includes('educac') && base.includes('fisic')) || compacto.includes('educacaofisica')) return 'educacao_fisica';
+            if (base.includes('matemat') || compacto.includes('matematica')) return 'matematica';
+            if (base.includes('cienc') || compacto.includes('ciencias')) return 'ciencias';
+            if (base.includes('hist') || compacto.includes('historia')) return 'historia';
+            if (base.includes('geograf') || compacto.includes('geografia')) return 'geografia';
+            if (base.includes('arte') || compacto.includes('arte')) return 'arte';
+            return base.replace(/\s+/g, '_');
+        }
 
-                // console.log(`Curso: ${nomeCurso} -> Matéria: ${materiaCorrespondente}`);
-
-                if (materiaCorrespondente === materia) {
-                    const nota = notasExistentes[nomeCurso].nota;
-                    // console.log(`Nota encontrada: ${nota} para ${materia}`);
-
-                    // Por enquanto, aplicar a mesma nota para todas as séries
-                    // Você pode adaptar esta lógica se tiver notas por série específica
-                    return nota || '';
+        function buscarRegistroNotaPorMateria(materia) {
+            const alvo = chaveCanonicaMateria(materia);
+            for (const nomeCurso in notasExistentes) {
+                const chaveCurso = chaveCanonicaMateria(nomeCurso);
+                if (chaveCurso === alvo) {
+                    return notasExistentes[nomeCurso];
                 }
             }
+            return null;
+        }
 
-            // console.log(`Nenhuma nota encontrada para: ${materia}`);
+        function obterNotaExistente(materia, serie) {
+            const registro = buscarRegistroNotaPorMateria(materia);
+            return registro && registro.nota ? registro.nota : '';
+        }
+
+        function normalizarDataParaInput(dataBruta) {
+            if (!dataBruta) return '';
+            const texto = String(dataBruta).trim();
+            if (!texto) return '';
+
+            // yyyy-mm-dd ou yyyy-mm-dd HH:ii:ss
+            if (/^\d{4}-\d{2}-\d{2}/.test(texto)) {
+                return texto.substring(0, 10);
+            }
+
+            // dd-mm-yyyy
+            if (/^\d{2}-\d{2}-\d{4}$/.test(texto)) {
+                const [d, m, y] = texto.split('-');
+                return `${y}-${m}-${d}`;
+            }
+
+            // dd/mm/yyyy
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(texto)) {
+                const [d, m, y] = texto.split('/');
+                return `${y}-${m}-${d}`;
+            }
+
             return '';
         }
 
@@ -939,6 +1012,48 @@ if (!$aluno_error) {
             return valores.some(valor => valor.toString().startsWith('*'));
         }
 
+        function notaParaNumero(valor) {
+            if (valor === null || valor === undefined) return 0;
+            const texto = String(valor).replace('*', '').replace(',', '.').trim();
+            if (texto === '') return 0;
+            const numero = parseFloat(texto);
+            return Number.isFinite(numero) ? numero : 0;
+        }
+
+        function escolherNotaCampo(materia, notaSalva, notaBanco) {
+            const bloqueadaManual = temAsteriscoSalvo(materia);
+            const numeroBanco = notaParaNumero(notaBanco);
+            const numeroSalvo = notaParaNumero(notaSalva);
+
+            if (bloqueadaManual) {
+                return notaSalva || notaBanco || '';
+            }
+
+            // Regra principal: sempre prioriza a nota atual do banco (> 0),
+            // para refletir mudanças recentes em Certificados.
+            if (numeroBanco > 0) return String(notaBanco);
+            if (numeroSalvo > 0) return String(notaSalva);
+
+            if (notaSalva !== null && notaSalva !== undefined && String(notaSalva).trim() !== '') {
+                return String(notaSalva);
+            }
+
+            return notaBanco || '';
+        }
+
+        function escolherDataCampo(materia, dataSalva, dataBanco) {
+            const bloqueadaManual = temAsteriscoSalvo(materia);
+            const dataBancoNormalizada = normalizarDataParaInput(dataBanco);
+            const dataSalvaNormalizada = normalizarDataParaInput(dataSalva);
+
+            if (bloqueadaManual) {
+                return dataSalvaNormalizada || dataBancoNormalizada || '';
+            }
+
+            // Regra principal: prioriza a data atual do banco quando existir.
+            return dataBancoNormalizada || dataSalvaNormalizada || '';
+        }
+
         function abrirFormularioNotas() {
             let htmlNotas = '<div style="max-height: 400px; overflow-y: auto;">';
 
@@ -968,13 +1083,14 @@ if (!$aluno_error) {
                 const asteriscoChecked = temAsteriscoSalvo(materia) ? 'checked' : '';
 
                 // Para cursos que existem no banco, preencher os 3 campos com a mesma nota
-                const valorCampo1 = notaSalva1 || nota1 || (temNotaExistente(materia) ? obterNotaExistente(materia, '1') : '');
-                const valorCampo2 = notaSalva2 || nota2 || (temNotaExistente(materia) ? obterNotaExistente(materia, '2') : '');
-                const valorCampo3 = notaSalva3 || nota3 || (temNotaExistente(materia) ? obterNotaExistente(materia, '3') : '');
-                const dataCertificado = (temNotaExistente(materia) && notasExistentes[nomeMateria] && notasExistentes[nomeMateria]['data_certificado'])
-                    ? notasExistentes[nomeMateria]['data_certificado'].split('-').reverse().join('-')
+                const valorCampo1 = escolherNotaCampo(materia, notaSalva1, nota1);
+                const valorCampo2 = escolherNotaCampo(materia, notaSalva2, nota2);
+                const valorCampo3 = escolherNotaCampo(materia, notaSalva3, nota3);
+                const registroNota = buscarRegistroNotaPorMateria(materia);
+                const dataCertificado = registroNota && registroNota['data_certificado']
+                    ? registroNota['data_certificado']
                     : '';
-                const dataInputValue = dataSalva || dataCertificado || '';
+                const dataInputValue = escolherDataCampo(materia, dataSalva, dataCertificado);
 
 
                 htmlNotas += `<tr class="${classExistente}">
@@ -997,7 +1113,7 @@ if (!$aluno_error) {
             </td>
             <td><input type="number" class="grade-input" id="${materia.replace(/\s+/g, '_')}_2" min="0" max="10" step="0.1" placeholder="0.0" value="${valorCampo2}"></td>
             <td><input type="number" class="grade-input" id="${materia.replace(/\s+/g, '_')}_3" min="0" max="10" step="0.1" placeholder="0.0" value="${valorCampo3}"></td>
-            <td><input type="number" class="grade-input" id="${materia.replace(/\s+/g, '_')}_3" min="0" max="10" step="0.1" placeholder="0.0" value="${valorCampo3}"></td>
+            <td><input type="number" class="grade-input" id="${materia.replace(/\s+/g, '_')}_4" min="0" max="10" step="0.1" placeholder="0.0" value="${valorCampo3}"></td>
            
            <td>
             <input type="date" id="${materia.replace(/\s+/g, '_')}_date" name="${materia.replace(/\s+/g, '_')}_date" value="${dataInputValue}">
@@ -1028,13 +1144,14 @@ if (!$aluno_error) {
                 const notaSalva3 = obterNotaSalva(materia, 'serie3');
                 const dataSalva = obterDataSalva(materia);
                 const asteriscoChecked = temAsteriscoSalvo(materia) ? 'checked' : '';
-                const valorCampo1 = notaSalva1 || nota1 || (temNotaExistente(materia) ? obterNotaExistente(materia, '1') : '');
-                const valorCampo2 = notaSalva2 || nota2 || (temNotaExistente(materia) ? obterNotaExistente(materia, '2') : '');
-                const valorCampo3 = notaSalva3 || nota3 || (temNotaExistente(materia) ? obterNotaExistente(materia, '3') : '');
-                const dataCertificado = (temNotaExistente(materia) && notasExistentes[nomeMateria] && notasExistentes[nomeMateria]['data_certificado'])
-                    ? notasExistentes[nomeMateria]['data_certificado'].split('-').reverse().join('-')
+                const valorCampo1 = escolherNotaCampo(materia, notaSalva1, nota1);
+                const valorCampo2 = escolherNotaCampo(materia, notaSalva2, nota2);
+                const valorCampo3 = escolherNotaCampo(materia, notaSalva3, nota3);
+                const registroNota = buscarRegistroNotaPorMateria(materia);
+                const dataCertificado = registroNota && registroNota['data_certificado']
+                    ? registroNota['data_certificado']
                     : '';
-                const dataInputValue = dataSalva || dataCertificado || '';
+                const dataInputValue = escolherDataCampo(materia, dataSalva, dataCertificado);
 
                 htmlNotas += `<tr class="${classExistente}">
             <td style="display: flex; align-items: center; justify-content: space-between;">
@@ -1047,7 +1164,7 @@ if (!$aluno_error) {
             <td><input type="number" class="grade-input" id="${materia.replace(/\s+/g, '_')}_1" min="0" max="10" step="0.1" placeholder="0.0" value="${valorCampo1}"></td>
             <td><input type="number" class="grade-input" id="${materia.replace(/\s+/g, '_')}_2" min="0" max="10" step="0.1" placeholder="0.0" value="${valorCampo2}"></td>
             <td><input type="number" class="grade-input" id="${materia.replace(/\s+/g, '_')}_3" min="0" max="10" step="0.1" placeholder="0.0" value="${valorCampo3}"></td>
-            <td><input type="number" class="grade-input" id="${materia.replace(/\s+/g, '_')}_3" min="0" max="10" step="0.1" placeholder="0.0" value="${valorCampo3}"></td>
+            <td><input type="number" class="grade-input" id="${materia.replace(/\s+/g, '_')}_4" min="0" max="10" step="0.1" placeholder="0.0" value="${valorCampo3}"></td>
             <td><input type="date" id="${materia.replace(/\s+/g, '_')}_date" name="${materia.replace(/\s+/g, '_')}_date" value="${dataInputValue}"></td>
             </tr>`;
             });
@@ -1068,13 +1185,14 @@ if (!$aluno_error) {
                 const notaSalva3 = obterNotaSalva(materia, 'serie3');
                 const dataSalva = obterDataSalva(materia);
                 const asteriscoChecked = temAsteriscoSalvo(materia) ? 'checked' : '';
-                const valorCampo1 = notaSalva1 || nota1 || (temNotaExistente(materia) ? obterNotaExistente(materia, '1') : '');
-                const valorCampo2 = notaSalva2 || nota2 || (temNotaExistente(materia) ? obterNotaExistente(materia, '2') : '');
-                const valorCampo3 = notaSalva3 || nota3 || (temNotaExistente(materia) ? obterNotaExistente(materia, '3') : '');
-                const dataCertificado = (temNotaExistente(materia) && notasExistentes[nomeMateria] && notasExistentes[nomeMateria]['data_certificado'])
-                    ? notasExistentes[nomeMateria]['data_certificado'].split('-').reverse().join('-')
+                const valorCampo1 = escolherNotaCampo(materia, notaSalva1, nota1);
+                const valorCampo2 = escolherNotaCampo(materia, notaSalva2, nota2);
+                const valorCampo3 = escolherNotaCampo(materia, notaSalva3, nota3);
+                const registroNota = buscarRegistroNotaPorMateria(materia);
+                const dataCertificado = registroNota && registroNota['data_certificado']
+                    ? registroNota['data_certificado']
                     : '';
-                const dataInputValue = dataSalva || dataCertificado || '';
+                const dataInputValue = escolherDataCampo(materia, dataSalva, dataCertificado);
 
                 htmlNotas += `<tr class="${classExistente}">
             <td style="display: flex; align-items: center; justify-content: space-between;">
@@ -1087,7 +1205,7 @@ if (!$aluno_error) {
             <td><input type="number" class="grade-input" id="${materia.replace(/\s+/g, '_')}_1" min="0" max="10" step="0.1" placeholder="0.0" value="${valorCampo1}"></td>
             <td><input type="number" class="grade-input" id="${materia.replace(/\s+/g, '_')}_2" min="0" max="10" step="0.1" placeholder="0.0" value="${valorCampo2}"></td>
             <td><input type="number" class="grade-input" id="${materia.replace(/\s+/g, '_')}_3" min="0" max="10" step="0.1" placeholder="0.0" value="${valorCampo3}"></td>
-            <td><input type="number" class="grade-input" id="${materia.replace(/\s+/g, '_')}_3" min="0" max="10" step="0.1" placeholder="0.0" value="${valorCampo3}"></td>
+            <td><input type="number" class="grade-input" id="${materia.replace(/\s+/g, '_')}_4" min="0" max="10" step="0.1" placeholder="0.0" value="${valorCampo3}"></td>
             <td><input type="date" id="${materia.replace(/\s+/g, '_')}_date" name="${materia.replace(/\s+/g, '_')}_date" value="${dataInputValue}"></td>
             </tr>`;
             });
@@ -1131,13 +1249,7 @@ if (!$aluno_error) {
         }
 
         function temNotaExistente(materia) {
-            for (let nomeCurso in notasExistentes) {
-                let materiaCorrespondente = mapeamentoCursos[nomeCurso];
-                if (materiaCorrespondente === materia) {
-                    return true;
-                }
-            }
-            return false;
+            return !!buscarRegistroNotaPorMateria(materia);
         }
 
         function coletarNotas() {
@@ -1176,7 +1288,7 @@ if (!$aluno_error) {
                 notasColetadas[materia] = {
                     serie1: addNota(1),
                     serie2: addNota(2),
-                    serie3: addNota(3),
+                    serie3: addNota(4) || addNota(3),
                     data: data // adiciona o valor do input de data com asterisco se marcado
                 };
             });
@@ -1195,60 +1307,89 @@ if (!$aluno_error) {
                     element: "div",
                     attributes: {
                         innerHTML: `
-                            <div class="form-group">
-                                <label>Nome da Instituição de Ensino:</label>
-                                <input type="text" id="escola" class="swal-content__input" placeholder="Ex: Centro de Estudos SESTED" value="${dadosAdicionaisSalvos.escola || 'SESTED'}">
-                            </div>
-                            <div class="form-group">
-                                <label>Município/UF:</label>
-                                <input type="text" id="municipio" class="swal-content__input" placeholder="Ex: Buritis" value="${dadosAdicionaisSalvos.municipio || ''}">
-                            </div>
-                             <div class="form-group">
-                                <label>UF:</label>
-                                <input type="text" id="uf" class="swal-content__input" placeholder="Ex: RO" value="${dadosAdicionaisSalvos.uf || 'RO'}">
-                            </div>
+                            <style>
+                                #form-adicional-fundamental {
+                                    display: grid;
+                                    grid-template-columns: 1fr 1fr;
+                                    gap: 6px 10px;
+                                }
+                                #form-adicional-fundamental .form-group { margin-bottom: 0; }
+                                #form-adicional-fundamental .form-group label {
+                                    margin-bottom: 2px;
+                                    font-size: 12px;
+                                    line-height: 1.1;
+                                }
+                                #form-adicional-fundamental .swal-content__input {
+                                    margin: 2px 0;
+                                    padding: 6px 8px;
+                                    min-height: 34px;
+                                    font-size: 13px;
+                                }
+                                #form-adicional-fundamental textarea.swal-content__input {
+                                    min-height: 52px;
+                                    line-height: 1.2;
+                                }
+                            </style>
+                            <div id="form-adicional-fundamental">
+                                <div class="form-group" style="grid-column:1 / span 1;">
+                                    <label>Nome da Instituição de Ensino:</label>
+                                    <input type="text" id="escola" class="swal-content__input" placeholder="Ex: Centro de Estudos SESTED" value="${dadosAdicionaisSalvos.escola || 'SESTED'}">
+                                </div>
+                                <div class="form-group" style="grid-column:2 / span 1;">
+                                    <label>UF:</label>
+                                    <input type="text" id="uf" class="swal-content__input" placeholder="Ex: RO" value="${dadosAdicionaisSalvos.uf || 'RO'}">
+                                </div>
 
-                             <div class="form-group">
-                                <label>CERTIDÃO DE NASCIMENTO:</label>
-                                <input type="text" id="certidao_nascimento" class="swal-content__input" placeholder="Ex: 123456789" value="${dadosAdicionaisSalvos.certidao_nascimento || ''}">
-                            </div>
-                            
-                                <div class="form-group">
-    <label>DATA Histórico:</label>
-    <input type="date" id="data_historico" class="swal-content__input" value="${dadosAdicionaisSalvos.data_historico_iso || new Date().toISOString().split('T')[0]}" onclick="this.showPicker()" onfocus="this.showPicker()">
-</div>
+                                <div class="form-group" style="grid-column:1 / span 1;">
+                                    <label>Município:</label>
+                                    <input type="text" id="municipio" class="swal-content__input" placeholder="Ex: Buritis" value="${dadosAdicionaisSalvos.municipio || ''}">
+                                </div>
+                                <div class="form-group" style="grid-column:2 / span 1;">
+                                    <label>Data do Histórico:</label>
+                                    <input type="date" id="data_historico" class="swal-content__input" value="${dadosAdicionaisSalvos.data_historico_iso || new Date().toISOString().split('T')[0]}" onclick="this.showPicker()" onfocus="this.showPicker()">
+                                </div>
 
-                        <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center;">
-                            <div class="form-group" style="width: 48%;">
-                                <label>Ano de Conclusão:</label>
-                                <input type="number" id="anoConclusao" class="swal-content__input" placeholder="Ex: 2024" min="1990" max="2030" value="${dadosAdicionaisSalvos.anoConclusao || '2025'}">
-                            </div>
-                            <div class="form-group" style="width: 48%;">
-                                <label>Carga Horária Total:</label>
-                                <input type="number" id="cargaHoraria" class="swal-content__input" placeholder="Ex: 2400" value="${dadosAdicionaisSalvos.cargaHoraria || '2400'}">
-                            </div>
-                        </div>
+                                <div class="form-group" style="grid-column:1 / span 1;">
+                                    <label>Ano de Conclusão:</label>
+                                    <input type="number" id="anoConclusao" class="swal-content__input" placeholder="Ex: 2024" min="1990" max="2030" value="${dadosAdicionaisSalvos.anoConclusao || '2025'}">
+                                </div>
+                                <div class="form-group" style="grid-column:2 / span 1;">
+                                    <label>Carga Horária Total:</label>
+                                    <input type="number" id="cargaHoraria" class="swal-content__input" placeholder="Ex: 2400" value="${dadosAdicionaisSalvos.cargaHoraria || '2400'}">
+                                </div>
 
-                            <div class="form-group">
-                                <label>Observações:</label>
-                                <textarea id="observacoes" rows="4" class="swal-content__input" placeholder="Ex: Observações">${dadosAdicionaisSalvos.observacoes || ''}</textarea>
-                            </div>
-                            <div class="form-group">
-                                <label>Marca D'agua:</label>
-                               <select id="marca_dagua" class="swal-content__input">
-                                    <option value="">Selecione</option>
-                                    <option value="Sim" ${dadosAdicionaisSalvos.marca_dagua === 'Sim' ? 'selected' : ''}>Sim</option>
-                                    <option value="Nao" ${dadosAdicionaisSalvos.marca_dagua === 'Nao' ? 'selected' : ''}>Nao</option>
-                               </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Situação:</label>
-                                <select id="situacao" class="swal-content__input">
-                                    <option value="APROVADO" ${dadosAdicionaisSalvos.situacao === 'APROVADO' ? 'selected' : ''}>APROVADO</option>
-                                    <option value="REPROVADO" ${dadosAdicionaisSalvos.situacao === 'REPROVADO' ? 'selected' : ''}>REPROVADO</option>
-                                    <option value="TRANSFERIDO" ${dadosAdicionaisSalvos.situacao === 'TRANSFERIDO' ? 'selected' : ''}>TRANSFERIDO</option>
-                                    <option value="CURSANDO" ${dadosAdicionaisSalvos.situacao === 'CURSANDO' ? 'selected' : ''}>CURSANDO</option>
-                                </select>
+                                <div class="form-group" style="grid-column:1 / span 1;">
+                                    <label>Situação:</label>
+                                    <select id="situacao" class="swal-content__input">
+                                        <option value="APROVADO" ${dadosAdicionaisSalvos.situacao === 'APROVADO' ? 'selected' : ''}>APROVADO</option>
+                                        <option value="REPROVADO" ${dadosAdicionaisSalvos.situacao === 'REPROVADO' ? 'selected' : ''}>REPROVADO</option>
+                                        <option value="TRANSFERIDO" ${dadosAdicionaisSalvos.situacao === 'TRANSFERIDO' ? 'selected' : ''}>TRANSFERIDO</option>
+                                        <option value="CURSANDO" ${dadosAdicionaisSalvos.situacao === 'CURSANDO' ? 'selected' : ''}>CURSANDO</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="grid-column:2 / span 1;">
+                                    <label>Marca d'água:</label>
+                                    <select id="marca_dagua" class="swal-content__input">
+                                        <option value="">Selecione</option>
+                                        <option value="Sim" ${dadosAdicionaisSalvos.marca_dagua === 'Sim' ? 'selected' : ''}>Sim</option>
+                                        <option value="Nao" ${dadosAdicionaisSalvos.marca_dagua === 'Nao' ? 'selected' : ''}>Nao</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" style="grid-column:1 / -1;">
+                                    <label>Certidão de Nascimento:</label>
+                                    <input type="text" id="certidao_nascimento" class="swal-content__input" placeholder="Ex: 123456789" value="${dadosAdicionaisSalvos.certidao_nascimento || ''}">
+                                </div>
+
+                                <div class="form-group" style="grid-column:1 / -1;">
+                                    <label>Observações:</label>
+                                    <textarea id="observacoes" rows="2" class="swal-content__input" placeholder="Ex: Observações">${dadosAdicionaisSalvos.observacoes || ''}</textarea>
+                                </div>
+
+                                <div class="form-group" style="grid-column:1 / -1;">
+                                    <label>Aproveitamento de Estudos Anteriores:</label>
+                                    <textarea id="aproveitamento_estudos_anteriores" rows="2" class="swal-content__input" placeholder="Ex: Aproveitamento de estudos anteriores">${dadosAdicionaisSalvos.aproveitamento_estudos_anteriores || ''}</textarea>
+                                </div>
                             </div>
                         `
                     }
@@ -1286,6 +1427,7 @@ if (!$aluno_error) {
                         cargaHoraria: document.getElementById('cargaHoraria').value,
                         situacao: document.getElementById('situacao').value,
                         observacoes: document.getElementById('observacoes').value,
+                        aproveitamento_estudos_anteriores: document.getElementById('aproveitamento_estudos_anteriores').value,
                         marca_dagua: document.getElementById('marca_dagua').value,
                         certidao_nascimento: document.getElementById('certidao_nascimento').value,
                         data_historico_iso: document.getElementById('data_historico').value,
@@ -1558,7 +1700,3 @@ if (!$aluno_error) {
 </body>
 
 </html>
-
-
-
-

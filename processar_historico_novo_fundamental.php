@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $dadosAdicionais = $input['dadosAdicionais'];
     $retorno = isset($input['retorno']) ? $input['retorno'] : 'html';
 
-    // FunÃ§Ã£o para normalizar nomes
+    // Funcao para normalizar nomes
     function formatarNomeMateria($str)
     {
         $str = trim((string) $str);
@@ -55,6 +55,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $str = preg_replace('/[^a-z0-9]+/', '_', (string) $str);
         $str = trim((string) $str, '_');
         $str = preg_replace('/_(fundamental|medio)$/', '', $str);
+
+        $textoBusca = str_replace('_', ' ', (string) $str);
+        $textoCompacto = preg_replace('/[^a-z0-9]+/', '', (string) $str);
+
+        if (str_contains($textoBusca, 'portugues') || str_contains($textoCompacto, 'portugues')) {
+            return 'lingua_portuguesa';
+        }
+        if (str_contains($textoBusca, 'ingles') || str_contains($textoCompacto, 'ingles')) {
+            return 'lingua_inglesa';
+        }
+        if ((str_contains($textoBusca, 'educac') && str_contains($textoBusca, 'fisic'))
+            || str_contains($textoCompacto, 'educacaofisica')) {
+            return 'educacao_fisica';
+        }
+        if (str_contains($textoBusca, 'matemat') || str_contains($textoCompacto, 'matematica')) {
+            return 'matematica';
+        }
+        if (str_contains($textoBusca, 'cienc') || str_contains($textoCompacto, 'ciencias')) {
+            return 'ciencias';
+        }
+        if (str_contains($textoBusca, 'hist') || str_contains($textoCompacto, 'historia')) {
+            return 'historia';
+        }
+        if (str_contains($textoBusca, 'geograf') || str_contains($textoCompacto, 'geografia')) {
+            return 'geografia';
+        }
+        if (str_contains($textoBusca, 'arte') || str_contains($textoCompacto, 'arte')) {
+            return 'arte';
+        }
 
         if ($str === 'hist_ria') {
             $str = 'historia';
@@ -89,13 +118,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $notas = $notasFormatadas;
 
-    $normalizarDataEntrada = static function ($data) {
+$normalizarDataEntrada = static function ($data) {
     $data = trim((string) $data);
     $temAsterisco = str_starts_with($data, '*');
     $dataLimpa = ltrim($data, '*');
 
     if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $dataLimpa)) {
         [$dia, $mes, $ano] = explode('/', $dataLimpa);
+        $dataLimpa = "{$ano}-{$mes}-{$dia}";
+    } elseif (preg_match('/^\d{2}-\d{2}-\d{4}$/', $dataLimpa)) {
+        [$dia, $mes, $ano] = explode('-', $dataLimpa);
         $dataLimpa = "{$ano}-{$mes}-{$dia}";
     } elseif (preg_match('/^\d{8}$/', $dataLimpa)) {
         $dia = substr($dataLimpa, 0, 2);
@@ -106,6 +138,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     return $temAsterisco ? ('*' . $dataLimpa) : $dataLimpa;
 };
+
+$campoTemAsterisco = static function ($valor) {
+    return is_string($valor) && str_starts_with(trim($valor), '*');
+};
+
+$temNotaPositiva = static function ($valor) {
+    $texto = ltrim(trim((string) $valor), '*');
+    $texto = str_replace(',', '.', $texto);
+    if ($texto === '' || !is_numeric($texto)) {
+        return false;
+    }
+    return (float) $texto > 0;
+};
+
+// Reforco: completa notas/datas oficiais direto do banco para evitar lacunas
+// causadas por variacoes de codificacao no nome da materia.
+if (!empty($dadosAluno['id_aluno'])) {
+    $idPessoaAluno = (int) $dadosAluno['id_aluno'];
+
+    $stmtUsuario = $pdo->prepare("SELECT id FROM usuarios WHERE id_pessoa = :id_pessoa AND nivel = 'Aluno' ORDER BY id DESC LIMIT 1");
+    $stmtUsuario->execute([':id_pessoa' => $idPessoaAluno]);
+    $usuarioLinha = $stmtUsuario->fetch(PDO::FETCH_ASSOC);
+
+    if (!empty($usuarioLinha['id'])) {
+        $usuarioId = (int) $usuarioLinha['id'];
+        $stmtMatriculas = $pdo->prepare("
+            SELECT C.nome AS nome_curso, C.data_certificado, M.nota
+            FROM matriculas M
+            INNER JOIN cursos C ON C.id = M.id_curso
+            WHERE M.aluno = :aluno
+              AND M.pacote != 'Sim'
+              AND C.categoria = 7
+        ");
+        $stmtMatriculas->execute([':aluno' => $usuarioId]);
+        $matriculasOficiais = $stmtMatriculas->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($matriculasOficiais as $linhaCurso) {
+            $chaveMateria = formatarNomeMateria($linhaCurso['nome_curso'] ?? '');
+            if ($chaveMateria === '') {
+                continue;
+            }
+
+            $notaEscala10 = ((float) ($linhaCurso['nota'] ?? 0)) / 10;
+            $notaBanco = number_format($notaEscala10, 1, '.', '');
+
+            $dataBanco = $normalizarDataEntrada((string) ($linhaCurso['data_certificado'] ?? ''));
+            $dataBanco = ltrim($dataBanco, '*');
+
+            if (!isset($notas[$chaveMateria]) || !is_array($notas[$chaveMateria])) {
+                $notas[$chaveMateria] = [];
+            }
+
+            $item = $notas[$chaveMateria];
+            $bloqueadoManual = $campoTemAsterisco($item['serie1'] ?? '')
+                || $campoTemAsterisco($item['serie2'] ?? '')
+                || $campoTemAsterisco($item['serie3'] ?? '')
+                || $campoTemAsterisco($item['data'] ?? '');
+
+            if ($bloqueadoManual) {
+                continue;
+            }
+
+            if ($notaEscala10 > 0) {
+                $notas[$chaveMateria]['serie1'] = $notaBanco;
+                $notas[$chaveMateria]['serie2'] = $notaBanco;
+                $notas[$chaveMateria]['serie3'] = $notaBanco;
+            }
+
+            if ($dataBanco !== '') {
+                $notas[$chaveMateria]['data'] = $dataBanco;
+            }
+        }
+    }
+}
 
 $formatarDataBr = static function ($dataIso) {
     if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataIso)) {
@@ -141,7 +247,7 @@ $validarData = static function ($data) use ($hoje, &$erros, $normalizarDataEntra
     $formatarMateriaExibicao = static function ($materia) {
         $materiaOriginal = trim((string) $materia);
         if ($materiaOriginal === '') {
-            return 'nÃ£o informada';
+            return 'não informada';
         }
 
         $chave = mb_strtolower($materiaOriginal, 'UTF-8');
@@ -153,17 +259,17 @@ $validarData = static function ($data) use ($hoje, &$erros, $normalizarDataEntra
         $chave = trim((string) $chave, '_');
 
         $mapaMaterias = [
-            'hist_ria' => 'HistÃ³ria',
-            'historia' => 'HistÃ³ria',
+            'hist_ria' => 'Historia',
+            'historia' => 'Historia',
             'geografia' => 'Geografia',
-            'lingua_portuguesa' => 'LÃ­ngua Portuguesa',
-            'lingua_inglesa' => 'LÃ­ngua Inglesa',
-            'educacao_fisica' => 'EducaÃ§Ã£o FÃ­sica',
-            'ciencias' => 'CiÃªncias',
-            'matematica' => 'MatemÃ¡tica',
+            'lingua_portuguesa' => 'Lingua Portuguesa',
+            'lingua_inglesa' => 'Lingua Inglesa',
+            'educacao_fisica' => 'Educacao Fisica',
+            'ciencias' => 'Ciencias',
+            'matematica' => 'Matematica',
             'arte' => 'Arte',
-            'quimica' => 'QuÃ­mica',
-            'fisica' => 'FÃ­sica',
+            'quimica' => 'Quimica',
+            'fisica' => 'Fisica',
             'biologia' => 'Biologia',
             'filosofia' => 'Filosofia',
             'sociologia' => 'Sociologia',
@@ -179,7 +285,7 @@ $validarData = static function ($data) use ($hoje, &$erros, $normalizarDataEntra
     };
 
     if ($dataHistoricoIso === '') {
-        $erros[] = "Data do histÃ³rico Ã© obrigatÃ³ria.";
+        $erros[] = "Data do histórico é obrigatória.";
     } else {
         $validarData($dataHistoricoIso);
     }
@@ -200,15 +306,15 @@ $validarData = static function ($data) use ($hoje, &$erros, $normalizarDataEntra
         };
 
         $temNota = ($notaTemValor($serie1) || $notaTemValor($serie2) || $notaTemValor($serie3));
-        if ($temNota && $dataMateria === '' && $dataHistoricoIso !== '') {
-            // Usa a data do histÃ³rico como fallback para nÃ£o bloquear geraÃ§Ã£o por falta da data da matÃ©ria.
+        if ($dataMateria === '' && $dataHistoricoIso !== '') {
+            // Usa a data do histórico como fallback para evitar datas vazias nas matérias.
             $dataMateria = $dataHistoricoIso;
             $notas[$materia]['data'] = $dataMateria;
         }
 
         if ($temNota && $dataMateria === '') {
             $materiaExibicao = $formatarMateriaExibicao($materia);
-            $erros[] = "Data obrigatÃ³ria para a matÃ©ria {$materiaExibicao}.";
+            $erros[] = "Data obrigatória para a matéria {$materiaExibicao}.";
         }
 
         if ($dataMateria !== '') {
@@ -239,11 +345,11 @@ $validarData = static function ($data) use ($hoje, &$erros, $normalizarDataEntra
         . preg_replace('/[^A-Za-z0-9_\-]/', '_', $input['dadosAluno']['nome'])
         . '_' . date('YmdHis') . '.html';
 
-    // DiretÃ³rio base
+    // Diretorio base
     $dirBase = __DIR__ . '/historicos';
 
     // Criar subpasta com o ID do aluno
-    $idAluno = intval($input['dadosAluno']['id_aluno']); // garante que Ã© nÃºmero
+    $idAluno = intval($input['dadosAluno']['id_aluno']); // garante que e numero
     $dirAluno = $dirBase . '/' . $idAluno . '/' . $categoria;
 
     if (!is_dir($dirAluno)) {
@@ -340,7 +446,7 @@ $validarData = static function ($data) use ($hoje, &$erros, $normalizarDataEntra
             'sucesso' => true,
             'arquivo_html' => $arquivoRelativo,
             'url_visualizacao' => $baseUrl . $arquivoRelativo,
-            'mensagem' => 'Historico gerado com sucesso.'
+            'mensagem' => 'Histórico gerado com sucesso.'
         ]);
         exit;
     }

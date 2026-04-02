@@ -57,6 +57,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $str = preg_replace('/_+/', '_', (string) $str);
         $str = preg_replace('/_(fundamental|medio)$/', '', $str);
 
+        $textoBusca = str_replace('_', ' ', (string) $str);
+        $textoCompacto = preg_replace('/[^a-z0-9]+/', '', (string) $str);
+
         $aliases = [
             'hist_ria' => 'historia',
             'ci_ncias' => 'ciencias',
@@ -71,6 +74,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (isset($aliases[$str])) {
             $str = $aliases[$str];
+        }
+
+        if (str_contains($textoBusca, 'portugues') || str_contains($textoCompacto, 'portugues')) {
+            return 'lingua_portuguesa';
+        }
+        if (str_contains($textoBusca, 'ingles') || str_contains($textoCompacto, 'ingles')) {
+            return 'lingua_inglesa';
+        }
+        if (str_contains($textoBusca, 'espanhol') || str_contains($textoCompacto, 'espanhol')) {
+            return 'lingua_espanhola';
+        }
+        if ((str_contains($textoBusca, 'educac') && str_contains($textoBusca, 'fisic'))
+            || str_contains($textoCompacto, 'educacaofisica')) {
+            return 'educacao_fisica';
+        }
+        if (str_contains($textoBusca, 'matemat') || str_contains($textoCompacto, 'matematica')) {
+            return 'matematica';
+        }
+        if (str_contains($textoBusca, 'cienc') || str_contains($textoCompacto, 'ciencias')) {
+            return 'ciencias';
+        }
+        if (str_contains($textoBusca, 'hist') || str_contains($textoCompacto, 'historia')) {
+            return 'historia';
+        }
+        if (str_contains($textoBusca, 'geograf') || str_contains($textoCompacto, 'geografia')) {
+            return 'geografia';
+        }
+        if (str_contains($textoBusca, 'quim') || str_contains($textoCompacto, 'quimica')) {
+            return 'quimica';
+        }
+        if (str_contains($textoBusca, 'fisic') || str_contains($textoCompacto, 'fisica')) {
+            return 'fisica';
+        }
+        if (str_contains($textoBusca, 'biolog') || str_contains($textoCompacto, 'biologia')) {
+            return 'biologia';
+        }
+        if (str_contains($textoBusca, 'filosof') || str_contains($textoCompacto, 'filosofia')) {
+            return 'filosofia';
+        }
+        if (str_contains($textoBusca, 'sociolog') || str_contains($textoCompacto, 'sociologia')) {
+            return 'sociologia';
+        }
+        if (str_contains($textoBusca, 'arte') || str_contains($textoCompacto, 'arte')) {
+            return 'arte';
         }
 
         return $str;
@@ -110,6 +157,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $dataLimpa)) {
         [$dia, $mes, $ano] = explode('/', $dataLimpa);
         $dataLimpa = "{$ano}-{$mes}-{$dia}";
+    } elseif (preg_match('/^\d{2}-\d{2}-\d{4}$/', $dataLimpa)) {
+        [$dia, $mes, $ano] = explode('-', $dataLimpa);
+        $dataLimpa = "{$ano}-{$mes}-{$dia}";
     } elseif (preg_match('/^\d{8}$/', $dataLimpa)) {
         $dia = substr($dataLimpa, 0, 2);
         $mes = substr($dataLimpa, 2, 2);
@@ -119,6 +169,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     return $temAsterisco ? ('*' . $dataLimpa) : $dataLimpa;
 };
+
+$campoTemAsterisco = static function ($valor) {
+    return is_string($valor) && str_starts_with(trim($valor), '*');
+};
+
+// Reforco: completa notas/datas oficiais do banco (categoria 6) antes da renderizacao.
+if (!empty($dadosAluno['id_aluno'])) {
+    $idPessoaAluno = (int) $dadosAluno['id_aluno'];
+
+    $stmtUsuario = $pdo->prepare("SELECT id FROM usuarios WHERE id_pessoa = :id_pessoa AND nivel = 'Aluno' ORDER BY id DESC LIMIT 1");
+    $stmtUsuario->execute([':id_pessoa' => $idPessoaAluno]);
+    $usuarioLinha = $stmtUsuario->fetch(PDO::FETCH_ASSOC);
+
+    if (!empty($usuarioLinha['id'])) {
+        $usuarioId = (int) $usuarioLinha['id'];
+        $stmtMatriculas = $pdo->prepare("
+            SELECT C.nome AS nome_curso, C.data_certificado, M.nota
+            FROM matriculas M
+            INNER JOIN cursos C ON C.id = M.id_curso
+            WHERE M.aluno = :aluno
+              AND M.pacote != 'Sim'
+              AND C.categoria = 6
+        ");
+        $stmtMatriculas->execute([':aluno' => $usuarioId]);
+        $matriculasOficiais = $stmtMatriculas->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($matriculasOficiais as $linhaCurso) {
+            $chaveMateria = formatarNomeMateria($linhaCurso['nome_curso'] ?? '');
+            if ($chaveMateria === '') {
+                continue;
+            }
+
+            $notaEscala10 = ((float) ($linhaCurso['nota'] ?? 0)) / 10;
+            $notaBanco = number_format($notaEscala10, 1, '.', '');
+            $dataBanco = ltrim($normalizarDataEntrada((string) ($linhaCurso['data_certificado'] ?? '')), '*');
+
+            if (!isset($notas[$chaveMateria]) || !is_array($notas[$chaveMateria])) {
+                $notas[$chaveMateria] = [];
+            }
+
+            $item = $notas[$chaveMateria];
+            $bloqueadoManual = $campoTemAsterisco($item['serie1'] ?? '')
+                || $campoTemAsterisco($item['serie2'] ?? '')
+                || $campoTemAsterisco($item['serie3'] ?? '')
+                || $campoTemAsterisco($item['data'] ?? '');
+
+            if ($bloqueadoManual) {
+                continue;
+            }
+
+            if ($notaEscala10 > 0) {
+                $notas[$chaveMateria]['serie1'] = $notaBanco;
+                $notas[$chaveMateria]['serie2'] = $notaBanco;
+                $notas[$chaveMateria]['serie3'] = $notaBanco;
+            }
+
+            if ($dataBanco !== '') {
+                $notas[$chaveMateria]['data'] = $dataBanco;
+            }
+        }
+    }
+}
 
 $formatarDataBr = static function ($dataIso) {
     if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataIso)) {
