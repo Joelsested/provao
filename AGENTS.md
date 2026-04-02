@@ -16,3 +16,5 @@
 - Quando possível, incluir referência de linha:
   - [arquivo.ext](/C:/caminho/arquivo.ext:123)
 - Se o cliente não suportar clique para abrir no app, orientar uso de `Ctrl+P` com o caminho completo.
+
+

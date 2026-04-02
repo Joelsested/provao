@@ -112,7 +112,7 @@ $pdo->exec("
 ");
 
 $stmtRegistroSalvo = $pdo->prepare("
-    SELECT numero_registro, folha_livro, numero_livro
+    SELECT ano_certificado, data_certificado, numero_registro, folha_livro, numero_livro
     FROM certificados_livro_registro
     WHERE aluno_id = :aluno_id AND categoria = 'medio'
     LIMIT 1
@@ -121,6 +121,12 @@ $stmtRegistroSalvo->execute([':aluno_id' => (int) $id]);
 $registroSalvo = $stmtRegistroSalvo->fetch(PDO::FETCH_ASSOC);
 
 if ($registroSalvo) {
+    if (empty($ano_certificado)) {
+        $ano_certificado = (string) ($registroSalvo['ano_certificado'] ?? '');
+    }
+    if (empty($data_certificado)) {
+        $data_certificado = (string) ($registroSalvo['data_certificado'] ?? '');
+    }
     if ($numero_registro === '') {
         $numero_registro = (string) ($registroSalvo['numero_registro'] ?? '');
     }
@@ -207,12 +213,36 @@ $pdo->exec("
         categoria VARCHAR(30) NULL,
         versao INT NULL,
         arquivo_relativo VARCHAR(255) NOT NULL,
+        visivel_aluno TINYINT(1) NOT NULL DEFAULT 1,
+        ano_certificado VARCHAR(4) NULL,
+        data_certificado DATE NULL,
+        numero_registro VARCHAR(30) NULL,
+        folha_livro VARCHAR(20) NULL,
+        numero_livro VARCHAR(20) NULL,
         criado_em DATETIME NOT NULL,
         criado_por INT NULL,
         ip VARCHAR(45) NULL,
         INDEX idx_aluno_tipo (aluno_id, tipo)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 ");
+
+try {
+    $colunasDoc = [
+        "ano_certificado" => "ALTER TABLE documentos_emitidos ADD COLUMN ano_certificado VARCHAR(4) NULL",
+        "data_certificado" => "ALTER TABLE documentos_emitidos ADD COLUMN data_certificado DATE NULL",
+        "numero_registro" => "ALTER TABLE documentos_emitidos ADD COLUMN numero_registro VARCHAR(30) NULL",
+        "folha_livro" => "ALTER TABLE documentos_emitidos ADD COLUMN folha_livro VARCHAR(20) NULL",
+        "numero_livro" => "ALTER TABLE documentos_emitidos ADD COLUMN numero_livro VARCHAR(20) NULL",
+    ];
+    foreach ($colunasDoc as $nomeColuna => $sqlAddColuna) {
+        $stmtCol = $pdo->query("SHOW COLUMNS FROM documentos_emitidos LIKE " . $pdo->quote($nomeColuna));
+        if (!$stmtCol || !$stmtCol->fetch(PDO::FETCH_ASSOC)) {
+            $pdo->exec($sqlAddColuna);
+        }
+    }
+} catch (Throwable $e) {
+    // Nao interrompe a emissao por falha de estrutura.
+}
 
 $saidaPdf = $pdf->output();
 $docDir = __DIR__ . '/../documentos/certificados/' . $id;
@@ -223,10 +253,18 @@ $nomeArquivo = 'CERTIFICADO_' . $id . '_' . date('YmdHis') . '.pdf';
 $caminhoCompleto = $docDir . '/' . $nomeArquivo;
 file_put_contents($caminhoCompleto, $saidaPdf);
 
-$arquivoRelativo = '/documentos/certificados/' . $id . '/' . $nomeArquivo;
+$arquivoRelativo = '/sistema/documentos/certificados/' . $id . '/' . $nomeArquivo;
 $stmtDoc = $pdo->prepare("
-    INSERT INTO documentos_emitidos (aluno_id, tipo, categoria, versao, arquivo_relativo, criado_em, criado_por, ip)
-    VALUES (:aluno_id, :tipo, :categoria, :versao, :arquivo_relativo, :criado_em, :criado_por, :ip)
+    INSERT INTO documentos_emitidos (
+        aluno_id, tipo, categoria, versao, arquivo_relativo,
+        ano_certificado, data_certificado, numero_registro, folha_livro, numero_livro,
+        criado_em, criado_por, ip
+    )
+    VALUES (
+        :aluno_id, :tipo, :categoria, :versao, :arquivo_relativo,
+        :ano_certificado, :data_certificado, :numero_registro, :folha_livro, :numero_livro,
+        :criado_em, :criado_por, :ip
+    )
 ");
 $stmtDoc->execute([
     ':aluno_id' => (int) $id,
@@ -234,6 +272,11 @@ $stmtDoc->execute([
     ':categoria' => 'medio',
     ':versao' => null,
     ':arquivo_relativo' => $arquivoRelativo,
+    ':ano_certificado' => $ano_certificado ?: null,
+    ':data_certificado' => $data_certificado ?: null,
+    ':numero_registro' => $numero_registro !== '' ? $numero_registro : null,
+    ':folha_livro' => $folha_livro !== '' ? $folha_livro : null,
+    ':numero_livro' => $numero_livro !== '' ? $numero_livro : null,
     ':criado_em' => date('Y-m-d H:i:s'),
     ':criado_por' => $_SESSION['id'] ?? null,
     ':ip' => $_SERVER['REMOTE_ADDR'] ?? null

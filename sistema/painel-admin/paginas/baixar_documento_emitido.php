@@ -14,6 +14,7 @@ if (!$id) {
     echo 'ID invalido.';
     exit();
 }
+$view = filter_input(INPUT_GET, 'view', FILTER_VALIDATE_INT);
 
 $stmt = $pdo->prepare('SELECT * FROM documentos_emitidos WHERE id = :id LIMIT 1');
 $stmt->execute([':id' => $id]);
@@ -35,6 +36,16 @@ if (!$basePath) {
 
 $safeRel = str_replace(['\\', '..'], ['/', ''], $arquivoRel);
 $fullPath = $basePath . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $safeRel);
+if (!file_exists($fullPath)) {
+    $safeRelComSistema = ltrim($safeRel, '/');
+    if (strpos($safeRelComSistema, 'sistema/') !== 0) {
+        $safeRelComSistema = 'sistema/' . $safeRelComSistema;
+    }
+    $fullPathAlt = $basePath . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $safeRelComSistema);
+    if (file_exists($fullPathAlt)) {
+        $fullPath = $fullPathAlt;
+    }
+}
 
 if (!file_exists($fullPath)) {
     http_response_code(404);
@@ -48,7 +59,7 @@ $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
 if ($ext === 'pdf') {
     $nome = basename($fullPath);
     header('Content-Type: application/pdf');
-    header('Content-Disposition: attachment; filename="' . $nome . '"');
+    header('Content-Disposition: ' . ((int)$view === 1 ? 'inline' : 'attachment') . '; filename="' . $nome . '"');
     readfile($fullPath);
     exit();
 }

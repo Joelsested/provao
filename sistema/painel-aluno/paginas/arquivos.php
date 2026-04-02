@@ -114,6 +114,41 @@ $consulta_arquivos->execute([':aluno' => $id_pessoa]);
 
 $resposta_consulta = $consulta_arquivos->fetchAll(PDO::FETCH_ASSOC);
 
+$pdo->exec("
+ CREATE TABLE IF NOT EXISTS documentos_emitidos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  aluno_id INT NOT NULL,
+  tipo VARCHAR(30) NOT NULL,
+  categoria VARCHAR(30) NULL,
+  versao INT NULL,
+  arquivo_relativo VARCHAR(255) NOT NULL,
+  criado_em DATETIME NOT NULL,
+  criado_por INT NULL,
+  ip VARCHAR(45) NULL,
+  INDEX idx_aluno_tipo (aluno_id, tipo)
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+");
+
+try {
+ $stmtColuna = $pdo->query("SHOW COLUMNS FROM documentos_emitidos LIKE 'visivel_aluno'");
+ if (!$stmtColuna || !$stmtColuna->fetch(PDO::FETCH_ASSOC)) {
+  $pdo->exec("ALTER TABLE documentos_emitidos ADD COLUMN visivel_aluno TINYINT(1) NOT NULL DEFAULT 1");
+ }
+} catch (Throwable $e) {
+ // Nao interrompe a tela
+}
+
+$consulta_documentos_emitidos = $pdo->prepare("
+ SELECT id, tipo, categoria, versao, arquivo_relativo, criado_em
+ FROM documentos_emitidos
+ WHERE aluno_id = :aluno
+   AND COALESCE(visivel_aluno, 1) = 1
+   AND tipo IN ('certificado', 'historico')
+ ORDER BY id DESC
+");
+$consulta_documentos_emitidos->execute([':aluno' => $id_pessoa]);
+$documentos_emitidos_aluno = $consulta_documentos_emitidos->fetchAll(PDO::FETCH_ASSOC);
+
 
 
 
@@ -259,6 +294,53 @@ $resposta_consulta = $consulta_arquivos->fetchAll(PDO::FETCH_ASSOC);
 
 </div>
 
+<div class="bs-example widget-shadow margem-mobile" style="padding:15px; margin-top:20px">
+ <div>
+  <h3>Certificados e Historicos Emitidos</h3>
+ </div>
+ <br>
+ <table class="table table-hover" id="tabela_documentos_emitidos">
+  <thead>
+   <tr>
+    <th>#</th>
+    <th>Tipo</th>
+    <th>Categoria</th>
+    <th>Versao</th>
+    <th>Data</th>
+    <th>Acoes</th>
+   </tr>
+  </thead>
+  <tbody>
+   <?php foreach ($documentos_emitidos_aluno as $docEmitido): ?>
+    <?php
+    $arquivoRel = ltrim((string)($docEmitido['arquivo_relativo'] ?? ''), '/');
+    $arquivoUrl = 'paginas/baixar_documento_emitido.php?id=' . (int)($docEmitido['id'] ?? 0) . '&view=1';
+    ?>
+    <tr>
+     <td><?php echo (int)($docEmitido['id'] ?? 0); ?></td>
+     <td><?php echo htmlspecialchars((string)($docEmitido['tipo'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></td>
+     <td><?php echo htmlspecialchars((string)($docEmitido['categoria'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></td>
+     <td><?php echo htmlspecialchars((string)($docEmitido['versao'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></td>
+     <td><?php echo !empty($docEmitido['criado_em']) ? date('d/m/Y H:i', strtotime($docEmitido['criado_em'])) : '-'; ?></td>
+     <td>
+      <big>
+       <a href="<?php echo htmlspecialchars($arquivoUrl, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" title="Visualizar">
+        <i class="fa fa-eye text-secondary"></i>
+       </a>
+      </big>
+      &nbsp;
+      <big>
+       <a href="paginas/baixar_documento_emitido.php?id=<?php echo (int)($docEmitido['id'] ?? 0); ?>" title="Baixar">
+        <i class="fa fa-download text-primary"></i>
+       </a>
+      </big>
+     </td>
+    </tr>
+   <?php endforeach; ?>
+  </tbody>
+ </table>
+</div>
+
 
 
 <script type="text/javascript">
@@ -294,12 +376,17 @@ $resposta_consulta = $consulta_arquivos->fetchAll(PDO::FETCH_ASSOC);
 
  $(document).ready(function() {
 
-  $('#tabela2').DataTable({
+ $('#tabela2').DataTable({
 
    "ordering": false,
 
-   "stateSave": true,
+  "stateSave": true,
 
+  });
+
+  $('#tabela_documentos_emitidos').DataTable({
+   "ordering": false,
+   "stateSave": true,
   });
 
   $('#tabela_filter label input').focus();

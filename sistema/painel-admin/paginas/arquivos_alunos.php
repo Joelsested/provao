@@ -114,12 +114,43 @@ $pdo->exec("
     categoria VARCHAR(30) NULL,
     versao INT NULL,
     arquivo_relativo VARCHAR(255) NOT NULL,
+    ano_certificado VARCHAR(4) NULL,
+    data_certificado DATE NULL,
+    numero_registro VARCHAR(30) NULL,
+    folha_livro VARCHAR(20) NULL,
+    numero_livro VARCHAR(20) NULL,
     criado_em DATETIME NOT NULL,
     criado_por INT NULL,
     ip VARCHAR(45) NULL,
     INDEX idx_aluno_tipo (aluno_id, tipo)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 ");
+
+try {
+  $colunaVisivelExiste = false;
+  $stmtColuna = $pdo->query("SHOW COLUMNS FROM documentos_emitidos LIKE 'visivel_aluno'");
+  if ($stmtColuna && $stmtColuna->fetch(PDO::FETCH_ASSOC)) {
+    $colunaVisivelExiste = true;
+  }
+  if (!$colunaVisivelExiste) {
+    $pdo->exec("ALTER TABLE documentos_emitidos ADD COLUMN visivel_aluno TINYINT(1) NOT NULL DEFAULT 1");
+  }
+  $colunasExtras = [
+    "ano_certificado" => "ALTER TABLE documentos_emitidos ADD COLUMN ano_certificado VARCHAR(4) NULL",
+    "data_certificado" => "ALTER TABLE documentos_emitidos ADD COLUMN data_certificado DATE NULL",
+    "numero_registro" => "ALTER TABLE documentos_emitidos ADD COLUMN numero_registro VARCHAR(30) NULL",
+    "folha_livro" => "ALTER TABLE documentos_emitidos ADD COLUMN folha_livro VARCHAR(20) NULL",
+    "numero_livro" => "ALTER TABLE documentos_emitidos ADD COLUMN numero_livro VARCHAR(20) NULL",
+  ];
+  foreach ($colunasExtras as $nomeColuna => $sqlAddColuna) {
+    $stmtColunaExtra = $pdo->query("SHOW COLUMNS FROM documentos_emitidos LIKE " . $pdo->quote($nomeColuna));
+    if (!$stmtColunaExtra || !$stmtColunaExtra->fetch(PDO::FETCH_ASSOC)) {
+      $pdo->exec($sqlAddColuna);
+    }
+  }
+} catch (Throwable $e) {
+  // Nao interrompe a pagina por falha de estrutura.
+}
 
 $documentos_emitidos = [];
 if ($_SESSION['nivel'] === 'Administrador' || $_SESSION['nivel'] === 'Secretario') {
@@ -296,7 +327,8 @@ if ($_SESSION['nivel'] === 'Administrador' || $_SESSION['nivel'] === 'Secretario
     <th>Versão</th>
     <th>Data</th>
     <th>Gerado por</th>
-    <th>Ações</th>
+    <th>Visivel Aluno</th>
+    <th>Acoes</th>
    </tr>
   </thead>
   <tbody>
@@ -306,15 +338,42 @@ if ($_SESSION['nivel'] === 'Administrador' || $_SESSION['nivel'] === 'Secretario
      <td><?php echo htmlspecialchars($doc['tipo'], ENT_QUOTES, 'UTF-8'); ?></td>
      <td><?php echo htmlspecialchars($doc['categoria'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></td>
      <td><?php echo $doc['versao'] ?? '-'; ?></td>
-     <td><?php echo !empty($doc['criado_em']) ? date('d/m/Y H:i', strtotime($doc['criado_em'])) : '-'; ?></td>
-     <td><?php echo htmlspecialchars($doc['nome_usuario'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></td>
      <td>
       <?php
-      $arquivo_rel = ltrim($doc['arquivo_relativo'], '/');
-      $arquivo_url = $url_sistema . $arquivo_rel;
+      $dataExibicaoDoc = '-';
+      if (($doc['tipo'] ?? '') === 'certificado' && !empty($doc['data_certificado'])) {
+        $dataExibicaoDoc = date('d/m/Y', strtotime($doc['data_certificado']));
+      } elseif (!empty($doc['criado_em'])) {
+        $dataExibicaoDoc = date('d/m/Y H:i', strtotime($doc['criado_em']));
+      }
+      echo $dataExibicaoDoc;
       ?>
+     </td>
+     <td><?php echo htmlspecialchars($doc['nome_usuario'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></td>
+     <td class="text-center">
+      <?php $visivelAluno = isset($doc['visivel_aluno']) ? (int) $doc['visivel_aluno'] : 1; ?>
+      <span class="label <?php echo $visivelAluno === 1 ? 'label-success' : 'label-default'; ?>">
+       <?php echo $visivelAluno === 1 ? 'Sim' : 'Nao'; ?>
+      </span>
+      &nbsp;
+      <a href="#" onclick="alternarVisibilidadeDocumento('<?php echo (int) $doc['id']; ?>', '<?php echo $visivelAluno; ?>'); return false;" title="Alternar visibilidade para o aluno">
+       <i class="fa fa-exchange text-primary"></i>
+      </a>
+     </td>
+     <td>
+      <?php
+      $arquivo_url = 'paginas/baixar_documento_emitido.php?id=' . (int) $doc['id'] . '&view=1';
+      ?>
+      <?php if (($doc['tipo'] ?? '') === 'certificado') { ?>
       <big>
-       <a href="<?php echo $arquivo_url; ?>" target="_blank" title="Visualizar">
+       <a href="#" onclick="abrirModalEdicaoCertificado('<?php echo (int) $doc['id']; ?>'); return false;" title="Editar dados do certificado">
+        <i class="fa fa-pencil text-warning"></i>
+       </a>
+      </big>
+      &nbsp;
+      <?php } ?>
+      <big>
+       <a href="<?php echo htmlspecialchars($arquivo_url, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" title="Visualizar">
         <i class="fa fa-eye text-secondary"></i>
        </a>
       </big>
@@ -326,7 +385,7 @@ if ($_SESSION['nivel'] === 'Administrador' || $_SESSION['nivel'] === 'Secretario
       </big>
       &nbsp;
       <big>
-       <a href="#" onclick="apagarDocumentoEmitido('<?php echo htmlspecialchars($arquivo_rel, ENT_QUOTES, 'UTF-8'); ?>')" title="Excluir">
+       <a href="#" onclick="apagarDocumentoEmitido('<?php echo (int) $doc['id']; ?>')" title="Excluir">
         <i class="fa fa-trash text-danger"></i>
        </a>
       </big>
@@ -348,13 +407,15 @@ if ($_SESSION['nivel'] === 'Administrador' || $_SESSION['nivel'] === 'Secretario
 
 <?php if ($_SESSION['nivel'] === 'Administrador' || $_SESSION['nivel'] === 'Secretario') { ?>
 <script type="text/javascript">
- function apagarDocumentoEmitido(caminhoRel) {
-  if (!caminhoRel) {
+ const ID_ALUNO_ARQUIVOS = <?php echo (int) $id_pessoa; ?>;
+
+ function apagarDocumentoEmitido(idDocumento) {
+  if (!idDocumento) {
    return;
   }
   Swal.fire({
    title: "Tem certeza?",
-   text: "O arquivo será apagado permanentemente!",
+   text: "O arquivo sera apagado permanentemente!",
    icon: "warning",
    showCancelButton: true,
    confirmButtonColor: "#d33",
@@ -362,20 +423,144 @@ if ($_SESSION['nivel'] === 'Administrador' || $_SESSION['nivel'] === 'Secretario
    confirmButtonText: "Sim, apagar!"
   }).then((result) => {
    if (result.isConfirmed) {
-    fetch("paginas/apagar_historico.php", {
+    fetch("paginas/apagar_documento_emitido.php", {
      method: "POST",
      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-     body: "arquivo=" + encodeURIComponent(caminhoRel)
+     body: "id=" + encodeURIComponent(idDocumento)
     })
-     .then(res => res.text())
-     .then(msg => {
-      Swal.fire("Removido!", msg, "success").then(() => location.reload());
+     .then(res => res.json())
+     .then(resp => {
+      if (resp && resp.success) {
+       Swal.fire("Removido!", resp.message || "Documento removido com sucesso.", "success").then(() => location.reload());
+       return;
+      }
+      Swal.fire("Erro!", (resp && resp.message) ? resp.message : "Nao foi possivel apagar o documento.", "error");
      })
      .catch(() => {
-      Swal.fire("Erro!", "Não foi possível apagar o arquivo.", "error");
+      Swal.fire("Erro!", "Nao foi possivel apagar o arquivo.", "error");
      });
    }
   });
+ }
+
+ function alternarVisibilidadeDocumento(idDocumento, visivelAtual) {
+  if (!idDocumento) {
+   return;
+  }
+
+  fetch("paginas/alternar_visibilidade_documento.php", {
+   method: "POST",
+   headers: { "Content-Type": "application/x-www-form-urlencoded" },
+   body: "id=" + encodeURIComponent(idDocumento) + "&visivel_atual=" + encodeURIComponent(visivelAtual)
+  })
+   .then(res => res.json())
+   .then(resp => {
+    if (resp && resp.success) {
+     Swal.fire("Atualizado!", resp.message || "Visibilidade atualizada.", "success").then(() => location.reload());
+     return;
+    }
+    Swal.fire("Erro!", (resp && resp.message) ? resp.message : "Nao foi possivel atualizar visibilidade.", "error");
+   })
+   .catch(() => {
+    Swal.fire("Erro!", "Falha ao atualizar visibilidade.", "error");
+   });
+ }
+
+ function abrirModalEdicaoCertificado(idDocumento) {
+  if (!idDocumento) {
+   return;
+  }
+
+  fetch("paginas/obter_dados_certificado_emitido.php?id=" + encodeURIComponent(idDocumento))
+   .then(res => res.json())
+   .then(resp => {
+    if (!resp || !resp.success || !resp.dados) {
+     Swal.fire("Erro!", (resp && resp.message) ? resp.message : "Nao foi possivel carregar os dados do certificado.", "error");
+     return;
+    }
+
+    const dados = resp.dados;
+    Swal.fire({
+     title: "Editar Certificado",
+     html: `
+      <label for="ano_certificado_editar">Insira o ano da conclusao:</label>
+      <br>
+      <input type="number" id="ano_certificado_editar" class="swal2-input" style="width:34%; max-width:220px;" min="1900" max="2100" step="1" placeholder="Ex: 2025" value="${(dados.ano_certificado || '').toString()}">
+      <br>
+      <label for="data_certificado_editar">Selecione a data do certificado:</label>
+      <input type="date" id="data_certificado_editar" class="swal2-input" style="width:34%; max-width:220px;" value="${(dados.data_certificado || '').toString()}">
+      <label for="numero_registro_certificado_editar" style="display:block; width:34%; margin:8px auto 4px auto; text-align:left;">N&ordm; do Registro:</label>
+      <input type="text" id="numero_registro_certificado_editar" class="swal2-input" style="width:34%; max-width:220px;" maxlength="30" placeholder="Ex: 125" value="${(dados.numero_registro || '').toString()}">
+      <label for="folha_livro_certificado_editar" style="display:block; width:34%; margin:8px auto 4px auto; text-align:left;">Folha (FL):</label>
+      <input type="text" id="folha_livro_certificado_editar" class="swal2-input" style="width:34%; max-width:220px;" maxlength="20" placeholder="Ex: 18" value="${(dados.folha_livro || '').toString()}">
+      <label for="numero_livro_certificado_editar" style="display:block; width:34%; margin:8px auto 4px auto; text-align:left;">N&ordm; do Livro:</label>
+      <input type="text" id="numero_livro_certificado_editar" class="swal2-input" style="width:34%; max-width:220px;" maxlength="20" placeholder="Ex: 03" value="${(dados.numero_livro || '').toString()}">
+     `,
+     showCancelButton: true,
+     confirmButtonText: "Salvar Alteracoes",
+     cancelButtonText: "Cancelar",
+     preConfirm: () => {
+      const ano = (document.getElementById("ano_certificado_editar").value || "").trim();
+      const data = (document.getElementById("data_certificado_editar").value || "").trim();
+      const numeroRegistro = (document.getElementById("numero_registro_certificado_editar").value || "").trim();
+      const folhaLivro = (document.getElementById("folha_livro_certificado_editar").value || "").trim();
+      const numeroLivro = (document.getElementById("numero_livro_certificado_editar").value || "").trim();
+
+      if (!ano || ano.length !== 4) {
+       Swal.showValidationMessage("Por favor, informe um ano valido com 4 digitos.");
+       return false;
+      }
+      if (!data) {
+       Swal.showValidationMessage("Por favor, selecione a data do certificado.");
+       return false;
+      }
+      if (!numeroRegistro) {
+       Swal.showValidationMessage("Por favor, informe o numero do registro.");
+       return false;
+      }
+      if (!folhaLivro) {
+       Swal.showValidationMessage("Por favor, informe a folha (FL).");
+       return false;
+      }
+      if (!numeroLivro) {
+       Swal.showValidationMessage("Por favor, informe o numero do livro.");
+       return false;
+      }
+      return { ano, data, numeroRegistro, folhaLivro, numeroLivro };
+     }
+    }).then((result) => {
+     if (!result.isConfirmed || !result.value) {
+      return;
+     }
+     const payload = result.value;
+     fetch("paginas/atualizar_dados_certificado_emitido.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body:
+       "id_documento=" + encodeURIComponent(idDocumento) +
+       "&aluno_id=" + encodeURIComponent(ID_ALUNO_ARQUIVOS) +
+       "&ano_certificado=" + encodeURIComponent(payload.ano) +
+       "&data_certificado=" + encodeURIComponent(payload.data) +
+       "&numero_registro=" + encodeURIComponent(payload.numeroRegistro) +
+       "&folha_livro=" + encodeURIComponent(payload.folhaLivro) +
+       "&numero_livro=" + encodeURIComponent(payload.numeroLivro)
+     })
+      .then(res => res.json())
+      .then(respSalvar => {
+       if (respSalvar && respSalvar.success) {
+        Swal.fire("Salvo!", respSalvar.message || "Dados atualizados com sucesso.", "success").then(() => location.reload());
+        return;
+       }
+       Swal.fire("Erro!", (respSalvar && respSalvar.message) ? respSalvar.message : "Nao foi possivel salvar os dados.", "error");
+      })
+      .catch(() => {
+       Swal.fire("Erro!", "Falha ao salvar os dados do certificado.", "error");
+      });
+    });
+   })
+   .catch(() => {
+    Swal.fire("Erro!", "Nao foi possivel carregar os dados para edicao.", "error");
+   });
  }
 </script>
 <?php } ?>
@@ -413,10 +598,12 @@ if ($_SESSION['nivel'] === 'Administrador' || $_SESSION['nivel'] === 'Secretario
 
   });
 
-  $('#tabela_documentos').DataTable({
-   "ordering": false,
-   "stateSave": true,
-  });
+  if ($('#tabela_documentos').length) {
+   $('#tabela_documentos').DataTable({
+    "ordering": false,
+    "stateSave": true,
+   });
+  }
   $('#tabela_filter label input').focus();
 
  });

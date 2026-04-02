@@ -58,35 +58,9 @@ if ($numero_livro !== '') {
 	$numero_livro = mb_substr(preg_replace('/\s+/u', ' ', $numero_livro), 0, 20);
 }
 
-if ($numero_registro === '' || $folha_livro === '' || $numero_livro === '') {
-	try {
-		$stmtRegistroLivro = $pdo->prepare("
-			SELECT numero_registro, folha_livro, numero_livro
-			FROM certificados_livro_registro
-			WHERE aluno_id = :aluno_id AND categoria = 'medio'
-			LIMIT 1
-		");
-		$stmtRegistroLivro->execute([':aluno_id' => $id]);
-		$registroLivro = $stmtRegistroLivro->fetch(PDO::FETCH_ASSOC);
-		if ($registroLivro) {
-			if ($numero_registro === '') {
-				$numero_registro = (string) ($registroLivro['numero_registro'] ?? '');
-			}
-			if ($folha_livro === '') {
-				$folha_livro = (string) ($registroLivro['folha_livro'] ?? '');
-			}
-			if ($numero_livro === '') {
-				$numero_livro = (string) ($registroLivro['numero_livro'] ?? '');
-			}
-		}
-	} catch (Throwable $e) {
-		// Nao interrompe o certificado se a tabela ainda nao existir.
-	}
-}
-
-$numero_registro_exibir = $numero_registro !== '' ? htmlspecialchars($numero_registro, ENT_QUOTES, 'UTF-8') : '---';
-$folha_livro_exibir = $folha_livro !== '' ? htmlspecialchars($folha_livro, ENT_QUOTES, 'UTF-8') : '---';
-$numero_livro_exibir = $numero_livro !== '' ? htmlspecialchars($numero_livro, ENT_QUOTES, 'UTF-8') : '---';
+$numero_registro_exibir = $numero_registro !== '' ? htmlspecialchars($numero_registro, ENT_QUOTES, 'UTF-8') : '';
+$folha_livro_exibir = $folha_livro !== '' ? htmlspecialchars($folha_livro, ENT_QUOTES, 'UTF-8') : '';
+$numero_livro_exibir = $numero_livro !== '' ? htmlspecialchars($numero_livro, ENT_QUOTES, 'UTF-8') : '';
 
 
 
@@ -220,42 +194,37 @@ $data_hoje = formatar_data_extenso_ptbr('today');
 		opacity: 0.1;
 	}
 
-	.carimbo-verso {
-		position: absolute;
-		top: 45px;
-		right: 40px;
-		width: 225px;
-		border: 2px solid #000;
-		padding: 7px 10px;
-		text-align: center;
-		line-height: 1.05;
-		font-family: Arial, Helvetica, sans-serif;
-		color: #000;
-		background: #fff;
-		z-index: 20;
-	}
-
-	.carimbo-verso .titulo {
-		font-size: 22px;
-		font-weight: 700;
-	}
-
-	.carimbo-verso .linha {
-		font-size: 14px;
-		font-weight: 700;
-	}
-
 	.conteudo {
 		position: absolute;
-		top: 130px;
-		left: 45px;
-		width: 720px;
-		text-align: center;
+		top: 326px;
+		left: 90;
+		width: 100%;
+		height: 30px;
 		color: #000;
-		font-size: 20px;
-		font-weight: 700;
+		font-size: 19px;
+		font-weight: 500;
 		font-family: "Times New Roman", Times, serif;
-		line-height: 1.35;
+	}
+
+	.conteudo .campo-registro {
+		position: absolute;
+		left: 286px;
+		width: 90px;
+		text-align: center;
+	}
+
+	.conteudo .campo-folha {
+		position: absolute;
+		left: 388px;
+		width: 70px;
+		text-align: center;
+	}
+
+	.conteudo .campo-livro {
+		position: absolute;
+		left: 498px;
+		width: 95px;
+		text-align: center;
 	}
 </style>
 
@@ -273,7 +242,7 @@ $data_hoje = formatar_data_extenso_ptbr('today');
 	<div class="nome-aluno"> <b><br><br><?php echo mb_strtoupper($nome_aluno); ?></b></div>
 
 	<div class="descricao"><br><br> <?php echo $identidade_texto; ?>, Nacionalidade Brasileiro(a), Natural de <?php echo $naturalidade ?>, Nascido(a) em, <?php echo $nascimento ?>, o presente
-		CERTIFICADO por haver concluído no ano de <?php echo $ano_certificado; ?> o Ensino Médio, nos Exames de Finalização de Etapas – EJA –
+		CERTIFICADO por haver concluído no ano de <?php echo $ano_certificado; ?> o Ensino Médio, nos Exames de Finalização de Etapas - EJA -
 		Educação e Jovens e Adultos. </div>
 
 
@@ -283,16 +252,10 @@ $data_hoje = formatar_data_extenso_ptbr('today');
 
 	<div class="verso">
 		<img class="imagem2" src="<?php echo $url_sistema ?>sistema/img/certificado-verso.jpg">
-		<div class="carimbo-verso">
-			<div class="titulo">SESTED</div>
-			<div class="linha">Autoriza&ccedil;&atilde;o de Funcionamento</div>
-			<div class="linha">Parecer CEB/CEE/RO n&ordm; 003/24</div>
-			<div class="linha">Resolu&ccedil;&atilde;o n&ordm; 011/23 - CEE/RO</div>
-			<div class="linha">CNPJ 07.158.229/0001-06</div>
-			<div class="linha">BURITIS - RO</div>
-		</div>
 		<div class="conteudo">
-			Registro N&ordm; <?php echo $numero_registro_exibir; ?> &nbsp;&nbsp;&nbsp; FL <?php echo $folha_livro_exibir; ?> &nbsp;&nbsp;&nbsp; Livro N&ordm; <?php echo $numero_livro_exibir; ?>
+			<span class="campo-registro"><?php echo $numero_registro_exibir; ?></span>
+			<span class="campo-folha"><?php echo $folha_livro_exibir; ?></span>
+			<span class="campo-livro"><?php echo $numero_livro_exibir; ?></span>
 		</div>
 		<div class="data2"> Buritis - <?php echo ($data_formatada); ?>
 		</div>

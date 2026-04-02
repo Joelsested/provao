@@ -1414,12 +1414,12 @@ window.mostrarAluno = function(data) {
 				<label for="data_certificado">Selecione a data do certificado:</label>
 				<input type="date" id="data_certificado" class="swal2-input">
 				<br>
-				<label for="numero_registro_certificado">N&ordm; do Registro:</label>
-				<input type="text" id="numero_registro_certificado" class="swal2-input" maxlength="30" placeholder="Ex: 125">
-				<label for="folha_livro_certificado">Folha (FL):</label>
-				<input type="text" id="folha_livro_certificado" class="swal2-input" maxlength="20" placeholder="Ex: 18">
-				<label for="numero_livro_certificado">N&ordm; do Livro:</label>
-				<input type="text" id="numero_livro_certificado" class="swal2-input" maxlength="20" placeholder="Ex: 03">
+				<label for="numero_registro_certificado" style="display:block; width:34%; margin:8px auto 4px auto; text-align:left;">N&ordm; do Registro:</label>
+				<input type="text" id="numero_registro_certificado" class="swal2-input" style="width:34%; max-width:220px;" maxlength="30" placeholder="Ex: 125">
+				<label for="folha_livro_certificado" style="display:block; width:34%; margin:8px auto 4px auto; text-align:left;">Folha (FL):</label>
+				<input type="text" id="folha_livro_certificado" class="swal2-input" style="width:34%; max-width:220px;" maxlength="20" placeholder="Ex: 18">
+				<label for="numero_livro_certificado" style="display:block; width:34%; margin:8px auto 4px auto; text-align:left;">N&ordm; do Livro:</label>
+				<input type="text" id="numero_livro_certificado" class="swal2-input" style="width:34%; max-width:220px;" maxlength="20" placeholder="Ex: 03">
 			`,
 			showCancelButton: true,
 			confirmButtonText: "Gerar Certificado",
@@ -1440,7 +1440,7 @@ window.mostrarAluno = function(data) {
 						return false;
 					}
 					if (!numeroRegistro) {
-						Swal.showValidationMessage("Por favor, informe o nÃºmero do registro.");
+						Swal.showValidationMessage("Por favor, informe o numero do registro.");
 						return false;
 					}
 					if (!folhaLivro) {
@@ -1448,7 +1448,7 @@ window.mostrarAluno = function(data) {
 						return false;
 					}
 					if (!numeroLivro) {
-						Swal.showValidationMessage("Por favor, informe o nÃºmero do livro.");
+						Swal.showValidationMessage("Por favor, informe o numero do livro.");
 						return false;
 					}
 
