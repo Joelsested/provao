@@ -2,7 +2,7 @@
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/config/webhook.php';
-webhook_require_token();
+webhook_require_token(['allow_notification_fallback' => true]);
 
 // Incluir arquivos necessários
 require_once("sistema/conexao.php");

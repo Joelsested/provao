@@ -396,7 +396,7 @@ HTML;
     </a>
   </big>
   <big>
-    <a class="{$ocultar}" href="#" onclick="gerarCertAluno($id);" title="Certificado do aluno">
+    <a class="{$ocultar}" href="#" onclick="return gerarCertAluno($id);" title="Certificado do aluno">
       <small>
         <span class="fa fa-file-pdf-o text-primary"></span>
       </small>
@@ -421,7 +421,7 @@ HTML;
 <td class="text-center">
   <!-- Single button to open actions modal -->
   <button type="button" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#actionsModal{$id}">
-    <i class="fa fa-cog"></i> Ver Ações
+	    <i class="fa fa-cog"></i> Ver Ações
   </button>
   
   <!-- Modal with all actions -->
@@ -430,7 +430,7 @@ HTML;
       <div class="modal-content">
         <div class="modal-header">
           <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-          <h4 class="modal-title" id="actionsModalLabel{$id}">Ações para {$nome}</h4>
+	          <h4 class="modal-title" id="actionsModalLabel{$id}">Ações para {$nome}</h4>
         </div>
         <div class="modal-body">
           <div class="row">
@@ -484,7 +484,7 @@ HTML;
 			 <div class="col-md-4 text-center mb-3">
               <a href="index.php?pagina=relatorio_aluno&aluno={$id}" class="btn btn-default btn-block">
                 <i class="fa fa-money text-primary"></i><br>
-                Relatório Financeiro
+	                Relatório Financeiro
               </a>
             </div>
             
@@ -518,20 +518,20 @@ HTML;
             <!-- <div class="col-md-4 text-center mb-3 {$ocultar2}">
               <a href="$url_sistema/sistema/rel/avaliacoes_class.php?id={$id}" target="_blank" class="btn btn-default btn-block">
                 <i class="fa fa-file-pdf-o text-danger"></i><br>
-                Avaliações
+	                Avaliações
               </a>
             </div> -->
 
 			<div class="col-md-4 text-center mb-3 {$ocultar2}">
 				<a href="javascript:void(0);" onclick="modalAvaliacao('{$url_sistema}/sistema/rel/avaliacoes_class.php?id={$id}')" class="btn btn-default btn-block">
 					<i class="fa fa-file-pdf-o text-danger"></i><br>
-					Avaliações
+						Avaliações
 				</a>
 				</div>
             
             <!-- Student Certificate -->
             <div class="col-md-4 text-center mb-3 {$ocultar}">
-              <a href="#" onclick="gerarCertAluno({$id});" class="btn btn-default btn-block" data-dismiss="modal">
+              <a href="#" onclick="return gerarCertAluno({$id});" class="btn btn-default btn-block" data-dismiss="modal">
                 <i class="fa fa-file-pdf-o text-primary"></i><br>
                 Certificados
               </a>
@@ -541,7 +541,7 @@ HTML;
             <div class="col-md-4 text-center mb-3 {$ocultar}">
               <a href="#" onclick="gerarDeclaracaoMedioAluno({$id});" class="btn btn-default btn-block" data-dismiss="modal">
                 <i class="fa fa-file-pdf-o text-danger"></i><br>
-                Declaração Médio
+	                Declaração Médio
               </a>
             </div>
             
@@ -549,14 +549,14 @@ HTML;
             <div class="col-md-4 text-center mb-3 {$ocultar}">
               <a href="#" onclick="gerarDeclaracaoFundamentalAluno({$id});" class="btn btn-default btn-block" data-dismiss="modal">
                 <i class="fa fa-file-pdf-o text-primary"></i><br>
-                Declaração Fundamental
+	                Declaração Fundamental
               </a>
             </div>
 
 			<div class="col-md-4 text-center mb-3">
               <a href="#" onclick="gerarHistoricoAluno({$id} , {$tem_fundamental}, {$tem_medio});" class="btn btn-default btn-block">
                 <i class="fa fa-clock-o text-primary"></i><br>
-               Gerar Histórico
+	               Gerar Histórico
               </a>
             </div>
 
@@ -1401,29 +1401,46 @@ window.mostrarAluno = function(data) {
 
 
 	const baseUrl = "<?php echo rtrim($url_sistema, '/'); ?>/";
+	const emissaoCertificadoEmAndamento = new Set();
 
 	function gerarCertAluno(id) {
-		Swal.fire({
-			title: "Gerar Certificado",
-			html: `
-			<label for="ano_certificado">Insira o ano da conclusão:</label>
-			<br>
-			<input type="number" id="ano_certificado" class="swal2-input" style="width: 50%;" min="1900" max="2100" step="1" placeholder="Ex: 2025">
-			<br>
-			<br>
-				<label for="data_certificado">Selecione a data do certificado:</label>
-				<input type="date" id="data_certificado" class="swal2-input">
+	if (emissaoCertificadoEmAndamento.has(id)) {
+		Swal.fire("Aguarde", "Ja existe uma emissao em andamento para este aluno.", "info");
+		return false;
+	}
+
+	fetch(`paginas/obter_dados_certificado_emitido.php?aluno_id=${encodeURIComponent(id)}`)
+		.then((res) => res.json())
+		.then((resp) => {
+			const dados = (resp && resp.success && resp.dados) ? resp.dados : {};
+			Swal.fire({
+				title: "Gerar Certificado",
+				html: `
+						<label for="ano_certificado">Insira o ano da conclusao:</label>
 				<br>
-				<label for="numero_registro_certificado" style="display:block; width:34%; margin:8px auto 4px auto; text-align:left;">N&ordm; do Registro:</label>
-				<input type="text" id="numero_registro_certificado" class="swal2-input" style="width:34%; max-width:220px;" maxlength="30" placeholder="Ex: 125">
-				<label for="folha_livro_certificado" style="display:block; width:34%; margin:8px auto 4px auto; text-align:left;">Folha (FL):</label>
-				<input type="text" id="folha_livro_certificado" class="swal2-input" style="width:34%; max-width:220px;" maxlength="20" placeholder="Ex: 18">
-				<label for="numero_livro_certificado" style="display:block; width:34%; margin:8px auto 4px auto; text-align:left;">N&ordm; do Livro:</label>
-				<input type="text" id="numero_livro_certificado" class="swal2-input" style="width:34%; max-width:220px;" maxlength="20" placeholder="Ex: 03">
-			`,
-			showCancelButton: true,
-			confirmButtonText: "Gerar Certificado",
-			cancelButtonText: "Cancelar",
+				<input type="number" id="ano_certificado" class="swal2-input" style="width: 50%;" min="1900" max="2100" step="1" placeholder="Ex: 2025">
+				<br>
+				<br>
+					<label for="data_certificado">Selecione a data do certificado:</label>
+					<input type="date" id="data_certificado" class="swal2-input">
+					<br>
+					<label for="numero_registro_certificado" style="display:block; width:34%; margin:8px auto 4px auto; text-align:left;">N&ordm; do Registro:</label>
+					<input type="text" id="numero_registro_certificado" class="swal2-input" style="width:34%; max-width:220px;" maxlength="30" placeholder="Ex: 125">
+					<label for="folha_livro_certificado" style="display:block; width:34%; margin:8px auto 4px auto; text-align:left;">Folha (FL):</label>
+					<input type="text" id="folha_livro_certificado" class="swal2-input" style="width:34%; max-width:220px;" maxlength="20" placeholder="Ex: 18">
+					<label for="numero_livro_certificado" style="display:block; width:34%; margin:8px auto 4px auto; text-align:left;">N&ordm; do Livro:</label>
+					<input type="text" id="numero_livro_certificado" class="swal2-input" style="width:34%; max-width:220px;" maxlength="20" placeholder="Ex: 03">
+				`,
+				showCancelButton: true,
+				confirmButtonText: "Gerar Certificado",
+				cancelButtonText: "Cancelar",
+				didOpen: () => {
+					document.getElementById("ano_certificado").value = (dados.ano_certificado || "").toString();
+					document.getElementById("data_certificado").value = (dados.data_certificado || "").toString();
+					document.getElementById("numero_registro_certificado").value = (dados.numero_registro || "").toString();
+					document.getElementById("folha_livro_certificado").value = (dados.folha_livro || "").toString();
+					document.getElementById("numero_livro_certificado").value = (dados.numero_livro || "").toString();
+				},
 				preConfirm: () => {
 					const anoCertificado = document.getElementById("ano_certificado").value;
 					const dataCertificado = document.getElementById("data_certificado").value;
@@ -1431,10 +1448,10 @@ window.mostrarAluno = function(data) {
 					const folhaLivro = (document.getElementById("folha_livro_certificado").value || "").trim();
 					const numeroLivro = (document.getElementById("numero_livro_certificado").value || "").trim();
 
-				if (!anoCertificado || anoCertificado.length !== 4) {
-					Swal.showValidationMessage("Por favor, insira um ano válido (ex: 2025).");
-					return false;
-				}
+							if (!anoCertificado || anoCertificado.length !== 4) {
+								Swal.showValidationMessage("Por favor, insira um ano valido (ex: 2025).");
+						return false;
+					}
 					if (!dataCertificado) {
 						Swal.showValidationMessage("Por favor, selecione uma data.");
 						return false;
@@ -1456,14 +1473,23 @@ window.mostrarAluno = function(data) {
 				}
 			}).then((result) => {
 				if (result.isConfirmed) {
+					if (emissaoCertificadoEmAndamento.has(id)) {
+						return;
+					}
+					emissaoCertificadoEmAndamento.add(id);
 					const { ano, data, numeroRegistro, folhaLivro, numeroLivro } = result.value;
 					const url = `${baseUrl}sistema/rel/rel_certificado.php?id=${id}&ano=${encodeURIComponent(ano)}&data=${encodeURIComponent(data)}&numero_registro=${encodeURIComponent(numeroRegistro)}&folha_livro=${encodeURIComponent(folhaLivro)}&numero_livro=${encodeURIComponent(numeroLivro)}`;
-					window.open(url, "_blank"); // Abre em uma nova guia
+					window.open(url, "_blank");
+					setTimeout(() => emissaoCertificadoEmAndamento.delete(id), 5000);
 				}
 			});
-	}
-
-	function gerarDeclaracaoFundamentalAluno(id) {
+		})
+		.catch(() => {
+			Swal.fire("Erro", "Nao foi possivel carregar os dados anteriores do certificado.", "error");
+		});
+	return false;
+}
+function gerarDeclaracaoFundamentalAluno(id) {
 		Swal.fire({
 			title: "Declaração Ensino Fundamental",
 			// icon: "info",
@@ -1825,9 +1851,6 @@ function gerarDeclaracaoMedioAluno(id) {
 
 
 </script>
-
-
-
 
 
 

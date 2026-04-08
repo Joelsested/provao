@@ -32,6 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $notasOriginais = $notas;
     $dadosAdicionais = $input['dadosAdicionais'];
     $retorno = isset($input['retorno']) ? $input['retorno'] : 'html';
+    $categoria = isset($input['dadosAluno']['categoria']) ? strtolower((string) $input['dadosAluno']['categoria']) : 'fundamental';
+    $idAluno = intval($input['dadosAluno']['id_aluno'] ?? 0);
 
     // Funcao para normalizar nomes
     function formatarNomeMateria($str)
@@ -332,12 +334,59 @@ $validarData = static function ($data) use ($hoje, &$erros, $normalizarDataEntra
         exit;
     }
 
+    if ($idAluno <= 0) {
+        http_response_code(422);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'sucesso' => false,
+            'mensagem' => 'Aluno inválido para geração do histórico.'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS documentos_emitidos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            aluno_id INT NOT NULL,
+            tipo VARCHAR(30) NOT NULL,
+            categoria VARCHAR(30) NULL,
+            versao INT NULL,
+            arquivo_relativo VARCHAR(255) NOT NULL,
+            criado_em DATETIME NOT NULL,
+            criado_por INT NULL,
+            ip VARCHAR(45) NULL,
+            INDEX idx_aluno_tipo (aluno_id, tipo)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    $stmtHistoricoAtivo = $pdo->prepare("
+        SELECT id
+        FROM documentos_emitidos
+        WHERE aluno_id = :aluno_id
+          AND tipo = 'historico'
+          AND (categoria = :categoria OR categoria IS NULL OR categoria = '')
+        ORDER BY id DESC
+        LIMIT 1
+    ");
+    $stmtHistoricoAtivo->execute([
+        ':aluno_id' => $idAluno,
+        ':categoria' => $categoria
+    ]);
+
+    if ($stmtHistoricoAtivo->fetch(PDO::FETCH_ASSOC)) {
+        http_response_code(409);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'sucesso' => false,
+            'mensagem' => 'Já existe um histórico deste aluno. Para gerar outro, apague/exclua o anterior em "Históricos e Certificados".'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     // Renderiza HTML
     ob_start();
     include('visualizar_historico_fundamental_novo.php');
     $html = ob_get_clean();
-
-    $categoria = isset($input['dadosAluno']['categoria']) ? strtolower($input['dadosAluno']['categoria']) : 'fundamental';
 
     // Criar nome do arquivo
     $nomeArquivo = 'HISTORICO_'

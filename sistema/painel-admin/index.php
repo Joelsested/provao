@@ -42,18 +42,18 @@ if (!function_exists('normalizar_slug_pagina_admin')) {
     }
     $slug = strtolower($slug);
     $slug = strtr($slug, [
-      'Ã¡' => 'a', 'Ã ' => 'a', 'Ã¢' => 'a', 'Ã£' => 'a', 'Ã¤' => 'a',
-      'Ã©' => 'e', 'Ã¨' => 'e', 'Ãª' => 'e', 'Ã«' => 'e',
-      'Ã­' => 'i', 'Ã¬' => 'i', 'Ã®' => 'i', 'Ã¯' => 'i',
-      'Ã³' => 'o', 'Ã²' => 'o', 'Ã´' => 'o', 'Ãµ' => 'o', 'Ã¶' => 'o',
-      'Ãº' => 'u', 'Ã¹' => 'u', 'Ã»' => 'u', 'Ã¼' => 'u',
-      'Ã§' => 'c',
-      'Ã' => 'a', 'Ã€' => 'a', 'Ã‚' => 'a', 'Ãƒ' => 'a', 'Ã„' => 'a',
-      'Ã‰' => 'e', 'Ãˆ' => 'e', 'ÃŠ' => 'e', 'Ã‹' => 'e',
-      'Ã' => 'i', 'ÃŒ' => 'i', 'ÃŽ' => 'i', 'Ã' => 'i',
-      'Ã“' => 'o', 'Ã’' => 'o', 'Ã”' => 'o', 'Ã•' => 'o', 'Ã–' => 'o',
-      'Ãš' => 'u', 'Ã™' => 'u', 'Ã›' => 'u', 'Ãœ' => 'u',
-      'Ã‡' => 'c',
+      'á' => 'a', 'à' => 'a', 'â' => 'a', 'ã' => 'a', 'ä' => 'a',
+      'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
+      'í' => 'i', 'ì' => 'i', 'î' => 'i', 'ï' => 'i',
+      'ó' => 'o', 'ò' => 'o', 'ô' => 'o', 'õ' => 'o', 'ö' => 'o',
+      'ú' => 'u', 'ù' => 'u', 'û' => 'u', 'ü' => 'u',
+      'ç' => 'c',
+      'Á' => 'a', 'À' => 'a', 'Â' => 'a', 'Ã' => 'a', 'Ä' => 'a',
+      'É' => 'e', 'È' => 'e', 'Ê' => 'e', 'Ë' => 'e',
+      'Í' => 'i', 'Ì' => 'i', 'Î' => 'i', 'Ï' => 'i',
+      'Ó' => 'o', 'Ò' => 'o', 'Ô' => 'o', 'Õ' => 'o', 'Ö' => 'o',
+      'Ú' => 'u', 'Ù' => 'u', 'Û' => 'u', 'Ü' => 'u',
+      'Ç' => 'c',
     ]);
     $slug = preg_replace('/[^a-z0-9_]/', '', $slug);
     return $slug;
@@ -89,7 +89,7 @@ if (!isset($ocultar2)) {
 }
 
 
-//RECUPERAR DADOS DO USUÃRIO
+//RECUPERAR DADOS DO USUÁRIO
 $query = $pdo->query("SELECT * FROM usuarios where id = '$id_usuario'");
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 if (empty($res) || !isset($res[0])) {
@@ -492,17 +492,17 @@ $_SESSION['last_activity'] = time();
 
 
               <li
-                class="treeview li-menu <?php echo $ocultar ?> <?= in_array($pagina, ['MatrÃ­culas_aprovadas']) ? 'active' : '' ?>">
+                class="treeview li-menu <?php echo $ocultar ?> <?= in_array($pagina, ['matriculas_aprovadas']) ? 'active' : '' ?>">
                 <a href="#">
                   <i class="fa fa-envelope-o"></i>
                   <span class="text-menu">Matrícula</span>
                   <i class="fa fa-angle-left pull-right"></i>
                 </a>
                 <ul class="treeview-menu ">
-                  <li><a href="index.php?pagina=MatrÃ­culas"><i class="fa fa-angle-right"></i>
+                  <li><a href="index.php?pagina=matriculas"><i class="fa fa-angle-right"></i>
                       Matrículas Pendentes</a></li>
 
-                  <li><a href="index.php?pagina=MatrÃ­culas_aprovadas"><i class="fa fa-angle-right"></i> Matrículas
+                  <li><a href="index.php?pagina=matriculas_aprovadas"><i class="fa fa-angle-right"></i> Matrículas
                       Aprovadas</a></li>
 
 
@@ -640,11 +640,11 @@ $_SESSION['last_activity'] = time();
                   <li><a href="index.php?pagina=vendas"><i class="fa fa-angle-right"></i> Vendas</a>
                   </li>
 
-                  <li><a href="index.php?pagina=pagar"><i class="fa fa-angle-right"></i> Contas à Pagar</a></li>
+                  <li><a href="index.php?pagina=pagar"><i class="fa fa-angle-right"></i> Contas a Pagar</a></li>
 
-                  <li><a href="index.php?pagina=receber"><i class="fa fa-angle-right"></i> Contas à Receber</a></li>
+                  <li><a href="index.php?pagina=receber"><i class="fa fa-angle-right"></i> Contas a Receber</a></li>
 
-                  <li><a href="index.php?pagina=MovimentaÃ§Ãµes"><i class="fa fa-angle-right"></i>
+                  <li><a href="index.php?pagina=movimentacoes"><i class="fa fa-angle-right"></i>
                       Movimentações</a></li>
 </ul>
               </li>
@@ -654,14 +654,14 @@ $_SESSION['last_activity'] = time();
                 <li class="treeview li-menu <?= in_array($pagina, ['relatorio_alunos_responsavel', 'relatorio_financeiro_aluno']) ? 'active' : '' ?>">
                   <a href="#">
                     <i class="fa fa-file-text-o"></i>
-                    <span class="text-menu">Relatorios</span>
+                    <span class="text-menu">Relatórios</span>
                     <i class="fa fa-angle-left pull-right"></i>
                   </a>
                   <ul class="treeview-menu">
                     <li><a href="index.php?pagina=relatorio_alunos_responsavel"><i class="fa fa-angle-right"></i>
-                        Relatorio de Alunos por Responsavel</a></li>
+                        Relatório de Alunos por Responsável</a></li>
                     <li><a href="index.php?pagina=relatorio_financeiro_aluno"><i class="fa fa-angle-right"></i>
-                        Relatorio Financeiro de Aluno</a></li>
+                        Relatório Financeiro de Aluno</a></li>
                   </ul>
                 </li>
               <?php } ?>
@@ -691,7 +691,7 @@ $_SESSION['last_activity'] = time();
                         Relatórios de Alunos</a></li>
 
                     <li><a href="index.php?pagina=relatorio_alunos_responsavel"><i class="fa fa-angle-right"></i>
-                        Relatório de Alunos por Responsavel</a></li>
+                        Relatório de Alunos por Responsável</a></li>
 
                     <?php if ($mostrar_relatorios_financeiros_completo) { ?>
                       <li><a href="index.php?pagina=relatorio_alunos_efi"><i class="fa fa-angle-right"></i>
@@ -772,7 +772,7 @@ $_SESSION['last_activity'] = time();
 
         <?php
         $total_respondidas = 0;
-        //listar notificaÃ§Ãµes das perguntas que os cursos pertencem ao professor
+        //listar notificações das perguntas que os cursos pertencem ao professor
         $query = $pdo->query("SELECT * FROM perguntas where respondida != 'Sim'");
         $res = $query->fetchAll(PDO::FETCH_ASSOC);
         for ($i = 0; $i < @count($res); $i++) {
@@ -983,7 +983,7 @@ $_SESSION['last_activity'] = time();
           <div class="row">
             <div class="col-md-6">
               <div class="form-group">
-                <label>NÃ£o</label>
+                <label>Não</label>
                 <input type="text" class="form-control" name="nome_usu" value="<?php echo $nome_usuario ?>" required>
               </div>
             </div>
@@ -1077,7 +1077,7 @@ $_SESSION['last_activity'] = time();
 
                 <div class="col-md-5">
                   <div class="form-group">
-                    <label>CÃ³digo da Cor</label>
+                    <label>Código da Cor</label>
                     <div class="color-input-group d-flex align-items-center" style="gap: 8px;">
                       <input type="text" class="form-control" name="valor_cor[]" value="<?= htmlspecialchars($cor['valor_cor']) ?>" required>
                       <input type="color" class="color-picker" value="<?= htmlspecialchars($cor['valor_cor']) ?>" onchange="this.previousElementSibling.value = this.value">
@@ -1190,7 +1190,7 @@ $_SESSION['last_activity'] = time();
                 <div class="row">
                   <div class="col-md-12">
                     <?php
-                    // embed a pÃ¡gina de gateway efy reutilizando o php jÃ¡ criado
+                    // embed a página de gateway efy reutilizando o php já criado
                     $pagina_gateway = __DIR__ . '/paginas/gateway_efy.php';
                     if (file_exists($pagina_gateway)) {
                       include $pagina_gateway;
@@ -1301,7 +1301,7 @@ $_SESSION['last_activity'] = time();
                 <div class="row">
                   <div class="col-md-3">
                     <div class="form-group">
-                      <label><i class="fa fa-list mr-1"></i> Itens PaginaÃ§Ã£o</label>
+                      <label><i class="fa fa-list mr-1"></i> Itens Paginação</label>
                       <input type="number" class="form-control" id="itens_pag" name="itens_pag"
                         value="<?php echo $itens_pag ?>">
                     </div>
@@ -1315,21 +1315,21 @@ $_SESSION['last_activity'] = time();
                   </div>
                   <div class="col-md-3">
                     <div class="form-group">
-                      <label><i class="fa fa-unlock mr-1"></i> Aulas DisponÃ­veis</label>
+                      <label><i class="fa fa-unlock mr-1"></i> Aulas Disponíveis</label>
                       <input type="number" class="form-control" id="aulas_lib" name="aulas_lib"
                         value="<?php echo $aulas_lib ?>">
                     </div>
                   </div>
                   <div class="col-md-3">
                     <div class="form-group">
-                      <label><i class="fa fa-star mr-1"></i> CartÃµes Fidelidade</label>
+                      <label><i class="fa fa-star mr-1"></i> Cartões Fidelidade</label>
                       <input type="number" class="form-control" id="cartoes_fidelidade" name="cartoes_fidelidade"
                         value="<?php echo $cartoes_fidelidade ?>">
                     </div>
                   </div>
                 </div>
 
-                <h5 class="border-bottom pb-2 mb-3 mt-4">ConfiguraÃ§Ãµes de Pagamento</h5>
+                <h5 class="border-bottom pb-2 mb-3 mt-4">Configurações de Pagamento</h5>
                 <div class="row">
                   <div class="col-md-3">
                     <div class="form-group">
@@ -1341,7 +1341,7 @@ $_SESSION['last_activity'] = time();
 
                   <div class="col-md-3">
                     <div class="form-group">
-                      <label><i class="fa fa-percentage mr-1"></i> AcrÃ©scimo CartÃ£o %</label>
+                      <label><i class="fa fa-percentage mr-1"></i> Acréscimo Cartão %</label>
                       <input type="number" class="form-control" id="acrescimo_cartao_credito" name="acrescimo_cartao_credito"
                         value="<?php echo $acrescimo_cartao_credito ?>">
                     </div>
@@ -1357,7 +1357,7 @@ $_SESSION['last_activity'] = time();
                   </div>
                 </div>
 
-                <h5 class="border-bottom pb-2 mb-3 mt-4">ConfiguraÃ§Ãµes de ComissÃµes</h5>
+                <h5 class="border-bottom pb-2 mb-3 mt-4">Configurações de Comissões</h5>
                 <div class="row">
                   <div class="col-md-2">
                     <div class="form-group">
@@ -1375,7 +1375,7 @@ $_SESSION['last_activity'] = time();
                   </div>
                   <div class="col-md-2">
                     <div class="form-group">
-                      <label><i class="fa fa-percentage mr-1"></i> SecretÃ¡rio %</label>
+                      <label><i class="fa fa-percentage mr-1"></i> Secretário %</label>
                       <input type="number" class="form-control" id="comissao_secretario" name="comissao_secretario"
                         value="<?php echo $comissao_secretario ?>">
                     </div>
@@ -1427,7 +1427,7 @@ $_SESSION['last_activity'] = time();
                   </div>
                 </div>
 
-                <h5 class="border-bottom pb-2 mb-3 mt-4">ConfiguraÃ§Ãµes de Email e MatrÃ­culas</h5>
+                <h5 class="border-bottom pb-2 mb-3 mt-4">Configurações de Email e Matrículas</h5>
                 <div class="row">
                   <div class="col-md-3">
                     <div class="form-group">
@@ -1445,35 +1445,35 @@ $_SESSION['last_activity'] = time();
                   </div>
                   <div class="col-md-3">
                     <div class="form-group">
-                      <label><i class="fa fa-calendar-alt mr-1"></i> Dias Email MatrÃ­cula</label>
+                      <label><i class="fa fa-calendar-alt mr-1"></i> Dias Email Matrícula</label>
                       <input type="number" class="form-control" id="dias_email_matricula" name="dias_email_matricula"
                         value="<?php echo $dias_email_matricula ?>">
                     </div>
                   </div>
                   <div class="col-md-3">
                     <div class="form-group">
-                      <label><i class="fa fa-trash-alt mr-1"></i> Dias Excluir MatrÃ­cula</label>
+                      <label><i class="fa fa-trash-alt mr-1"></i> Dias Excluir Matrícula</label>
                       <input type="number" class="form-control" id="dias_excluir_matricula"
                         name="dias_excluir_matricula" value="<?php echo $dias_excluir_matricula ?>">
                     </div>
                   </div>
                 </div>
 
-                <h5 class="border-bottom pb-2 mb-3 mt-4">ConfiguraÃ§Ãµes AcadÃªmicas</h5>
+                <h5 class="border-bottom pb-2 mb-3 mt-4">Configurações Acadêmicas</h5>
                 <div class="row">
                   <div class="col-md-3">
                     <div class="form-group">
-                      <label><i class="fa fa-question-circle mr-1"></i> QuestionÃ¡rio</label>
+                      <label><i class="fa fa-question-circle mr-1"></i> Questionário</label>
                       <select class="form-control" name="questionario" id="questionario_config"
                         value="<?php echo $questionario_config ?>">
                         <option value="Sim" <?php if ($questionario_config == 'Sim') { ?> selected <?php } ?>>Sim</option>
-                        <option value="NÃ£o" <?php if ($questionario_config == 'NÃ£o') { ?> selected <?php } ?>>NÃ£o</option>
+                        <option value="Não" <?php if ($questionario_config == 'Não') { ?> selected <?php } ?>>Não</option>
                       </select>
                     </div>
                   </div>
                   <div class="col-md-3">
                     <div class="form-group">
-                      <label><i class="fa fa-percentage mr-1"></i> MÃ©dia AprovaÃ§Ã£o %</label>
+                      <label><i class="fa fa-percentage mr-1"></i> Média Aprovação %</label>
                       <input type="number" class="form-control" id="media_config" name="media"
                         value="<?php echo $media_config ?>">
                     </div>
@@ -1484,8 +1484,8 @@ $_SESSION['last_activity'] = time();
                       <select class="form-control" name="verso" id="verso" value="<?php echo $verso ?>">
                         <option value="Sim" <?php if ($verso == 'Sim') { ?> selected <?php } ?>>
                           Sim</option>
-                        <option value="NÃ£o" <?php if ($verso == 'NÃ£o') { ?> selected <?php } ?>>
-                          NÃ£o</option>
+                        <option value="Não" <?php if ($verso == 'Não') { ?> selected <?php } ?>>
+                          Não</option>
                       </select>
                     </div>
                   </div>
@@ -1495,7 +1495,7 @@ $_SESSION['last_activity'] = time();
                       <select class="form-control" name="email_adm_mat" id="email_adm_mat"
                         value="<?php echo $email_adm_mat ?>">
                         <option value="Sim" <?php if ($email_adm_mat == 'Sim') { ?> selected <?php } ?>>Sim</option>
-                        <option value="NÃ£o" <?php if ($email_adm_mat == 'NÃ£o') { ?> selected <?php } ?>>NÃ£o</option>
+                        <option value="Não" <?php if ($email_adm_mat == 'Não') { ?> selected <?php } ?>>Não</option>
                       </select>
                     </div>
                   </div>
@@ -1503,7 +1503,7 @@ $_SESSION['last_activity'] = time();
               </div>
             </div>
 
-            <!-- Tab 1: Dados BÃ¡sicos -->
+            <!-- Tab 1: Dados Básicos -->
             <div class="tab-pane fade" id="basic" role="tabpanel" aria-labelledby="basic-tab">
               <div class="card-body">
                 <div class="row">
@@ -1549,7 +1549,7 @@ $_SESSION['last_activity'] = time();
                         </option>
                         <option value="Telefone" <?php if ($tipo_chave_pix == 'Telefone') { ?> selected <?php } ?>>
                           Telefone</option>
-                        <option value="CÃ³digo" <?php if ($tipo_chave_pix == 'CÃ³digo') { ?> selected <?php } ?>>CÃ³digo
+                        <option value="Código" <?php if ($tipo_chave_pix == 'Código') { ?> selected <?php } ?>>Código
                         </option>
                       </select>
                     </div>
@@ -1593,7 +1593,7 @@ $_SESSION['last_activity'] = time();
                 <div class="row">
                   <div class="col-md-6">
                     <div class="form-group">
-                      <label><i class="fa fa-film mr-1"></i> Url VÃ­deo PÃ¡gina Sobre</label>
+                      <label><i class="fa fa-film mr-1"></i> Url Vídeo Página Sobre</label>
                       <input type="text" class="form-control" id="video_sobre" name="video_sobre"
                         value="<?php echo $video_sobre ?>">
                     </div>
@@ -1604,7 +1604,7 @@ $_SESSION['last_activity'] = time();
                         Cadastrar</label>
                       <select class="form-control" name="professor_cad" id="professor_cad"
                         value="<?php echo $professor_cad ?>">
-                        <option value="NÃ£o" <?php if ($professor_cad == 'NÃ£o') { ?> selected <?php } ?>>NÃ£o</option>
+                        <option value="Não" <?php if ($professor_cad == 'Não') { ?> selected <?php } ?>>Não</option>
                         <option value="Sim" <?php if ($professor_cad == 'Sim') { ?> selected <?php } ?>>Sim</option>
                       </select>
                     </div>
@@ -1624,7 +1624,7 @@ $_SESSION['last_activity'] = time();
               </div>
             </div>
 
-            <!-- Tab 0: InformaÃ§Ãµes -->
+            <!-- Tab 0: Informações -->
             <div class="tab-pane fade in active" id="config" role="tabpanel" aria-labelledby="config-tab">
               <div class="card-body">
 
@@ -1634,14 +1634,14 @@ $_SESSION['last_activity'] = time();
                     Informações do Sistema
                   </h2>
                   <p style="font-size: 15px; margin-bottom: 24px; line-height: 1.6;">
-                    Personalize e ajuste as principais configuraÃ§Ãµes do seu sistema. Utilize as abas
+                    Personalize e ajuste as principais configurações do seu sistema. Utilize as abas
                     acima para navegar
                     entre as categorias disponíveis:
                   </p>
 
                   <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px;">
                     <div style="background: #F7F9FA; border: 1px solid #E1E8ED; border-radius: 8px; padding: 16px;">
-                      <strong style="display: block; font-size: 16px; margin-bottom: 6px;">Dados BÃ¡sicos</strong>
+                      <strong style="display: block; font-size: 16px; margin-bottom: 6px;">Dados Básicos</strong>
                       <span style="font-size: 14px; color: #6B7C93;">Configure informações gerais
                         essenciais para o
                         funcionamento do sistema.</span>
@@ -1660,16 +1660,16 @@ $_SESSION['last_activity'] = time();
                         de arquivos.</span>
                     </div>
                     <div style="background: #F7F9FA; border: 1px solid #E1E8ED; border-radius: 8px; padding: 16px;">
-                      <strong style="display: block; font-size: 16px; margin-bottom: 6px;">SeguranÃ§a</strong>
-                      <span style="font-size: 14px; color: #6B7C93;">Ajuste regras de seguranÃ§a
-                        para proteger a aplicaÃ§Ã£o
+                      <strong style="display: block; font-size: 16px; margin-bottom: 6px;">Segurança</strong>
+                      <span style="font-size: 14px; color: #6B7C93;">Ajuste regras de segurança
+                        para proteger a aplicação
                         e os dados.</span>
                     </div>
                   </div>
 
                   <p style="font-size: 14px; color: #7B8A99;">
-                    Lembre-se de revisar cuidadosamente e salvar as alteraÃ§Ãµes apÃ³s finalizar a
-                    configuraÃ§Ã£o.
+                    Lembre-se de revisar cuidadosamente e salvar as alterações após finalizar a
+                    configuração.
                   </p>
                 </div>
 
@@ -1683,45 +1683,45 @@ $_SESSION['last_activity'] = time();
 
         <div id="configTutorial" class="card-body ">
           <div style="padding: 24px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #4A4A4A;">
-            <h2 style="font-size: 24px; font-weight: 600; margin-bottom: 12px; color: #2C3E50;">InformaÃ§Ãµes
+            <h2 style="font-size: 24px; font-weight: 600; margin-bottom: 12px; color: #2C3E50;">Informações
               do Sistema
             </h2>
             <p style="font-size: 15px; margin-bottom: 24px; line-height: 1.6;">
-              Personalize e ajuste as principais configuraÃ§Ãµes do seu sistema. Utilize as abas acima para
+              Personalize e ajuste as principais configurações do seu sistema. Utilize as abas acima para
               navegar
-              entre as categorias disponÃ­veis:
+              entre as categorias disponíveis:
             </p>
 
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px;">
               <div style="background: #F7F9FA; border: 1px solid #E1E8ED; border-radius: 8px; padding: 16px;">
                 <strong style="display: block; font-size: 16px; margin-bottom: 6px;">Dados
-                  BÃ¡sicos</strong>
-                <span style="font-size: 14px; color: #6B7C93;">Configure informaÃ§Ãµes gerais essenciais
+                  Básicos</strong>
+                <span style="font-size: 14px; color: #6B7C93;">Configure informações gerais essenciais
                   para o
                   funcionamento do sistema.</span>
               </div>
               <div style="background: #F7F9FA; border: 1px solid #E1E8ED; border-radius: 8px; padding: 16px;">
                 <strong style="display: block; font-size: 16px; margin-bottom: 6px;">Valores e
                   Porcentagens</strong>
-                <span style="font-size: 14px; color: #6B7C93;">Defina taxas, comissÃµes de venda e outros
+                <span style="font-size: 14px; color: #6B7C93;">Defina taxas, comissões de venda e outros
                   percentuais.</span>
               </div>
               <div style="background: #F7F9FA; border: 1px solid #E1E8ED; border-radius: 8px; padding: 16px;">
                 <strong style="display: block; font-size: 16px; margin-bottom: 6px;">Uploads</strong>
-                <span style="font-size: 14px; color: #6B7C93;">Gerencie parÃ¢metros para envio e
+                <span style="font-size: 14px; color: #6B7C93;">Gerencie parâmetros para envio e
                   armazenamento seguro
                   de arquivos.</span>
               </div>
               <div style="background: #F7F9FA; border: 1px solid #E1E8ED; border-radius: 8px; padding: 16px;">
-                <strong style="display: block; font-size: 16px; margin-bottom: 6px;">SeguranÃ§a</strong>
-                <span style="font-size: 14px; color: #6B7C93;">Ajuste regras de seguranÃ§a para proteger
-                  a aplicaÃ§Ã£o
+                <strong style="display: block; font-size: 16px; margin-bottom: 6px;">Segurança</strong>
+                <span style="font-size: 14px; color: #6B7C93;">Ajuste regras de segurança para proteger
+                  a aplicação
                   e os dados.</span>
               </div>
             </div>
 
             <p style="font-size: 14px; color: #7B8A99;">
-              Lembre-se de revisar cuidadosamente e salvar as alteraÃ§Ãµes apÃ³s finalizar a configuraÃ§Ã£o.
+              Lembre-se de revisar cuidadosamente e salvar as alterações após finalizar a configuração.
             </p>
           </div>
         </div>
@@ -1729,7 +1729,7 @@ $_SESSION['last_activity'] = time();
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
           <button type="submit" class="btn btn-primary"><i class="fa fa-save mr-1"></i>Salvar
-            AlteraÃ§Ãµes</button>
+            Alterações</button>
         </div>
       </form>
     </div>
@@ -1745,7 +1745,7 @@ $_SESSION['last_activity'] = time();
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h4 class="modal-title" id="exampleModalLabel">RelatÃ³rio de Vendas
+        <h4 class="modal-title" id="exampleModalLabel">Relatório de Vendas
           <small>(
             <a href="#" onclick="datas('1980-01-01', 'tudo-Ven', 'Ven')">
               <span style="color:#000" id="tudo-Ven">Tudo</span>
@@ -1754,7 +1754,7 @@ $_SESSION['last_activity'] = time();
               <span id="hoje-Ven">Hoje</span>
             </a> /
             <a href="#" onclick="datas('<?php echo $data_mes ?>', 'mes-Ven', 'Ven')">
-              <span style="color:#000" id="mes-Ven">MÃªs</span>
+              <span style="color:#000" id="mes-Ven">Mês</span>
             </a> /
             <a href="#" onclick="datas('<?php echo $data_ano ?>', 'ano-Ven', 'Ven')">
               <span style="color:#000" id="ano-Ven">Ano</span>
@@ -1794,8 +1794,8 @@ $_SESSION['last_activity'] = time();
                   <option value="">Todas</option>
                   <option value="BOLETO">Boleto</option>
                   <option value="BOLETO_PARCELADO">Boleto Parcelado</option>
-                  <option value="CARTAO_DE_CREDITO">CartÃ£o de CrÃ©dito</option>
-                  <option value="CARTAO_RECORRENTE">CartÃ£o Recorrente</option>
+                  <option value="CARTAO_DE_CREDITO">Cartão de Crédito</option>
+                  <option value="CARTAO_RECORRENTE">Cartão Recorrente</option>
                 </select>
               </div>
             </div>
@@ -1808,7 +1808,7 @@ $_SESSION['last_activity'] = time();
         </div>
 
         <div class="modal-footer">
-          <button type="submit" class="btn btn-primary">Gerar RelatÃ³rio</button>
+          <button type="submit" class="btn btn-primary">Gerar Relatório</button>
         </div>
       </form>
 
@@ -1830,7 +1830,7 @@ $_SESSION['last_activity'] = time();
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h4 class="modal-title" id="exampleModalLabel">RelatÃ³rio de Contas
+        <h4 class="modal-title" id="exampleModalLabel">Relatório de Contas
           <small>(
             <a href="#" onclick="datas('1980-01-01', 'tudo-Con', 'Con')">
               <span style="color:#000" id="tudo-Con">Tudo</span>
@@ -1839,7 +1839,7 @@ $_SESSION['last_activity'] = time();
               <span id="hoje-Con">Hoje</span>
             </a> /
             <a href="#" onclick="datas('<?php echo $data_mes ?>', 'mes-Con', 'Con')">
-              <span style="color:#000" id="mes-Con">MÃªs</span>
+              <span style="color:#000" id="mes-Con">Mês</span>
             </a> /
             <a href="#" onclick="datas('<?php echo $data_ano ?>', 'ano-Con', 'Con')">
               <span style="color:#000" id="ano-Con">Ano</span>
@@ -1878,7 +1878,7 @@ $_SESSION['last_activity'] = time();
                 <select class="form-control sel13" name="pago" style="width:100%;">
                   <option value="">Todas</option>
                   <option value="Sim">Somente Pagas</option>
-                  <option value="NÃ£o">Pendentes</option>
+                  <option value="Não">Pendentes</option>
 
                 </select>
               </div>
@@ -1893,8 +1893,8 @@ $_SESSION['last_activity'] = time();
               <div class="form-group">
                 <label>Pagar / Receber</label>
                 <select class="form-control sel13" name="tabela" style="width:100%;">
-                  <option value="pagar">Contas Ã  Pagar</option>
-                  <option value="receber">Contas Ã  Receber</option>
+                  <option value="pagar">Contas a Pagar</option>
+                  <option value="receber">Contas a Receber</option>
 
                 </select>
               </div>
@@ -1920,7 +1920,7 @@ $_SESSION['last_activity'] = time();
         </div>
 
         <div class="modal-footer">
-          <button type="submit" class="btn btn-primary">Gerar RelatÃ³rio</button>
+          <button type="submit" class="btn btn-primary">Gerar Relatório</button>
         </div>
       </form>
 
@@ -1941,7 +1941,7 @@ $_SESSION['last_activity'] = time();
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h4 class="modal-title" id="exampleModalLabel">RelatÃ³rio de Lucro
+        <h4 class="modal-title" id="exampleModalLabel">Relatório de Lucro
           <small>(
             <a href="#" onclick="datas('1980-01-01', 'tudo-Luc', 'Luc')">
               <span style="color:#000" id="tudo-Luc">Tudo</span>
@@ -1950,7 +1950,7 @@ $_SESSION['last_activity'] = time();
               <span id="hoje-Luc">Hoje</span>
             </a> /
             <a href="#" onclick="datas('<?php echo $data_mes ?>', 'mes-Luc', 'Luc')">
-              <span style="color:#000" id="mes-Luc">MÃªs</span>
+              <span style="color:#000" id="mes-Luc">Mês</span>
             </a> /
             <a href="#" onclick="datas('<?php echo $data_ano ?>', 'ano-Luc', 'Luc')">
               <span style="color:#000" id="ano-Luc">Ano</span>
@@ -1992,7 +1992,7 @@ $_SESSION['last_activity'] = time();
         </div>
 
         <div class="modal-footer">
-          <button type="submit" class="btn btn-primary">Gerar RelatÃ³rio</button>
+          <button type="submit" class="btn btn-primary">Gerar Relatório</button>
         </div>
       </form>
 
@@ -2006,13 +2006,13 @@ $_SESSION['last_activity'] = time();
 
 
 
-<!-- Modal Rel Comissoes -->
+<!-- Modal Rel Comissões -->
 <div class="modal fade" id="RelComissoes" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
   aria-hidden="true">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h4 class="modal-title" id="exampleModalLabel">RelatÃ³rio de ComissÃµes
+        <h4 class="modal-title" id="exampleModalLabel">Relatório de Comissões
           <small>(
             <a href="#" onclick="datas('1980-01-01', 'tudo-Com', 'Com')">
               <span style="color:#000" id="tudo-Com">Tudo</span>
@@ -2021,7 +2021,7 @@ $_SESSION['last_activity'] = time();
               <span id="hoje-Com">Hoje</span>
             </a> /
             <a href="#" onclick="datas('<?php echo $data_mes ?>', 'mes-Com', 'Com')">
-              <span style="color:#000" id="mes-Com">MÃªs</span>
+              <span style="color:#000" id="mes-Com">Mês</span>
             </a> /
             <a href="#" onclick="datas('<?php echo $data_ano ?>', 'ano-Com', 'Com')">
               <span style="color:#000" id="ano-Com">Ano</span>
@@ -2060,7 +2060,7 @@ $_SESSION['last_activity'] = time();
                 <select class="form-control sel13" name="pago" style="width:100%;">
                   <option value="">Todas</option>
                   <option value="Sim">Somente Pagas</option>
-                  <option value="NÃ£o">Pendentes</option>
+                  <option value="Não">Pendentes</option>
 
                 </select>
               </div>
@@ -2105,7 +2105,7 @@ $_SESSION['last_activity'] = time();
         </div>
 
         <div class="modal-footer">
-          <button type="submit" class="btn btn-primary">Gerar RelatÃ³rio</button>
+          <button type="submit" class="btn btn-primary">Gerar Relatório</button>
         </div>
       </form>
 
@@ -2402,17 +2402,17 @@ function isActiveMenu($href)
 {
   $currentUrl = $_SERVER['REQUEST_URI'];
 
-  // Remove domÃ­nio e parÃ¢metros extras da URL atual
+  // Remove domínio e parâmetros extras da URL atual
   $currentPath = parse_url($currentUrl, PHP_URL_PATH);
   $currentPage = basename($currentPath); // ex: index.php
-  $currentQuery = $_SERVER['QUERY_STRING']; // ex: pagina=MatrÃ­culas
+  $currentQuery = $_SERVER['QUERY_STRING']; // ex: pagina=matriculas
 
-  // Checa se href Ã© exatamente igual a URI
+  // Checa se href é exatamente igual a URI
   if ($href === $currentPage || strpos($currentUrl, $href) !== false) {
     return 'active';
   }
 
-  // Checa se href tem query string (ex: index.php?pagina=MatrÃ­culas)
+  // Checa se href tem query string (ex: index.php?pagina=matriculas)
   if (!empty($currentQuery) && strpos($href, $currentQuery) !== false) {
     return 'active';
   }
@@ -2483,7 +2483,6 @@ function isActiveMenu($href)
     });
   }
 </script>
-
 
 
 

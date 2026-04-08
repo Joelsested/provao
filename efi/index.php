@@ -215,7 +215,19 @@ $options = require_once 'options.php';
 function montarUrlWebhook($url)
 {
     $token = '';
-    foreach (['WEBHOOK_TOKEN_EJA_PROD', 'WEBHOOK_TOKEN_EJA', 'WEBHOOK_TOKEN'] as $key) {
+    foreach (
+        [
+            'WEBHOOK_TOKEN_EJA_PROD',
+            'WEBHOOK_TOKEN_EJA',
+            'WEBHOOK_TOKEN',
+            'WEBHOOK_TOKEN_BOLETO_PROD',
+            'WEBHOOK_TOKEN_BOLETO',
+            'WEBHOOK_TOKEN_BOLETO_PARCELADO_PROD',
+            'WEBHOOK_TOKEN_BOLETO_PARCELADO',
+            'WEBHOOK_TOKEN_PIX_PROD',
+            'WEBHOOK_TOKEN_PIX',
+        ] as $key
+    ) {
         $value = trim((string) env($key, ''));
         if ($value !== '') {
             $token = $value;

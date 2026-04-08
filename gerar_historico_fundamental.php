@@ -682,6 +682,10 @@ if (!$aluno_error) {
             'pai' => $dadosAluno['pai'] ?? 'N/A',
             'mae' => $dadosAluno['mae'] ?? 'N/A',
             'rg' => $dadosAluno['rg'] ?? 'N/A',
+            'documento_identificacao' => $dadosAluno['rg'] ?? 'N/A',
+            'orgao_expedidor' => $dadosAluno['orgao_expedidor'] ?? '',
+            'orgao_emissor' => $dadosAluno['orgao_expedidor'] ?? '',
+            'expedicao' => $dadosAluno['expedicao'] ?? '',
             'naturalidade' => $dadosAluno['naturalidade'] ?? 'N/A',
             'dataNasc' => $dadosAluno['nascimento'] ?? 'N/A',
             'sexo' => $dadosAluno['sexo'] ?? 'N/A',
@@ -757,6 +761,7 @@ if (!$aluno_error) {
                 naturalidade: document.getElementById('naturalidade').value,
                 cpf: document.getElementById('cpf').value,
                 rg: document.getElementById('rg').value,
+                documento_identificacao: document.getElementById('rg').value,
                 pai: document.getElementById('pai').value,
                 mae: document.getElementById('mae').value
             };

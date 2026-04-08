@@ -107,7 +107,19 @@ function normalizarTelefone($telefone): string
 function montarUrlWebhook($url)
 {
     $token = '';
-    foreach (['WEBHOOK_TOKEN_EJA_PROD', 'WEBHOOK_TOKEN_EJA', 'WEBHOOK_TOKEN'] as $key) {
+    foreach (
+        [
+            'WEBHOOK_TOKEN_EJA_PROD',
+            'WEBHOOK_TOKEN_EJA',
+            'WEBHOOK_TOKEN',
+            'WEBHOOK_TOKEN_BOLETO_PROD',
+            'WEBHOOK_TOKEN_BOLETO',
+            'WEBHOOK_TOKEN_BOLETO_PARCELADO_PROD',
+            'WEBHOOK_TOKEN_BOLETO_PARCELADO',
+            'WEBHOOK_TOKEN_PIX_PROD',
+            'WEBHOOK_TOKEN_PIX',
+        ] as $key
+    ) {
         $value = trim((string) env($key, ''));
         if ($value !== '') {
             $token = $value;
@@ -424,9 +436,10 @@ try {
 
             $resultado = $boletoPayment->createBoletoCharge($payloadArray);
             $paymentData = $resultado['payment_data']['data']['payment']['banking_billet'] ?? [];
-            $idAsaas = $paymentData['pdf']['charge'] ?? ($resultado['pdf_boleto'] ?? null);
+            $idReferenciaEfy = $paymentData['pdf']['charge'] ?? ($resultado['pdf_boleto'] ?? null);
             $transactionReceipt = $paymentData['pix']['qrcode'] ?? null;
 
+            // Mantido em coluna legada (id_asaas) apenas por compatibilidade de schema.
             $sql = "UPDATE parcelas_geradas_por_boleto
                     SET charge_id = :charge_id,
                         id_asaas = :id_asaas,
@@ -441,7 +454,7 @@ try {
 
             $params = [
                 ':charge_id' => $resultado['charge_id'],
-                ':id_asaas' => $idAsaas,
+                ':id_asaas' => $idReferenciaEfy,
                 ':transaction_receipt_url' => $transactionReceipt,
                 ':id' => $id
             ];

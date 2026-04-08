@@ -301,7 +301,7 @@ HTML;
             
             <!-- Student Certificate -->
             <div class="col-md-4 text-center mb-3 {$ocultar}">
-              <a href="#" onclick="gerarCertAluno({$id});" class="btn btn-default btn-block" data-dismiss="modal">
+              <a href="#" onclick="return gerarCertAluno({$id});" class="btn btn-default btn-block" data-dismiss="modal">
                 <i class="fa fa-file-pdf-o text-primary"></i><br>
                 Certificados
               </a>
@@ -898,10 +898,14 @@ HTML;
         });
     }
 
-
-
+    const emissaoCertificadoEmAndamento = new Set();
 
     function gerarCertAluno(id) {
+        if (emissaoCertificadoEmAndamento.has(id)) {
+            Swal.fire("Aguarde", "Ja existe uma emissao em andamento para este aluno.", "info");
+            return false;
+        }
+
         Swal.fire({
             title: "Gerar Certificado",
             html: `
@@ -933,11 +937,17 @@ HTML;
             }
         }).then((result) => {
             if (result.isConfirmed) {
+                if (emissaoCertificadoEmAndamento.has(id)) {
+                    return;
+                }
+                emissaoCertificadoEmAndamento.add(id);
                 const { ano, data } = result.value;
                 const url = `/sistema/rel/rel_certificado.php?id=${id}&ano=${encodeURIComponent(ano)}&data=${encodeURIComponent(data)}`;
                 window.open(url, "_blank"); // Abre em uma nova guia
+                setTimeout(() => emissaoCertificadoEmAndamento.delete(id), 5000);
             }
         });
+        return false;
     }
 
     function gerarDeclaracaoFundamentalAluno(id) {

@@ -804,28 +804,8 @@ if (!$aluno_error) {
 
         // Dados do aluno carregados do PHP
         <?php
-        $rgRaw = trim($dadosAluno['rg'] ?? '');
-        if ($rgRaw !== '') {
-            $rgRaw = preg_replace('/^R\.?G\.?\s*[:\-]?\s*/iu', '', $rgRaw);
-            $rgRaw = trim($rgRaw);
-        }
-        $rgNumero = '';
-        $rgOrgao = trim($dadosAluno['orgao_expedidor'] ?? '');
-        if ($rgRaw !== '') {
-            if (strpos($rgRaw, '-') !== false) {
-                [$rgNumero, $rgOrgaoRaw] = array_map('trim', explode('-', $rgRaw, 2));
-                if ($rgOrgao === '' && $rgOrgaoRaw !== '') {
-                    $rgOrgao = $rgOrgaoRaw;
-                }
-            } elseif (preg_match('/^([0-9A-Za-z\.\-]+)\s+(.+)$/u', $rgRaw, $rgMatch)) {
-                $rgNumero = trim($rgMatch[1]);
-                if ($rgOrgao === '') {
-                    $rgOrgao = trim($rgMatch[2]);
-                }
-            } else {
-                $rgNumero = $rgRaw;
-            }
-        }
+        $rgRaw = trim((string) ($dadosAluno['rg'] ?? ''));
+        $rgOrgao = trim((string) ($dadosAluno['orgao_expedidor'] ?? ''));
         ?>
         let dadosAluno = <?php echo json_encode([
 
@@ -836,8 +816,10 @@ if (!$aluno_error) {
             'id_aluno' => $dadosAluno['id'] ?? null,
             'pai' => $dadosAluno['pai'] ?? 'N/A',
             'mae' => $dadosAluno['mae'] ?? 'N/A',
-            'rg' => $rgNumero,
+            'rg' => $rgRaw,
+            'documento_identificacao' => $rgRaw,
             'orgao_emissor' => $rgOrgao,
+            'orgao_expedidor' => $rgOrgao,
             'expedicao' => trim($dadosAluno['expedicao'] ?? ''),
             'naturalidade' => $dadosAluno['naturalidade'] ?? 'N/A',
             'dataNasc' => $dadosAluno['nascimento'] ?? 'N/A',
@@ -1387,6 +1369,7 @@ if (!$aluno_error) {
 
 
         function abrirFormularioAdicional(notas) {
+    const OBSERVACOES_FIXAS_MEDIO = '• Conclusão do Ensino Médio mediante Exames de Conclusão da EJA, conforme Art. 38 da Lei Federal nº 9.394/96. • A carga horária registrada representa equivalência legal ao ensino regular, NÃO cursada, conforme estabelecido pela legislação vigente. • Frequência: "Dispensa" (sem exigência), conforme Resolução CNE/CEB nº 3/2025. • Critério de aprovação: Nota mínima 5,0 (cinco) em escala de 0 a 10, ou 50% de acertos nas avaliações. • Componentes curriculares de História e Geografia incluem, respectivamente, História de Rondônia e Cultura Afro-Brasileira, e Geografia de Rondônia. • Este certificado habilita o portador ao prosseguimento de estudos em nível superior, conforme Art. 44, II da Lei nº 9.394/96.';
     swal({
         title: "Informações Adicionais",
         content: {
@@ -1453,7 +1436,7 @@ if (!$aluno_error) {
 
                         <div class="form-group" style="grid-column:1 / span 2;">
                             <label>Observações:</label>
-                            <textarea id="observacoes" rows="4" class="swal-content__input" placeholder="Ex: Observações">${dadosAdicionaisSalvos.observacoes || ''}</textarea>
+                            <textarea id="observacoes" rows="4" class="swal-content__input" readonly>${OBSERVACOES_FIXAS_MEDIO}</textarea>
                         </div>
                         <div class="form-group" style="grid-column:1 / span 2;">
                             <label>APROVEITAMENTO DE ESTUDOS ANTERIORES:</label>
@@ -1515,7 +1498,7 @@ if (!$aluno_error) {
                 anoConclusao: document.getElementById('anoConclusao').value,
                 cargaHoraria: document.getElementById('cargaHoraria').value,
                 situacao: document.getElementById('situacao').value,
-                observacoes: document.getElementById('observacoes').value,
+                observacoes: OBSERVACOES_FIXAS_MEDIO,
                 aproveitamento_estudos_anteriores: document.getElementById('aproveitamento_estudos_anteriores').value,
                 marca_dagua: document.getElementById('marca_dagua').value,
                 certidao_nascimento: document.getElementById('certidao_nascimento').value,

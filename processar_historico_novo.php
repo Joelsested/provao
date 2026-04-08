@@ -6,7 +6,7 @@ require_once __DIR__ . '/sistema/conexao.php';
 
 if (empty($_SESSION['nivel']) || $_SESSION['nivel'] === 'Aluno') {
     http_response_code(401);
-    echo 'N�o autorizado.';
+    echo 'Não autorizado.';
     exit();
 }
 
@@ -31,7 +31,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $notas = $input['notas'];
     $notasOriginais = $notas;
     $dadosAdicionais = $input['dadosAdicionais'];
+    $observacoesFixasMedio = '• Conclusão do Ensino Médio mediante Exames de Conclusão da EJA, conforme Art. 38 da Lei Federal nº 9.394/96. • A carga horária registrada representa equivalência legal ao ensino regular, NÃO cursada, conforme estabelecido pela legislação vigente. • Frequência: "Dispensa" (sem exigência), conforme Resolução CNE/CEB nº 3/2025. • Critério de aprovação: Nota mínima 5,0 (cinco) em escala de 0 a 10, ou 50% de acertos nas avaliações. • Componentes curriculares de História e Geografia incluem, respectivamente, História de Rondônia e Cultura Afro-Brasileira, e Geografia de Rondônia. • Este certificado habilita o portador ao prosseguimento de estudos em nível superior, conforme Art. 44, II da Lei nº 9.394/96.';
+    $dadosAdicionais['observacoes'] = $observacoesFixasMedio;
     $retorno = isset($input['retorno']) ? $input['retorno'] : 'html';
+    $categoria = isset($input['dadosAluno']['categoria']) ? strtolower((string) $input['dadosAluno']['categoria']) : 'medio';
+    $idAluno = intval($input['dadosAluno']['id_aluno'] ?? 0);
 
     // Função para normalizar nomes
     function formatarNomeMateria($str)
@@ -253,11 +257,11 @@ $validarData = static function ($data) use ($hoje, &$erros, $normalizarDataEntra
     $dt = DateTimeImmutable::createFromFormat('Y-m-d', $dataLimpa);
     $dataValida = $dt && $dt->format('Y-m-d') === $dataLimpa;
     if (!$dataValida) {
-        $erros[] = "Data inv�lida: {$dataLimpa}. Use o formato DDMMAAAA ou DD/MM/AAAA.";
+        $erros[] = "Data inválida: {$dataLimpa}. Use o formato DDMMAAAA ou DD/MM/AAAA.";
         return null;
     }
     if ($dt > $hoje) {
-        $erros[] = "Data no futuro n�o permitida: " . $formatarDataBr($dataLimpa) . ".";
+        $erros[] = "Data no futuro não permitida: " . $formatarDataBr($dataLimpa) . ".";
         return null;
     }
     return $dataLimpa;
@@ -347,6 +351,56 @@ $validarData = static function ($data) use ($hoje, &$erros, $normalizarDataEntra
         echo json_encode([
             'erro' => true,
             'mensagens' => $erros
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if ($idAluno <= 0) {
+        http_response_code(422);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'sucesso' => false,
+            'mensagem' => 'Aluno inválido para geração do histórico.'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS documentos_emitidos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            aluno_id INT NOT NULL,
+            tipo VARCHAR(30) NOT NULL,
+            categoria VARCHAR(30) NULL,
+            versao INT NULL,
+            arquivo_relativo VARCHAR(255) NOT NULL,
+            visivel_aluno TINYINT(1) NOT NULL DEFAULT 0,
+            criado_em DATETIME NOT NULL,
+            criado_por INT NULL,
+            ip VARCHAR(45) NULL,
+            INDEX idx_aluno_tipo (aluno_id, tipo)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    $stmtHistoricoAtivo = $pdo->prepare("
+        SELECT id
+        FROM documentos_emitidos
+        WHERE aluno_id = :aluno_id
+          AND tipo = 'historico'
+          AND (categoria = :categoria OR categoria IS NULL OR categoria = '')
+        ORDER BY id DESC
+        LIMIT 1
+    ");
+    $stmtHistoricoAtivo->execute([
+        ':aluno_id' => $idAluno,
+        ':categoria' => $categoria
+    ]);
+
+    if ($stmtHistoricoAtivo->fetch(PDO::FETCH_ASSOC)) {
+        http_response_code(409);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'sucesso' => false,
+            'mensagem' => 'Já existe um histórico deste aluno. Para gerar outro, apague/exclua o anterior em "Históricos e Certificados".'
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
@@ -443,8 +497,8 @@ $validarData = static function ($data) use ($hoje, &$erros, $normalizarDataEntra
 
     $arquivoRelativo = '/historicos/' . $idAluno . '/' . $categoria . '/' . $nomeArquivo;
     $stmtDoc = $pdo->prepare("
-        INSERT INTO documentos_emitidos (aluno_id, tipo, categoria, versao, arquivo_relativo, criado_em, criado_por, ip)
-        VALUES (:aluno_id, :tipo, :categoria, :versao, :arquivo_relativo, :criado_em, :criado_por, :ip)
+        INSERT INTO documentos_emitidos (aluno_id, tipo, categoria, versao, arquivo_relativo, visivel_aluno, criado_em, criado_por, ip)
+        VALUES (:aluno_id, :tipo, :categoria, :versao, :arquivo_relativo, :visivel_aluno, :criado_em, :criado_por, :ip)
     ");
     $stmtDoc->execute([
         ':aluno_id' => $idAluno,
@@ -452,6 +506,7 @@ $validarData = static function ($data) use ($hoje, &$erros, $normalizarDataEntra
         ':categoria' => $categoria,
         ':versao' => $novaVersao,
         ':arquivo_relativo' => $arquivoRelativo,
+        ':visivel_aluno' => 0,
         ':criado_em' => date('Y-m-d H:i:s'),
         ':criado_por' => $_SESSION['id'] ?? null,
         ':ip' => $_SERVER['REMOTE_ADDR'] ?? null

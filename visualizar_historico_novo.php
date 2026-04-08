@@ -145,7 +145,11 @@ $mae = trim((string) ($dadosAluno['mae'] ?? ''));
 $dataNascimento = formatar_data_br($dadosAluno['dataNasc'] ?? ($dadosAluno['nascimento'] ?? ''), '00/00/0000');
 $naturalidade = trim((string) ($dadosAluno['naturalidade'] ?? ''));
 $rg = trim((string) ($dadosAluno['rg'] ?? ''));
-$orgaoEmissor = trim((string) ($dadosAluno['orgao_emissor'] ?? ($dadosAluno['orgao_expedidor'] ?? '')));
+$documentoIdentificacao = trim((string) ($dadosAluno['documento_identificacao'] ?? ''));
+if ($documentoIdentificacao === '') {
+    $documentoIdentificacao = $rg;
+}
+$orgaoEmissor = trim((string) ($dadosAluno['orgao_expedidor'] ?? ($dadosAluno['orgao_emissor'] ?? '')));
 $dataExpedicao = formatar_data_br($dadosAluno['expedicao'] ?? '', '00/00/0000');
 $cpf = trim((string) ($dadosAluno['cpf'] ?? ''));
 $anoConclusao = trim((string) ($dadosAluno['anoConclusao'] ?? ($dadosAluno['ano_conclusao'] ?? ($dadosAdicionais['anoConclusao'] ?? ''))));
@@ -175,20 +179,36 @@ if ($dataHistoricoExtenso === '') {
 }
 
 $observacoes = trim((string) ($dadosAdicionais['observacoes'] ?? ''));
+$observacoesFixasMedio = '• Conclusão do Ensino Médio mediante Exames de Conclusão da EJA, conforme Art. 38 da Lei Federal nº 9.394/96. • A carga horária registrada representa equivalência legal ao ensino regular, NÃO cursada, conforme estabelecido pela legislação vigente. • Frequência: "Dispensa" (sem exigência), conforme Resolução CNE/CEB nº 3/2025. • Critério de aprovação: Nota mínima 5,0 (cinco) em escala de 0 a 10, ou 50% de acertos nas avaliações. • Componentes curriculares de História e Geografia incluem, respectivamente, História de Rondônia e Cultura Afro-Brasileira, e Geografia de Rondônia. • Este certificado habilita o portador ao prosseguimento de estudos em nível superior, conforme Art. 44, II da Lei nº 9.394/96.';
+$observacoes = $observacoesFixasMedio;
 $aproveitamentoEstudosAnteriores = trim((string) ($dadosAdicionais['aproveitamento_estudos_anteriores'] ?? ''));
 $situacao = strtoupper(trim((string) ($dadosAdicionais['situacao'] ?? 'APROVADO')));
 if ($situacao === '') {
     $situacao = 'APROVADO';
 }
 
-$cargaHorariaValor = trim((string) ($dadosAdicionais['cargaHoraria'] ?? '1200'));
-if ($cargaHorariaValor === '') {
-    $cargaHorariaValor = '1200';
-}
-$cargaHorariaTexto = rtrim($cargaHorariaValor, 'hH') . 'h';
+$cargaHorariaTexto = '1200h';
 
 $marcaDagua = strtolower(trim((string) ($dadosAdicionais['marca_dagua'] ?? 'sim'))) !== 'nao';
 $classeMarcaDagua = $marcaDagua ? '' : ' sem-marca-dagua';
+$caminhoFundoHistorico = __DIR__ . '/sistema/img/historico_medio_fundo.jpg';
+$urlFundoHistorico = '';
+if (is_file($caminhoFundoHistorico)) {
+    $conteudoFundo = @file_get_contents($caminhoFundoHistorico);
+    if ($conteudoFundo !== false && $conteudoFundo !== '') {
+        $urlFundoHistorico = 'data:image/jpeg;base64,' . base64_encode($conteudoFundo);
+    }
+}
+if ($urlFundoHistorico === '') {
+    $baseUrlSistema = rtrim((string) ($url_sistema ?? ''), '/');
+    if ($baseUrlSistema === '') {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $basePath = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
+        $baseUrlSistema = $scheme . '://' . $host . ($basePath !== '' ? $basePath : '');
+    }
+    $urlFundoHistorico = $baseUrlSistema . '/sistema/img/historico_medio_fundo.jpg';
+}
 
 $componentes = [
     [
@@ -244,16 +264,16 @@ $componentes = [
       width: 210mm; min-height: 297mm; margin: 8px auto; background: #fff;
       border: 1px solid #cfcfcf; padding: 10mm; position: relative; overflow: hidden;
     }
-    .pagina::before {
-      content: "";
-      position: absolute; inset: 0;
-      background: url("https://sested-eja.com/img/logo.jpg") no-repeat center 74%;
-      background-size: 76%;
-      opacity: 0.08;
+    .fundo-historico {
+      position: absolute;
+      left: 50%;
+      top: 73%;
+      transform: translate(-50%, -50%);
+      width: 88%;
+      opacity: 0.35;
       pointer-events: none;
       z-index: 0;
     }
-    .pagina.sem-marca-dagua::before { display: none; }
     .conteudo { position: relative; z-index: 1; }
 
     .cabecalho-topo { text-align: center; }
@@ -347,6 +367,9 @@ $componentes = [
   </div>
 
   <div class="pagina<?php echo $classeMarcaDagua; ?>">
+    <?php if ($marcaDagua) { ?>
+      <img class="fundo-historico" src="<?php echo h($urlFundoHistorico); ?>" alt="">
+    <?php } ?>
     <div class="conteudo">
       <div class="cabecalho-topo">
         <img src="https://sested-eja.com/img/logo.jpg" alt="Logo SESTED">
@@ -360,7 +383,7 @@ $componentes = [
 
       <div class="titulo-doc">
         <div class="t1">HISTORICO ESCOLAR</div>
-        <div class="t2">EDUCACAO DE JOVENS E ADULTOS - EJA - ENSINO MEDIO - 3º SEGMENTO</div>
+        <div class="t2">EDUCAÇÃO DE JOVENS E ADULTOS - EJA - ENSINO MEDIO - 3º SEGMENTO</div>
       </div>
 
       <table class="dados">
@@ -369,7 +392,7 @@ $componentes = [
           <td class="valor" colspan="5"><?php echo h($nome); ?></td>
         </tr>
         <tr>
-          <td class="label">Filiacao:</td>
+          <td class="label">Filiação:</td>
           <td class="valor" colspan="5"><?php echo h($filiacao); ?></td>
         </tr>
         <tr>
@@ -379,17 +402,17 @@ $componentes = [
           <td class="valor" colspan="3"><?php echo h($naturalidade); ?></td>
         </tr>
         <tr>
-          <td class="label">Documento de Identidade:</td>
-          <td class="valor">RG: <?php echo h($rg); ?></td>
-          <td class="label">Orgao Expedidor:</td>
+          <td class="label">Documento de Identificação:</td>
+          <td class="valor"><?php echo h($documentoIdentificacao); ?></td>
+          <td class="label">Orgão Expedidor:</td>
           <td class="valor"><?php echo h($orgaoEmissor); ?></td>
-          <td class="label">Data de Expedicao:</td>
+          <td class="label">Data de Expedição:</td>
           <td class="valor"><?php echo h($dataExpedicao); ?></td>
         </tr>
         <tr>
           <td class="label">CPF:</td>
           <td class="valor"><?php echo h($cpf); ?></td>
-          <td class="label">Ano de Conclusao:</td>
+          <td class="label">Ano de Conclusão:</td>
           <td class="valor"><?php echo h($anoConclusao); ?></td>
           <td class="label">Nacionalidade:</td>
           <td class="valor">Brasileira</td>
@@ -400,7 +423,7 @@ $componentes = [
         </tr>
       </table>
 
-      <div class="bloco-titulo">REGISTRO DE DESEMPENHO ESCOLAR - EXAMES DE CONCLUSAO</div>
+      <div class="bloco-titulo">REGISTRO DE DESEMPENHO ESCOLAR - EXAMES DE CONCLUSÃO</div>
 
       <table class="desempenho">
         <tr>
@@ -450,7 +473,7 @@ $componentes = [
         </tr>
         <tr>
           <td colspan="7" class="obs-caixa">
-            <strong>OBSERVAÇÕES:</strong>
+            <strong></strong>
             <?php echo h($observacoes); ?>
           </td>
         </tr>

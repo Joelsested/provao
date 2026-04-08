@@ -11,7 +11,7 @@ $niveisPermitidos = ['Administrador', 'Secretario', 'Tesoureiro', 'Tutor', 'Parc
 $nivelSessao = $_SESSION['nivel'] ?? '';
 
 if (!in_array($nivelSessao, $niveisPermitidos, true)) {
-    echo json_encode(['ok' => false, 'msg' => 'Nao autorizado.']);
+    echo json_encode(['ok' => false, 'msg' => 'Não autorizado.']);
     exit();
 }
 

@@ -26,7 +26,7 @@ if (!in_array(@$_SESSION['nivel'], ['Administrador', 'Secretario', 'Tesoureiro',
 
 
 
-// Verificar se o parÃ¢metro "aluno" foi passado corretamente
+// Verificar se o par�f¢metro "aluno" foi passado corretamente
 
 if (!isset($_GET['aluno']) || empty($_GET['aluno'])) {
 
@@ -67,7 +67,7 @@ if (in_array($nivel_usuario, ['Vendedor', 'Tutor', 'Parceiro', 'Secretario', 'Te
 
 $email_aluno = $resposta_aluno[0]['email'];
 
-$telefone_aluno = $resposta_aluno[0]['telefone'] ?? 'NÃ£o informado';
+$telefone_aluno = $resposta_aluno[0]['telefone'] ?? 'N�f£o informado';
 
 $dados_usuario_aluno = $pdo->prepare("SELECT id, nome, cpf, foto FROM usuarios WHERE usuario = :usuario");
 $dados_usuario_aluno->execute([':usuario' => $email_aluno]);
@@ -78,7 +78,7 @@ $id_aluno = $resposta_usuario_aluno[0]['id'];
 
 $nome_aluno = $resposta_usuario_aluno[0]['nome'] ?? 'Desconhecido';
 
-$cpf_aluno = $resposta_usuario_aluno[0]['cpf'] ?? 'NÃ£o informado';
+$cpf_aluno = $resposta_usuario_aluno[0]['cpf'] ?? 'N�f£o informado';
 
 $foto = $resposta_usuario_aluno[0]['foto'];
 
@@ -120,7 +120,7 @@ $statusFiltro = isset($_GET['status']) ? $_GET['status'] : 'todos';
 
 
 
-// Consulta todas as matriculas com verificaÃ§Ã£o de campos existentes
+// Consulta todas as matriculas com verifica�f§�f£o de campos existentes
 
 $query_matriculas = $pdo->prepare("
 
@@ -146,7 +146,7 @@ $query_matriculas = $pdo->prepare("
 
         CASE 
 
-            WHEN m.pacote = 'Sim' THEN 'Ativo' -- Valor padrÃ£o ou constante para pacotes
+            WHEN m.pacote = 'Sim' THEN 'Ativo' -- Valor padr�f£o ou constante para pacotes
 
             ELSE c.status 
 
@@ -182,7 +182,7 @@ $matriculas = $query_matriculas->fetchAll(PDO::FETCH_ASSOC);
 
 
 
-// Consulta matriculas de cursos (onde pacote = 'NÃ£o' ou null)
+// Consulta matriculas de cursos (onde pacote = 'N�f£o' ou null)
 
 $query_cursos = $pdo->prepare("
 
@@ -329,12 +329,12 @@ $hoje = date('Y-m-d');
 
 
 
-// ConfiguraÃ§Ãµes da EFI
+// Configura�f§�fµes da EFI
 $config = [
     'client_id' => $options['clientId'],
     'client_secret' => $options['clientSecret'],
     'certificate_path' => $options['certificate'],
-    'sandbox' => $options['sandbox'] // true para teste, false para produÃ§Ã£o
+    'sandbox' => $options['sandbox'] // true para teste, false para produ�f§�f£o
 ];
 
 $boletoPaymentApi = new EFIBoletoPayment(
@@ -359,7 +359,7 @@ $boletos_efi = ['data' => []];
 function normalizarStatusResumo($statusOriginal): string
 {
   $status = strtolower(trim((string) $statusOriginal));
-  if (in_array($status, ['matriculado', 'concluido', 'concluÃ­do', 'finalizado', 'pago', 'paid'], true)) {
+  if (in_array($status, ['matriculado', 'concluido', 'conclu�f­do', 'finalizado', 'pago', 'paid'], true)) {
     return 'pago';
   }
   if (in_array($status, ['vencido', 'expired'], true)) {
@@ -1243,7 +1243,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-      /* AnimaÃ§Ãµes */
+      /* Anima�f§�fµes */
 
       @keyframes fadeIn {
 
@@ -1315,7 +1315,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
     <div>
 
-      <!-- CabeÃ§alho do perfil -->
+      <!-- Cabe�f§alho do perfil -->
 
       <div class="profile-card animated">
 
@@ -1435,7 +1435,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-      <!-- EstatÃ­sticas -->
+      <!-- Estat�f­sticas -->
 
       <div class="row mt-4 animated delay-2">
 
@@ -1498,7 +1498,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-      <!-- GrÃ¡fico de progresso -->
+      <!-- Gr�f¡fico de progresso -->
 
       <div class="card animated delay-3">
 
@@ -1534,7 +1534,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-        <!-- Tab HistÃ³rico -->
+        <!-- Tab Hist�f³rico -->
 
         <div style="display: none;" id="historico" class="animated delay-4">
 
@@ -1552,13 +1552,13 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
                 <?php
 
-                // Ordenar matrÃ­culas e parcelas por data para criar um histÃ³rico cronolÃ³gico
+                // Ordenar matr�f­culas e parcelas por data para criar um hist�f³rico cronol�f³gico
 
                 $historico = [];
 
 
 
-                // Adicionar matrÃ­culas ao histÃ³rico
+                // Adicionar matr�f­culas ao hist�f³rico
 
                 foreach ($matriculas as $mat) {
                   $statusResumoMat = normalizarStatusResumo($mat['status'] ?? '');
@@ -1573,7 +1573,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
                     'tipo' => 'matricula',
 
-                    'descricao' => 'MatrÃ­cula no curso ' . $mat['nome_curso'],
+                    'descricao' => 'Matr�f­cula no curso ' . $mat['nome_curso'],
 
                     'valor' => $valorMat,
                     'status' => $statusResumoMat,
@@ -1586,7 +1586,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-                // // Adicionar parcelas ao histÃ³rico
+                // // Adicionar parcelas ao hist�f³rico
 
                 // foreach ($resposta_parcelas as $parcela) {
 
@@ -1648,7 +1648,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-                // Ordenar o histÃ³rico por data (mais recente primeiro)
+                // Ordenar o hist�f³rico por data (mais recente primeiro)
 
                 usort($historico, function ($a, $b) {
 
@@ -1658,7 +1658,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-                // Filtrar histÃ³rico conforme os filtros selecionados
+                // Filtrar hist�f³rico conforme os filtros selecionados
 
                 $historico_filtrado = [];
 
@@ -1792,7 +1792,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-      <!-- BotÃµes de AÃ§Ã£o -->
+      <!-- Bot�fµes de A�f§�f£o -->
 
       <div class="row mt-4 no-print animated delay-4">
 
@@ -1828,7 +1828,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
     <div style="margin-bottom: 140px;">
 
-      <!-- Tabs para diferentes seÃ§Ãµes -->
+      <!-- Tabs para diferentes se�f§�fµes -->
 
       <div class="tab-custom no-print animated delay-3">
 
@@ -2306,12 +2306,12 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
       <th>Pagador</th>
       <th>CPF</th>
       <th>Telefone</th>
-      <th>Data CriaÃ§Ã£o</th>
-      <th>NÂº Parcela</th>
+      <th>Data Cria�f§�f£o</th>
+      <th>N�,º Parcela</th>
       <th>Valor</th>
       <th>Status</th>
       <th>Data Pagamento</th>
-      <th>AÃ§Ãµes</th>
+      <th>A�f§�fµes</th>
     </tr>
   </thead>
   <tbody>
@@ -2353,7 +2353,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
         <td>
           <?php if ($linkPagamento): ?>
             <button onclick="abrirBoleto('<?= $linkPagamento ?>')" style="background:#007bff; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer;">
-              ðŸ‘ï¸
+              ðŸ�?~ï¸
             </button>
           <?php endif; ?>
         </td>
@@ -2478,7 +2478,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
         <div class="modal-header bg-gradient-primary text-white">
 
-          <h5 class="modal-title" id="detalhesModalLabel">Detalhes da MatrÃ­cula</h5>
+          <h5 class="modal-title" id="detalhesModalLabel">Detalhes da Matr�f­cula</h5>
 
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 
@@ -2550,7 +2550,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-          // Adicionar classe ativa Ã  tab clicada
+          // Adicionar classe ativa �f  tab clicada
 
           this.classList.add('active');
 
@@ -2580,7 +2580,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-      //   // Adicionar classe para esconder elementos que nÃ£o devem aparecer no PDF
+      //   // Adicionar classe para esconder elementos que n�f£o devem aparecer no PDF
 
       //   document.querySelectorAll('.no-print').forEach(el => {
 
@@ -2590,7 +2590,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-      //   // Usar HTML2Canvas para renderizar o relatÃ³rio
+      //   // Usar HTML2Canvas para renderizar o relat�f³rio
 
       //   html2canvas(document.body, {
 
@@ -2636,7 +2636,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
       document.getElementById('btn-pdf').addEventListener('click', function () {
 
-        // ReferÃªncia ao elemento que contÃ©m o conteÃºdo a ser transformado em PDF
+        // Refer�fªncia ao elemento que cont�f©m o conte�fºdo a ser transformado em PDF
 
         const relatorioElement = document.getElementById('relatorioPDF');
 
@@ -2644,7 +2644,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
         if (!relatorioElement) {
 
-          console.error('Elemento com ID "relatorioPDF" nÃ£o encontrado.');
+          console.error('Elemento com ID "relatorioPDF" n�f£o encontrado.');
 
           return;
 
@@ -2664,7 +2664,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-        // Adicionar classe para esconder elementos que nÃ£o devem aparecer no PDF
+        // Adicionar classe para esconder elementos que n�f£o devem aparecer no PDF
 
         document.querySelectorAll('.no-print').forEach(el => {
 
@@ -2674,7 +2674,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-        // Usar HTML2Canvas para renderizar apenas o conteÃºdo da div especÃ­fica
+        // Usar HTML2Canvas para renderizar apenas o conte�fºdo da div espec�f­fica
 
         html2canvas(relatorioElement, {
 
@@ -2728,7 +2728,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
       document.getElementById('btn-print').addEventListener('click', function () {
 
-        // ReferÃªncia ao elemento que contÃ©m o conteÃºdo a ser impresso
+        // Refer�fªncia ao elemento que cont�f©m o conte�fºdo a ser impresso
 
         const relatorioElement = document.getElementById('relatorioPDF');
 
@@ -2736,7 +2736,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
         if (!relatorioElement) {
 
-          console.error('Elemento com ID "relatorioPDF" nÃ£o encontrado.');
+          console.error('Elemento com ID "relatorioPDF" n�f£o encontrado.');
 
           return;
 
@@ -2744,7 +2744,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-        // Cria um iframe temporÃ¡rio para conter apenas o conteÃºdo que queremos imprimir
+        // Cria um iframe tempor�f¡rio para conter apenas o conte�fºdo que queremos imprimir
 
         const printIframe = document.createElement('iframe');
 
@@ -2758,7 +2758,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-        // Adiciona o conteÃºdo da div ao iframe
+        // Adiciona o conte�fºdo da div ao iframe
 
         const iframeDoc = printIframe.contentDocument || printIframe.contentWindow.document;
 
@@ -2766,7 +2766,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-        // Adicionamos um HTML bÃ¡sico, incluindo os estilos da pÃ¡gina atual
+        // Adicionamos um HTML b�f¡sico, incluindo os estilos da p�f¡gina atual
 
         iframeDoc.write(`
 
@@ -2776,19 +2776,19 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
     <head>
 
-      <title>ImpressÃ£o de RelatÃ³rio</title>
+      <title>Impress�f£o de Relat�f³rio</title>
 
       <meta charset="utf-8">
 
       <style>
 
-        /* Copiar estilos relevantes da pÃ¡gina principal */
+        /* Copiar estilos relevantes da p�f¡gina principal */
 
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
 
         
 
-        /* VocÃª pode adicionar aqui mais estilos especÃ­ficos para impressÃ£o */
+        /* Voc�fª pode adicionar aqui mais estilos espec�f­ficos para impress�f£o */
 
         @media print {
 
@@ -2828,11 +2828,11 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-        // Espera um pouco para garantir que o conteÃºdo seja carregado
+        // Espera um pouco para garantir que o conte�fºdo seja carregado
 
         setTimeout(() => {
 
-          // Foca no iframe e imprime seu conteÃºdo
+          // Foca no iframe e imprime seu conte�fºdo
 
           printIframe.contentWindow.focus();
 
@@ -2840,7 +2840,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-          // Remove o iframe apÃ³s a impressÃ£o (ou depois de um tempo)
+          // Remove o iframe ap�f³s a impress�f£o (ou depois de um tempo)
 
           setTimeout(() => {
 
@@ -2862,7 +2862,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
   <style>
 
-    /* CustomizaÃ§Ã£o do SweetAlert2 */
+    /* Customiza�f§�f£o do SweetAlert2 */
 
     .financial-modal .swal2-popup {
 
@@ -2960,7 +2960,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-    /* ConteÃºdo do Modal */
+    /* Conte�fºdo do Modal */
 
     .matricula-card {
 
@@ -3306,7 +3306,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-    /* AnimaÃ§Ãµes */
+    /* Anima�f§�fµes */
 
     @keyframes fadeInUp {
 
@@ -3378,7 +3378,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
     function verDetalhes(matricula) {
 
-      // Formatar data e valor para exibiÃ§Ã£o
+      // Formatar data e valor para exibi�f§�f£o
 
       const dataFormatada = new Date(matricula.data).toLocaleDateString('pt-BR');
 
@@ -3392,7 +3392,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-      // Definir classes e Ã­cones de acordo com o status
+      // Definir classes e �f­cones de acordo com o status
 
       let statusClass = '';
 
@@ -3434,7 +3434,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
           break;
 
-        case 'ConcluÃ­do':
+        case 'Conclu�f­do':
 
           statusClass = 'bg-concluido';
 
@@ -3456,7 +3456,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
 
 
-      // Montar o HTML para o conteÃºdo do SweetAlert
+      // Montar o HTML para o conte�fºdo do SweetAlert
 
       const conteudoHtml = `
 
@@ -3500,7 +3500,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
         <div class="info-card animate-fadeInUp delay-2">
 
-          <div class="label">Data de inscriÃ§Ã£o</div>
+          <div class="label">Data de inscri�f§�f£o</div>
 
           <div class="value">${dataFormatada}</div>
 
@@ -3528,7 +3528,7 @@ $percentualPago = $totalBaseResumo > 0 ? ($total_pago / $totalBaseResumo) * 100 
 
       Swal.fire({
 
-        title: 'Detalhes da MatrÃ­cula',
+        title: 'Detalhes da Matr�f­cula',
 
         html: conteudoHtml,
 
@@ -3587,8 +3587,8 @@ function abrirBoleto(link) {
   if (!linkBruto) {
     Swal.fire({
       icon: 'warning',
-      title: 'Comprovante indisponÃ­vel',
-      text: 'NÃ£o hÃ¡ link vÃ¡lido para visualizar.'
+      title: 'Comprovante indispon�f­vel',
+      text: 'N�f£o h�f¡ link v�f¡lido para visualizar.'
     });
     return;
   }
@@ -3609,7 +3609,7 @@ function abrirBoleto(link) {
     Swal.fire({
       title: 'Comprovante de Pagamento',
       html: `
-        <p style="margin-bottom:10px;">CÃ³digo para cÃ³pia:</p>
+        <p style="margin-bottom:10px;">C�f³digo para c�f³pia:</p>
         <textarea id="codigo-pagamento" style="width:100%; height:140px; border:1px solid #ddd; border-radius:6px; padding:8px;" readonly>${linkSeguro}</textarea>
         <button id="btn-copiar-codigo" style="margin-top:10px; background:#007bff; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">
           Copiar

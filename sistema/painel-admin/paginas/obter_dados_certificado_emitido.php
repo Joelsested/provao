@@ -11,26 +11,66 @@ if (!isset($_SESSION['nivel']) || ($_SESSION['nivel'] !== 'Administrador' && $_S
 }
 
 $idDocumento = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
-if (!$idDocumento) {
+$alunoIdParam = filter_input(INPUT_GET, 'aluno_id', FILTER_VALIDATE_INT);
+
+if (!$idDocumento && !$alunoIdParam) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'ID do documento invalido.'], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['success' => false, 'message' => 'Informe o ID do documento ou do aluno.'], JSON_UNESCAPED_UNICODE);
     exit();
 }
 
-$stmtDoc = $pdo->prepare("
-    SELECT *
-    FROM documentos_emitidos
-    WHERE id = :id
-      AND tipo = 'certificado'
-    LIMIT 1
-");
-$stmtDoc->execute([':id' => $idDocumento]);
-$doc = $stmtDoc->fetch(PDO::FETCH_ASSOC);
+$doc = [];
+$alunoId = 0;
 
-if (!$doc) {
-    http_response_code(404);
-    echo json_encode(['success' => false, 'message' => 'Certificado nao encontrado.'], JSON_UNESCAPED_UNICODE);
-    exit();
+if ($idDocumento) {
+    $stmtDoc = $pdo->prepare("
+        SELECT *
+        FROM documentos_emitidos
+        WHERE id = :id
+          AND tipo = 'certificado'
+        LIMIT 1
+    ");
+    $stmtDoc->execute([':id' => $idDocumento]);
+    $doc = $stmtDoc->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    if (!$doc) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'message' => 'Certificado nao encontrado.'], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
+    $alunoId = (int)($doc['aluno_id'] ?? 0);
+} else {
+    $alunoId = (int)$alunoIdParam;
+
+    $stmtUltimoDoc = $pdo->prepare("
+        SELECT *
+        FROM documentos_emitidos
+        WHERE aluno_id = :aluno_id
+          AND tipo = 'certificado'
+          AND (categoria = 'medio' OR categoria IS NULL OR categoria = '')
+        ORDER BY criado_em DESC, id DESC
+        LIMIT 1
+    ");
+    $stmtUltimoDoc->execute([':aluno_id' => $alunoId]);
+    $doc = $stmtUltimoDoc->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    // Se o aluno não possui certificado emitido, mantém os campos da modal em branco.
+    if (!$doc) {
+        echo json_encode([
+            'success' => true,
+            'dados' => [
+                'id_documento' => 0,
+                'aluno_id' => $alunoId,
+                'ano_certificado' => '',
+                'data_certificado' => '',
+                'numero_registro' => '',
+                'folha_livro' => '',
+                'numero_livro' => ''
+            ]
+        ], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
 }
 
 $pdo->exec("
@@ -52,7 +92,6 @@ $pdo->exec("
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 ");
 
-$alunoId = (int)($doc['aluno_id'] ?? 0);
 $stmtRegistro = $pdo->prepare("
     SELECT ano_certificado, data_certificado, numero_registro, folha_livro, numero_livro
     FROM certificados_livro_registro
@@ -96,7 +135,7 @@ if ($numeroLivro === '') {
 echo json_encode([
     'success' => true,
     'dados' => [
-        'id_documento' => (int)$doc['id'],
+        'id_documento' => (int)($doc['id'] ?? 0),
         'aluno_id' => $alunoId,
         'ano_certificado' => $ano,
         'data_certificado' => $data,
@@ -106,4 +145,3 @@ echo json_encode([
     ]
 ], JSON_UNESCAPED_UNICODE);
 exit();
-

@@ -796,28 +796,8 @@ if (!$aluno_error) {
 
         // Dados do aluno carregados do PHP
         <?php
-        $rgRaw = trim($dadosAluno['rg'] ?? '');
-        if ($rgRaw !== '') {
-            $rgRaw = preg_replace('/^R\.?G\.?\s*[:\-]?\s*/iu', '', $rgRaw);
-            $rgRaw = trim($rgRaw);
-        }
-        $rgNumero = '';
-        $rgOrgao = trim($dadosAluno['orgao_expedidor'] ?? '');
-        if ($rgRaw !== '') {
-            if (strpos($rgRaw, '-') !== false) {
-                [$rgNumero, $rgOrgaoRaw] = array_map('trim', explode('-', $rgRaw, 2));
-                if ($rgOrgao === '' && $rgOrgaoRaw !== '') {
-                    $rgOrgao = $rgOrgaoRaw;
-                }
-            } elseif (preg_match('/^([0-9A-Za-z\.\-]+)\s+(.+)$/u', $rgRaw, $rgMatch)) {
-                $rgNumero = trim($rgMatch[1]);
-                if ($rgOrgao === '') {
-                    $rgOrgao = trim($rgMatch[2]);
-                }
-            } else {
-                $rgNumero = $rgRaw;
-            }
-        }
+        $rgRaw = trim((string) ($dadosAluno['rg'] ?? ''));
+        $rgOrgao = trim((string) ($dadosAluno['orgao_expedidor'] ?? ''));
         ?>
         let dadosAluno = <?php echo json_encode([
 
@@ -828,8 +808,10 @@ if (!$aluno_error) {
             'id_aluno' => $dadosAluno['id'] ?? null,
             'pai' => $dadosAluno['pai'] ?? 'N/A',
             'mae' => $dadosAluno['mae'] ?? 'N/A',
-            'rg' => $rgNumero,
+            'rg' => $rgRaw,
+            'documento_identificacao' => $rgRaw,
             'orgao_emissor' => $rgOrgao,
+            'orgao_expedidor' => $rgOrgao,
             'expedicao' => trim($dadosAluno['expedicao'] ?? ''),
             'naturalidade' => $dadosAluno['naturalidade'] ?? 'N/A',
             'dataNasc' => $dadosAluno['nascimento'] ?? 'N/A',
@@ -1301,6 +1283,13 @@ if (!$aluno_error) {
 
         function abrirFormularioAdicional(notas) {
             console.log(notas);
+            const OBSERVACOES_FIXAS_FUNDAMENTAL = [
+                "• Conclusão do Ensino Fundamental mediante Exames de Conclusão da EJA, conforme Art. 38 da Lei Federal nº 9.394/96.",
+                "• A carga horária registrada representa equivalência legal ao ensino regular, NÃO cursada, conforme estabelecido pela legislação vigente.",
+                "• Frequência: \"Dispensa\" (sem exigência), conforme Resolução CNE/CEB nº 3/2025.",
+                "• Critério de aprovação: Nota mínima 5,0 (cinco) em escala de 0 a 10, ou 50% de acertos nas avaliações.",
+                "• Este histórico escolar atesta que o candidato está apto ao prosseguimento de estudos no Ensino Médio, conforme Art. 37, § 1º da Lei Federal nº 9.394/96."
+            ].join('\n');
             swal({
                 title: "Informações Adicionais da Escola",
                 content: {
@@ -1355,7 +1344,7 @@ if (!$aluno_error) {
                                 </div>
                                 <div class="form-group" style="grid-column:2 / span 1;">
                                     <label>Carga Horária Total:</label>
-                                    <input type="number" id="cargaHoraria" class="swal-content__input" placeholder="Ex: 2400" value="${dadosAdicionaisSalvos.cargaHoraria || '2400'}">
+                                    <input type="number" id="cargaHoraria" class="swal-content__input" value="1600" readonly>
                                 </div>
 
                                 <div class="form-group" style="grid-column:1 / span 1;">
@@ -1383,7 +1372,7 @@ if (!$aluno_error) {
 
                                 <div class="form-group" style="grid-column:1 / -1;">
                                     <label>Observações:</label>
-                                    <textarea id="observacoes" rows="2" class="swal-content__input" placeholder="Ex: Observações">${dadosAdicionaisSalvos.observacoes || ''}</textarea>
+                                    <textarea id="observacoes" rows="5" class="swal-content__input" readonly>${OBSERVACOES_FIXAS_FUNDAMENTAL}</textarea>
                                 </div>
 
                                 <div class="form-group" style="grid-column:1 / -1;">
@@ -1424,9 +1413,9 @@ if (!$aluno_error) {
                         municipio: document.getElementById('municipio').value,
                         uf: document.getElementById('uf').value,
                         anoConclusao: document.getElementById('anoConclusao').value,
-                        cargaHoraria: document.getElementById('cargaHoraria').value,
+                        cargaHoraria: '1600',
                         situacao: document.getElementById('situacao').value,
-                        observacoes: document.getElementById('observacoes').value,
+                        observacoes: OBSERVACOES_FIXAS_FUNDAMENTAL,
                         aproveitamento_estudos_anteriores: document.getElementById('aproveitamento_estudos_anteriores').value,
                         marca_dagua: document.getElementById('marca_dagua').value,
                         certidao_nascimento: document.getElementById('certidao_nascimento').value,

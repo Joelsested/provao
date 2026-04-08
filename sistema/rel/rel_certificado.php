@@ -74,6 +74,79 @@ if (empty($id)) {
     return;
 }
 
+$nomeLock = 'emissao_certificado_medio_aluno_' . (int) $id;
+$stmtLock = $pdo->prepare("SELECT GET_LOCK(:nome_lock, 10) AS lock_obtido");
+$stmtLock->execute([':nome_lock' => $nomeLock]);
+$lockObtido = (int) $stmtLock->fetchColumn() === 1;
+
+if (!$lockObtido) {
+    http_response_code(429);
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<html><body style="font-family:Arial,Helvetica,sans-serif;padding:16px;">';
+    echo '<h3>Emissao em andamento</h3>';
+    echo '<p>Ja existe uma geracao de certificado em andamento para este aluno. Aguarde e tente novamente.</p>';
+    echo '</body></html>';
+    return;
+}
+
+register_shutdown_function(static function () use ($pdo, $nomeLock): void {
+    try {
+        $stmtUnlock = $pdo->prepare("SELECT RELEASE_LOCK(:nome_lock)");
+        $stmtUnlock->execute([':nome_lock' => $nomeLock]);
+    } catch (Throwable $e) {
+        // Nao interrompe o fluxo por falha ao liberar lock.
+    }
+});
+
+$pdo->exec("
+    CREATE TABLE IF NOT EXISTS documentos_emitidos (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        aluno_id INT NOT NULL,
+        tipo VARCHAR(30) NOT NULL,
+        categoria VARCHAR(30) NULL,
+        versao INT NULL,
+        arquivo_relativo VARCHAR(255) NOT NULL,
+        visivel_aluno TINYINT(1) NOT NULL DEFAULT 1,
+        ano_certificado VARCHAR(4) NULL,
+        data_certificado DATE NULL,
+        numero_registro VARCHAR(30) NULL,
+        folha_livro VARCHAR(20) NULL,
+        numero_livro VARCHAR(20) NULL,
+        criado_em DATETIME NOT NULL,
+        criado_por INT NULL,
+        ip VARCHAR(45) NULL,
+        INDEX idx_aluno_tipo (aluno_id, tipo)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+");
+
+$stmtCertificadoAtivo = $pdo->prepare("
+    SELECT id, arquivo_relativo
+    FROM documentos_emitidos
+    WHERE aluno_id = :aluno_id
+      AND tipo = 'certificado'
+      AND (categoria = 'medio' OR categoria IS NULL OR categoria = '')
+    ORDER BY id DESC
+    LIMIT 1
+");
+$stmtCertificadoAtivo->execute([':aluno_id' => (int) $id]);
+
+if ($certificadoAtivo = $stmtCertificadoAtivo->fetch(PDO::FETCH_ASSOC)) {
+    $arquivoRelativoExistente = trim((string) ($certificadoAtivo['arquivo_relativo'] ?? ''));
+    if ($arquivoRelativoExistente !== '') {
+        $urlCertificadoExistente = rtrim((string) $url_sistema, '/') . '/' . ltrim($arquivoRelativoExistente, '/');
+        header('Location: ' . $urlCertificadoExistente, true, 302);
+        return;
+    }
+
+    http_response_code(409);
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<html><body style="font-family:Arial,Helvetica,sans-serif;padding:16px;">';
+    echo '<h3>Geração bloqueada</h3>';
+    echo '<p>Já existe um certificado deste aluno. Para gerar outro, apague/exclua o anterior em "Históricos e Certificados".</p>';
+    echo '</body></html>';
+    return;
+}
+
 // $data_certificado = $_GET['data'];
 $data_certificado = $_GET['data'] ?? $_POST['data'] ?? null;
 
@@ -183,24 +256,24 @@ $pdf = new DOMPDF($options);
 
 
 //ALIMENTAR OS DADOS NO RELATÓRIO
-// $html = utf8_encode(file_get_contents($url_sistema."sistema/rel/certificado.php?id=".$id));
-$html = utf8_encode(file_get_contents(
-    $url_sistema . "sistema/rel/certificado.php?id=" . $id .
+	$html = file_get_contents(
+	    $url_sistema . "sistema/rel/certificado.php?id=" . $id .
     "&data=" . urlencode($data_certificado) .
     "&ano=" . urlencode($ano_certificado) .
     "&id_mat=" . urlencode($id_mat) .
     "&numero_registro=" . urlencode($numero_registro) .
-    "&folha_livro=" . urlencode($folha_livro) .
-    "&numero_livro=" . urlencode($numero_livro)
-));
+	    "&folha_livro=" . urlencode($folha_livro) .
+	    "&numero_livro=" . urlencode($numero_livro)
+	);
+	$html = trim((string) $html);
 
 
 
-//Definir o tamanho do papel e orientação da página
+//Definir o tamanho do papel e orientaÃƒÂ§ÃƒÂ£o da pÃƒÂ¡gina
 $pdf->set_paper('A4', 'landscape');
 
 //CARREGAR O CONTEÚDO HTML
-$pdf->load_html(utf8_decode($html));
+$pdf->load_html($html);
 
 //RENDERIZAR O PDF
 $pdf->render();
@@ -283,12 +356,8 @@ $stmtDoc->execute([
 ]);
 
 //NOMEAR O PDF GERADO
-$pdf->stream(
-'certificado.pdf',
-array("Attachment" => false)
-);
+	$pdf->stream(
+	'certificado.pdf',
+	array("Attachment" => false)
+	);
 
-
-
-
-?>

@@ -7,7 +7,7 @@ require_once __DIR__ . '/config/webhook.php';
 require_once __DIR__ . '/sistema/conexao.php';
 require_once __DIR__ . '/efi/boleto.php';
 
-webhook_require_token();
+webhook_require_token(['allow_notification_fallback' => true]);
 
 $webhookLogFile = __DIR__ . '/logs/efi_webhook_boleto.log';
 if (!is_dir(dirname($webhookLogFile))) {

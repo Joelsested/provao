@@ -95,6 +95,6 @@ if (!empty($doc['versao'])) {
 }
 $nomeArquivo .= '.pdf';
 
-$dompdf->stream($nomeArquivo, ['Attachment' => true]);
+$dompdf->stream($nomeArquivo, ['Attachment' => ((int)$view !== 1)]);
 exit();
 ?>
