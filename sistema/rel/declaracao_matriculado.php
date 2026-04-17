@@ -44,15 +44,10 @@ if (!empty($data_certificado)) {
 	$data_formatada = formatar_data_extenso_ptbr('today');
 }
 
-$query = $pdo->prepare("SELECT * from usuarios where id_pessoa = :id_pessoa order by id desc ");
-$query->execute([':id_pessoa' => $id]);
+$query = $pdo->prepare("SELECT * FROM alunos where id = :id");
+$query->execute([':id' => $id]);
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 $nome = (string) ($res[0]['nome'] ?? '');
-$pessoa = (int) ($res[0]['id_pessoa'] ?? 0);
-
-$query = $pdo->prepare("SELECT * FROM alunos where id = :id");
-$query->execute([':id' => $pessoa]);
-$res = $query->fetchAll(PDO::FETCH_ASSOC);
 $rg = (string) ($res[0]['rg'] ?? '');
 $orgao_expedidor = (string) ($res[0]['orgao_expedidor'] ?? '');
 $rg_completo = trim($rg);
