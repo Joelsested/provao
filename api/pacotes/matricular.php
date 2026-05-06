@@ -5,6 +5,8 @@ $postjson = json_decode(file_get_contents('php://input'), true);
 
 $curso = @$postjson['id'];
 $email = @$postjson['email'];
+$nivel = @$_SESSION['nivel'];
+$filtroPacotesVisiveis = filtroPacotesVisiveisSql($pdo, $nivel);
 
 //verficiar email se existe
 $query = $pdo->prepare("SELECT * FROM usuarios where usuario = :usuario ");
@@ -22,9 +24,14 @@ if(@count($res) == 0){
 }
 
 
-$stmtPacote = $pdo->prepare("SELECT * FROM pacotes WHERE id = ?");
+$stmtPacote = $pdo->prepare("SELECT * FROM pacotes WHERE id = ? AND {$filtroPacotesVisiveis}");
 $stmtPacote->execute([(int) $curso]);
 $res = $stmtPacote->fetchAll(PDO::FETCH_ASSOC);
+if (@count($res) === 0) {
+	$result = json_encode(array('mensagem' => 'Pacote indisponivel para este perfil.', 'sucesso' => false));
+	echo $result;
+	exit();
+}
 $valor = $res[0]['valor'];
 $promocao = $res[0]['promocao'];
 $nome_curso = $res[0]['nome'];

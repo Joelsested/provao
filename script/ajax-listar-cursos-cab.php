@@ -2,6 +2,8 @@
 require_once("../sistema/conexao.php");
 
 $busca = '%'.$_POST['busca'].'%';
+$nivel = @$_SESSION['nivel'];
+$filtroPacotesVisiveis = filtroPacotesVisiveisSql($pdo, $nivel);
 
 if($busca == '%%'){
   exit();
@@ -16,7 +18,7 @@ echo <<<HTML
 HTML;
 
 
-$query = $pdo->query("SELECT * FROM pacotes where nome LIKE '$busca' or desc_rapida LIKE '$busca' ORDER BY nome asc");
+$query = $pdo->query("SELECT * FROM pacotes WHERE {$filtroPacotesVisiveis} AND (nome LIKE '$busca' OR desc_rapida LIKE '$busca') ORDER BY nome asc");
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 $total_reg = @count($res);
 if($total_reg > 0){

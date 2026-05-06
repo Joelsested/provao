@@ -1,6 +1,7 @@
 <?php 
 require_once("../../../conexao.php");
 $tabela = 'pacotes';
+ensurePacotesOcultoAdminColumn($pdo);
 
 @session_start();
 if($_SESSION['nivel'] == 'Administrador'){
@@ -28,6 +29,7 @@ echo <<<HTML
 	<th class="esc">Valor</th> 
 	<th class="esc">Professor</th> 	
 	<th class="esc">Linguagem</th> 	
+	<th class="esc">Oculto</th>
 	<th class="esc">Alunos</th> 
 	<th class="esc">Cursos</th>	
 	<th>Ações</th>
@@ -53,6 +55,7 @@ for($i=0; $i < $total_reg; $i++){
 	$nome_url = $res[$i]['nome_url'];
 	$video = $res[$i]['video'];	
 	$comissao = $res[$i]['comissao'];	
+	$oculto_admin = (string) ($res[$i]['oculto_admin'] ?? 'Nao');
 	
 
 	$query2 = $pdo->prepare("SELECT * FROM usuarios where id = :id");
@@ -129,13 +132,14 @@ echo <<<HTML
 		</td>
 		<td class="esc">{$nome_professor}</td>		
 		<td class="esc">{$nome_linguagem}</td>
+		<td class="esc">{$oculto_admin}</td>
 		<td class="esc">{$alunos}</td>
 		<td class="esc">{$cursos}</td>				
 		<td>
-		<big><a href="#" onclick="editar('{$id}', '{$nome}', '{$desc_rapida}', '{$desc_longa}' , '{$valor}' , '{$promocao}' , '{$linguagem}' , '{$foto}' , '{$palavras}' , '{$grupo}', '{$video}', '{$comissao}')" title="Editar Dados"><i class="fa fa-edit text-primary"></i></a></big>
+		<big><a href="#" onclick="editar('{$id}', '{$nome}', '{$desc_rapida}', '{$desc_longa}' , '{$valor}' , '{$promocao}' , '{$linguagem}' , '{$foto}' , '{$palavras}' , '{$grupo}', '{$video}', '{$comissao}', '{$oculto_admin}')" title="Editar Dados"><i class="fa fa-edit text-primary"></i></a></big>
 
 
-		<big><a href="#" onclick="mostrar('{$nome}', '{$desc_rapida}','{$desc_longa}','{$valorF}','{$promocaoF}','{$nome_professor}','{$nome_linguagem}','{$foto}', '{$ano}', '{$palavras}', '{$nome_grupo}', '{$video}', '{$carga}', '{$comissao}')" title="Ver Dados"><i class="fa fa-info-circle text-secondary"></i></a></big>
+		<big><a href="#" onclick="mostrar('{$nome}', '{$desc_rapida}','{$desc_longa}','{$valorF}','{$promocaoF}','{$nome_professor}','{$nome_linguagem}','{$foto}', '{$ano}', '{$palavras}', '{$nome_grupo}', '{$video}', '{$carga}', '{$comissao}', '{$oculto_admin}')" title="Ver Dados"><i class="fa fa-info-circle text-secondary"></i></a></big>
 
 
 		<li class="dropdown head-dpdn2" style="display: inline-block;">
@@ -186,7 +190,7 @@ HTML;
 		$('#tabela_filter label input').focus();
 	} );
 	
-	function editar(id, nome, desc_rapida, desc_longa, valor, promocao, linguagem, foto, palavras, grupo, video, comissao){	
+	function editar(id, nome, desc_rapida, desc_longa, valor, promocao, linguagem, foto, palavras, grupo, video, comissao, oculto_admin){	
 
 		for (let letra of desc_longa){  				
 			if (letra === '*'){
@@ -204,6 +208,7 @@ HTML;
 		
 		$('#palavras').val(palavras);
 		$('#comissao').val(comissao);
+		$('#oculto_admin').val(oculto_admin || 'Nao');
 		$('#grupo').val(grupo).change();
 		
 	
@@ -221,7 +226,7 @@ HTML;
 
 
 
-	function mostrar(nome, desc_rapida, desc_longa, valor, promocao, professor, linguagem, foto,  ano, palavras, grupo, video, carga, comissao){	
+	function mostrar(nome, desc_rapida, desc_longa, valor, promocao, professor, linguagem, foto,  ano, palavras, grupo, video, carga, comissao, oculto_admin){	
 
 
 		$('#nome_mostrar').text(nome);
@@ -233,6 +238,7 @@ HTML;
 		$('#categoria_mostrar').text(linguagem);		
 		$('#carga_mostrar').text(carga);
 		$('#comissao_mostrar').text(comissao);
+		$('#oculto_mostrar').text(oculto_admin || 'Nao');
 		
 		$('#ano_mostrar').text(ano);
 		$('#palavras_mostrar').text(palavras);
@@ -257,6 +263,7 @@ HTML;
 		$('#valor').val('');	
 		$('#promocao').val('');				
 		$('#palavras').val('');					
+		$('#oculto_admin').val('Nao');
 		$('#foto').val('');
 		$('#video').val('');
 		$('#target').attr('src','img/cursos/sem-foto.png');		

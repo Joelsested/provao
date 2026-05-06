@@ -43,7 +43,7 @@ $stmtDoc = $pdo->prepare("
     WHERE id = :id
       AND aluno_id = :aluno_id
       AND COALESCE(visivel_aluno, 1) = 1
-      AND tipo IN ('certificado', 'historico')
+      AND tipo IN ('certificado', 'historico', 'ficha_inscricao')
     LIMIT 1
 ");
 $stmtDoc->execute([

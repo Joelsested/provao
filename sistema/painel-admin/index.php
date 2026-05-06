@@ -182,6 +182,7 @@ if ($nivel_usuario === 'Vendedor' && $id_pessoa_usuario > 0) {
 $mostrar_relatorios_responsavel = in_array($nivel_usuario, ['Vendedor', 'Tutor', 'Parceiro', 'Secretario', 'Tesoureiro'], true);
 $mostrar_relatorios_financeiros = in_array($nivel_usuario, ['Administrador', 'Secretario', 'Tesoureiro'], true);
 $mostrar_relatorios_financeiros_completo = in_array($nivel_usuario, ['Administrador', 'Secretario'], true);
+$mostrarVoltarContaOriginal = ((int) ($_SESSION['switch_back_id'] ?? 0) > 0) && ((string) ($_SESSION['switch_back_nivel'] ?? '') !== '');
 
 $stmt = $pdo->query("SELECT * FROM cores_sistema ORDER BY nome_classe");
 $cores = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -861,6 +862,16 @@ $_SESSION['last_activity'] = time();
                       <input type="hidden" name="vendedor_usuario_id" value="<?php echo (int) $id_usuario; ?>">
                       <button type="submit" style="border:0;background:transparent;width:100%;text-align:left;padding:6px 20px;color:#333;">
                         <i class="fa fa-graduation-cap"></i> Entrar como Aluno
+                      </button>
+                    </form>
+                  </li>
+                <?php endif; ?>
+                <?php if ($mostrarVoltarContaOriginal): ?>
+                  <li>
+                    <form action="voltar-para-conta.php" method="POST" style="margin:0;">
+                      <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8'); ?>">
+                      <button type="submit" style="border:0;background:transparent;width:100%;text-align:left;padding:6px 20px;color:#333;">
+                        <i class="fa fa-undo"></i> Voltar para conta original
                       </button>
                     </form>
                   </li>
@@ -2483,7 +2494,6 @@ function isActiveMenu($href)
     });
   }
 </script>
-
 
 
 

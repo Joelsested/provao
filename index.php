@@ -282,7 +282,9 @@ if($total_reg > 0){
 <hr>
 
 <?php 
-$query = $pdo->query("SELECT * FROM pacotes ORDER BY id desc limit 6");
+$nivel = @$_SESSION['nivel'];
+$filtroPacotesVisiveis = filtroPacotesVisiveisSql($pdo, $nivel);
+$query = $pdo->query("SELECT * FROM pacotes WHERE {$filtroPacotesVisiveis} ORDER BY id desc limit 6");
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 $total_reg = @count($res);
 if($total_reg > 0){
@@ -500,4 +502,3 @@ if($total_reg > 0){
 <?php 
 require_once("rodape.php");
 ?>
-

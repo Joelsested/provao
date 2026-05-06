@@ -12,7 +12,9 @@ require_once("cabecalho.php");
 
 <?php 
 
-$query = $pdo->query("SELECT * FROM pacotes ORDER BY id desc ");
+$nivel = @$_SESSION['nivel'];
+$filtroPacotesVisiveis = filtroPacotesVisiveisSql($pdo, $nivel);
+$query = $pdo->query("SELECT * FROM pacotes WHERE {$filtroPacotesVisiveis} ORDER BY id desc ");
 
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 

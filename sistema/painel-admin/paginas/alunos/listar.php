@@ -544,22 +544,28 @@ HTML;
 	                Declaração Médio
               </a>
             </div>
-            
-            <!-- Fundamental Declaration -->
+            <!-- Eliminacao Medio -->
             <div class="col-md-4 text-center mb-3 {$ocultar}">
-              <a href="#" onclick="gerarDeclaracaoFundamentalAluno({$id});" class="btn btn-default btn-block" data-dismiss="modal">
-                <i class="fa fa-file-pdf-o text-primary"></i><br>
-	                Declaração Fundamental
+              <a href="#" onclick="gerarEliminacaoMedioAluno({$id});" class="btn btn-default btn-block" data-dismiss="modal">
+                <i class="fa fa-file-text-o text-danger"></i><br>
+                    Elimina&ccedil;&atilde;o M&eacute;dio
               </a>
             </div>
 
-			<div class="col-md-4 text-center mb-3">
+            <!-- Eliminacao Fundamental -->
+            <div class="col-md-4 text-center mb-3 {$ocultar}">
+              <a href="#" onclick="gerarEliminacaoFundamentalAluno({$id});" class="btn btn-default btn-block" data-dismiss="modal">
+                <i class="fa fa-file-text-o text-primary"></i><br>
+                    Elimina&ccedil;&atilde;o Fundamental
+              </a>
+            </div>
+
+            <div class="col-md-4 text-center mb-3">
               <a href="#" onclick="gerarHistoricoAluno({$id} , {$tem_fundamental}, {$tem_medio});" class="btn btn-default btn-block">
                 <i class="fa fa-clock-o text-primary"></i><br>
-	               Gerar Histórico
+                   Gerar Hist&oacute;rico
               </a>
             </div>
-
             <!-- Enrollment Declaration -->
             <div class="col-md-4 text-center mb-3 {$ocultar}">
               <a href="#" onclick="gerarDeclaracaoMatriculadoAluno({$id});" class="btn btn-default btn-block" data-dismiss="modal">
@@ -1652,7 +1658,62 @@ function gerarDeclaracaoMedioAluno(id) {
 		});
 	}
 
-	function gerarHistoricoAluno(id, tem_fundamental, tem_medio) {
+	
+function gerarEliminacaoMedioAluno(id) {
+    Swal.fire({
+        title: "Atestado de Eliminacao - Ensino Medio",
+        html: `
+            <label for="data_eliminacao_medio">Selecione a data do atestado:</label>
+            <input type="date" id="data_eliminacao_medio" class="swal2-input">
+        `,
+        showCancelButton: true,
+        confirmButtonText: "Gerar Atestado",
+        cancelButtonText: "Cancelar",
+        preConfirm: () => {
+            const dataEmissao = document.getElementById("data_eliminacao_medio").value;
+            if (!dataEmissao) {
+                Swal.showValidationMessage("Por favor, selecione uma data.");
+                return false;
+            }
+            return { data: dataEmissao };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const { data } = result.value;
+            const url = `${baseUrl}sistema/rel/eliminacao_medio_class.php?id=${id}&data=${encodeURIComponent(data)}`;
+            window.open(url, "_blank");
+        }
+    });
+}
+
+function gerarEliminacaoFundamentalAluno(id) {
+    Swal.fire({
+        title: "Atestado de Eliminacao - Ensino Fundamental",
+        html: `
+            <label for="data_eliminacao_fundamental">Selecione a data do atestado:</label>
+            <input type="date" id="data_eliminacao_fundamental" class="swal2-input">
+        `,
+        showCancelButton: true,
+        confirmButtonText: "Gerar Atestado",
+        cancelButtonText: "Cancelar",
+        preConfirm: () => {
+            const dataEmissao = document.getElementById("data_eliminacao_fundamental").value;
+            if (!dataEmissao) {
+                Swal.showValidationMessage("Por favor, selecione uma data.");
+                return false;
+            }
+            return { data: dataEmissao };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const { data } = result.value;
+            const url = `${baseUrl}sistema/rel/eliminacao_fundamental_class.php?id=${id}&data=${encodeURIComponent(data)}`;
+            window.open(url, "_blank");
+        }
+    });
+}
+
+function gerarHistoricoAluno(id, tem_fundamental, tem_medio) {
     Swal.fire({
         title: "Selecione o tipo de histórico",
         html: `
@@ -1851,7 +1912,6 @@ function gerarDeclaracaoMedioAluno(id) {
 
 
 </script>
-
 
 
 

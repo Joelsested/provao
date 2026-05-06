@@ -50,7 +50,7 @@ if($_SESSION['nivel'] == 'Administrador'){
 
 						<div class="col-md-3">						
 							<div class="form-group"> 
-								<label>Subtítulo</label> 
+								<label>Subtitulo</label> 
 								<input type="text" class="form-control" name="desc_rapida" id="desc_rapida"> 
 							</div>						
 						</div>	
@@ -113,7 +113,7 @@ if($_SESSION['nivel'] == 'Administrador'){
 
 						<div class="col-md-2">						
 							<div class="form-group"> 
-								<label>Valor Promoção</label> 
+								<label>Valor Promocao</label> 
 								<input type="text" class="form-control" name="promocao" id="promocao"> 
 							</div>						
 						</div>							
@@ -121,14 +121,24 @@ if($_SESSION['nivel'] == 'Administrador'){
 						<div class="col-md-6">						
 							<div class="form-group"> 
 								<label>Palavras Chaves</label> 
-								<input type="text" class="form-control" name="palavras" id="palavras" placeholder="Ex: Curso de Programação, Desenvolvimento WEB, etc..."> 
+								<input type="text" class="form-control" name="palavras" id="palavras" placeholder="Ex: Curso de Programacao, Desenvolvimento WEB, etc..."> 
 							</div>						
 						</div>	
 
 						<div class="col-md-2">						
 							<div class="form-group"> 
-								<label>Comissão %</label> 
+								<label>Comissao %</label> 
 								<input type="number" class="form-control" name="comissao" id="comissao" value="<?php echo $comissao_professor ?>"> 
+							</div>						
+						</div>	
+
+						<div class="col-md-2">						
+							<div class="form-group"> 
+								<label>Oculto</label>
+								<select class="form-control" name="oculto_admin" id="oculto_admin">
+									<option value="Nao">Nao</option>
+									<option value="Sim">Sim</option>
+								</select>
 							</div>						
 						</div>	
 
@@ -140,7 +150,7 @@ if($_SESSION['nivel'] == 'Administrador'){
 
 						<div class="col-md-8 col-sm-12">						
 							<div class="form-group"> 
-								<label>Descrição do Pacote</label> 
+								<label>Descricao do Pacote</label> 
 								<textarea name="desc_longa" id="area" class="textarea"> </textarea>
 							</div>						
 						</div>	
@@ -165,7 +175,7 @@ if($_SESSION['nivel'] == 'Administrador'){
 					<div class="row">
 						<div class="col-md-8">
 							<div class="form-group"> 
-								<label>Vídeo <small>(Url Incorporada)</small></label> 
+								<label>Video <small>(Url Incorporada)</small></label> 
 								<input onkeyup="carregarVideo();" type="text" name="video" id="video" class="form-control">
 								
 							</div>
@@ -212,7 +222,7 @@ if($_SESSION['nivel'] == 'Administrador'){
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
-				<h4 class="modal-title" id="tituloModal">Pacote <span id="nome_mostrar"> </span>  - Comissão: <span id="comissao_mostrar"> </span>% </h4>
+				<h4 class="modal-title" id="tituloModal">Pacote <span id="nome_mostrar"> </span>  - Comissao: <span id="comissao_mostrar"> </span>% </h4>
 				<button id="btn-fechar-excluir" type="button" class="close" data-dismiss="modal" aria-label="Close" style="margin-top: -20px">
 					<span aria-hidden="true">&times;</span>
 				</button>
@@ -224,7 +234,7 @@ if($_SESSION['nivel'] == 'Administrador'){
 
 				<div class="row" style="border-bottom: 1px solid #cac7c7;">
 					<div class="col-md-5">							
-						<span><b>Subtítulo: </b></span>
+						<span><b>Subtitulo: </b></span>
 						<span id="desc_rapida_mostrar"></span>							
 					</div>
 					<div class="col-md-3">							
@@ -263,14 +273,18 @@ if($_SESSION['nivel'] == 'Administrador'){
 
 
 				<div class="row" style="border-bottom: 1px solid #cac7c7;">
-					<div class="col-md-8">			
+					<div class="col-md-4">			
 						<span><b>Palavras Chaves: </b></span>
 						<span id="palavras_mostrar"></span>
 					</div>
 
 					<div class="col-md-4">							
-						<span><b>Valor Promoção: </b></span>
+						<span><b>Valor Promocao: </b></span>
 						<span id="promocao_mostrar"></span>
+					</div>
+					<div class="col-md-4">							
+						<span><b>Oculto: </b></span>
+						<span id="oculto_mostrar">Nao</span>
 					</div>
 				</div>
 
@@ -278,7 +292,7 @@ if($_SESSION['nivel'] == 'Administrador'){
 
 				<div class="row">
 					<div class="col-md-12">							
-						<span><b>Descrição do Pacote: </b></span>
+						<span><b>Descricao do Pacote: </b></span>
 						<small><span id="desc_longa_mostrar"></span></small>						
 					</div>
 

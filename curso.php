@@ -1922,6 +1922,7 @@ require_once("cabecalho.php");
 <script>
 const endpointResponsaveis = 'ajax/usuarios/responsaveis.php';
 let responsavelSelecionado = null;
+const perfilAluno = <?= ($nivel == "Aluno") ? 'true' : 'false' ?>;
 
 async function escolherResponsavel() {
     try {
@@ -2026,6 +2027,22 @@ async function escolherResponsavel() {
     });
 }
 
+async function obterResponsavelParaEnvio() {
+    if (!perfilAluno) {
+        return null;
+    }
+    if (responsavelSelecionado) {
+        return responsavelSelecionado;
+    }
+    const responsavelId = await escolherResponsavel();
+    if (!responsavelId) {
+        return null;
+    }
+    responsavelSelecionado = responsavelId;
+    await atualizarResponsavelResumo();
+    return responsavelSelecionado;
+}
+
 async function obterResponsaveis() {
     const params = new URLSearchParams();
     const emailField = document.querySelector('#email-matricula');
@@ -2090,15 +2107,11 @@ async function abrirResponsavel() {
 async function realizarMatricula() {
     const curso = '<?= $id_do_curso_pag ?>';
     const pacote = 'Nao';
-    if (!responsavelSelecionado) {
-        const responsavelId = await escolherResponsavel();
-        if (!responsavelId) {
-            return;
-        }
-        responsavelSelecionado = responsavelId;
-        await atualizarResponsavelResumo();
+    const responsavelId = await obterResponsavelParaEnvio();
+    if (perfilAluno && !responsavelId) {
+        return;
     }
-    enviarMatricula(curso, pacote, responsavelSelecionado);
+    enviarMatricula(curso, pacote, responsavelId);
 }
 </script>
 
@@ -2368,7 +2381,7 @@ $("#form-cadastro").submit(function (event) {
 
 <script type="text/javascript">
 
- 	$("#form-matricula").submit(function () {
+ 	$("#form-matricula").submit(async function () {
 
 
 
@@ -2378,6 +2391,15 @@ $("#form-cadastro").submit(function (event) {
 		formData.append('csrf_token', (window.CSRF_TOKEN || ''));
 
 
+
+		const responsavelId = await obterResponsavelParaEnvio();
+		if (perfilAluno && !responsavelId) {
+			return;
+		}
+		if (responsavelId) {
+			formData.append('responsavel', responsavelId);
+		}
+		formData.append('modo_retorno', 'json');
 
 		$.ajax({
 
@@ -2389,34 +2411,16 @@ $("#form-cadastro").submit(function (event) {
 
 
 
-			success: function (mensagem) {
-
+			dataType: "json",
+			success: function (resposta) {
 				$('#msg-matricula').text('');
-
-				$('#msg-matricula').removeClass()
-
-				if (mensagem.trim() == "Matriculado com Sucesso") {
-
-
-
-					$('#msg-matricula').text(mensagem)
-
-
-
-				} else {
-
-
-
-					$('#msg-matricula').addClass('text-danger')
-
-					$('#msg-matricula').text(mensagem)
-
+				$('#msg-matricula').removeClass();
+				if (resposta && resposta.success) {
+					$('#msg-matricula').text(resposta.message || 'Matriculado com Sucesso');
+					return;
 				}
-
-
-
-
-
+				$('#msg-matricula').addClass('text-danger');
+				$('#msg-matricula').text((resposta && resposta.message) ? resposta.message : 'Nao foi possivel criar a matricula.');
 			},
 
 
@@ -2440,13 +2444,16 @@ $("#form-cadastro").submit(function (event) {
 
 <script type="text/javascript">
 
- 	function matriculaAluno(paymentType) {
+ 	async function matriculaAluno(paymentType) {
  
  		var curso = '<?= $id_do_curso_pag ?>';
  
  		var pacote = 'Nao';
 
-
+		const responsavelId = await obterResponsavelParaEnvio();
+		if (perfilAluno && !responsavelId) {
+			return;
+		}
 
  		$.ajax({
  
@@ -2459,21 +2466,21 @@ $("#form-cadastro").submit(function (event) {
  				curso,
  
  				pacote,
+
+				responsavel: responsavelId,
+				modo_retorno: 'json',
  
 				paymentType,
 				csrf_token: (window.CSRF_TOKEN || '')
  
  			},
 
-			dataType: "text",
+			dataType: "json",
 
 
 
-			success: function (mensagem) {
-
-
-
-				if (mensagem.trim() == "Matriculado com Sucesso") {
+			success: function (resposta) {
+				if (resposta && resposta.success) {
 
 					window.location.href = '<?= $url_sistema ?>sistema/painel-aluno/index.php?pagina=cursos';
 
@@ -2482,7 +2489,7 @@ $("#form-cadastro").submit(function (event) {
 					Swal.fire({
 						title: 'Ops!',
 						icon: 'error',
-						text: mensagem,
+						text: (resposta && resposta.message) ? resposta.message : 'Nao foi possivel criar a matricula.',
 						showConfirmButton: true,
 						confirmButtonText: 'Fechar',
 						confirmButtonColor: '#3085d6',
@@ -2493,6 +2500,9 @@ $("#form-cadastro").submit(function (event) {
 
 				}
 
+			},
+			error: function () {
+				Swal.fire('Erro', 'Falha ao comunicar com o servidor.', 'error');
 			},
 
 

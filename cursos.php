@@ -120,7 +120,9 @@ if($total_reg > 0){
 
 
 <?php 
-$query = $pdo->query("SELECT * FROM pacotes  ORDER BY matriculas asc limit 16");
+$nivel = @$_SESSION['nivel'];
+$filtroPacotesVisiveis = filtroPacotesVisiveisSql($pdo, $nivel);
+$query = $pdo->query("SELECT * FROM pacotes WHERE {$filtroPacotesVisiveis} ORDER BY matriculas asc limit 16");
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 $total_reg = @count($res);
 if($total_reg > 0){

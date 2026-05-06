@@ -143,7 +143,7 @@ $consulta_documentos_emitidos = $pdo->prepare("
  FROM documentos_emitidos
  WHERE aluno_id = :aluno
    AND COALESCE(visivel_aluno, 1) = 1
-   AND tipo IN ('certificado', 'historico')
+   AND tipo IN ('certificado', 'historico', 'ficha_inscricao')
  ORDER BY id DESC
 ");
 $consulta_documentos_emitidos->execute([':aluno' => $id_pessoa]);
@@ -296,9 +296,13 @@ $documentos_emitidos_aluno = $consulta_documentos_emitidos->fetchAll(PDO::FETCH_
 
 <div class="bs-example widget-shadow margem-mobile" style="padding:15px; margin-top:20px">
  <div>
-  <h3>Certificados e Historicos Emitidos</h3>
+  <h3>Documentos Emitidos</h3>
  </div>
  <br>
+ <a href="paginas/gerar_ficha_inscricao.php" target="_blank" class="btn btn-success btn-flat btn-pri">
+  <i class="fa fa-file"></i> Gerar Ficha de Inscricao
+ </a>
+ <br><br>
  <table class="table table-hover" id="tabela_documentos_emitidos">
   <thead>
    <tr>
@@ -312,13 +316,22 @@ $documentos_emitidos_aluno = $consulta_documentos_emitidos->fetchAll(PDO::FETCH_
   </thead>
   <tbody>
    <?php foreach ($documentos_emitidos_aluno as $docEmitido): ?>
-    <?php
+   <?php
     $arquivoRel = ltrim((string)($docEmitido['arquivo_relativo'] ?? ''), '/');
     $arquivoUrl = 'paginas/baixar_documento_emitido.php?id=' . (int)($docEmitido['id'] ?? 0) . '&view=1';
+    $tipoDoc = (string)($docEmitido['tipo'] ?? '-');
+    $tipoLabel = $tipoDoc;
+    if ($tipoDoc === 'certificado') {
+     $tipoLabel = 'Certificado';
+    } elseif ($tipoDoc === 'historico') {
+     $tipoLabel = 'Historico';
+    } elseif ($tipoDoc === 'ficha_inscricao') {
+     $tipoLabel = 'Ficha de Inscricao';
+    }
     ?>
     <tr>
      <td><?php echo (int)($docEmitido['id'] ?? 0); ?></td>
-     <td><?php echo htmlspecialchars((string)($docEmitido['tipo'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></td>
+     <td><?php echo htmlspecialchars($tipoLabel, ENT_QUOTES, 'UTF-8'); ?></td>
      <td><?php echo htmlspecialchars((string)($docEmitido['categoria'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></td>
      <td><?php echo htmlspecialchars((string)($docEmitido['versao'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></td>
      <td><?php echo !empty($docEmitido['criado_em']) ? date('d/m/Y H:i', strtotime($docEmitido['criado_em'])) : '-'; ?></td>
@@ -329,11 +342,19 @@ $documentos_emitidos_aluno = $consulta_documentos_emitidos->fetchAll(PDO::FETCH_
        </a>
       </big>
       &nbsp;
-      <big>
+     <big>
        <a href="paginas/baixar_documento_emitido.php?id=<?php echo (int)($docEmitido['id'] ?? 0); ?>" title="Baixar">
         <i class="fa fa-download text-primary"></i>
        </a>
       </big>
+      <?php if (($docEmitido['tipo'] ?? '') === 'ficha_inscricao'): ?>
+      &nbsp;
+      <big>
+       <a href="#" onclick="apagarDocumentoEmitido('<?php echo (int)($docEmitido['id'] ?? 0); ?>')" title="Excluir">
+         <i class="fa fa-trash text-danger"></i>
+       </a>
+      </big>
+      <?php endif; ?>
      </td>
     </tr>
    <?php endforeach; ?>
@@ -524,6 +545,86 @@ $documentos_emitidos_aluno = $consulta_documentos_emitidos->fetchAll(PDO::FETCH_
      })
 
 
+
+   }
+
+  });
+
+ }
+
+ function apagarDocumentoEmitido(idDocumento) {
+
+  Swal.fire({
+
+   title: "Deseja excluir a ficha?",
+
+   text: "Esta acao nao podera ser desfeita!",
+
+   icon: "warning",
+
+   showCancelButton: true,
+
+   confirmButtonColor: "#3085d6",
+
+   cancelButtonColor: "#d33",
+
+   confirmButtonText: "Sim, excluir!"
+
+  }).then((result) => {
+
+   if (result.isConfirmed) {
+
+    fetch("paginas/apagar_documento_emitido.php", {
+
+      method: "POST",
+
+      headers: {
+
+       "Content-Type": "application/x-www-form-urlencoded"
+
+      },
+
+      body: `id=${idDocumento}`
+
+     })
+
+     .then((response) => response.json())
+
+     .then((data) => {
+
+      if (!data.success) {
+       throw new Error(data.message || "Erro ao excluir ficha.");
+      }
+
+      Swal.fire({
+
+       title: "Excluida!",
+
+       text: "A ficha foi removida.",
+
+       icon: "success"
+
+      }).then(() => {
+
+       window.location.reload();
+
+      });
+
+     })
+
+     .catch((erro) => {
+
+      Swal.fire({
+
+       title: "Erro",
+
+       text: erro.message || "Nao foi possivel excluir a ficha.",
+
+       icon: "error"
+
+      });
+
+     });
 
    }
 

@@ -5,8 +5,10 @@ include_once('../conexao.php');
 $postjson = json_decode(file_get_contents('php://input'), true);
 
 $buscar = '%' .@$_GET['buscar']. '%';
+$nivel = @$_SESSION['nivel'];
+$filtroPacotesVisiveis = filtroPacotesVisiveisSql($pdo, $nivel);
 
-$query = $pdo->prepare("SELECT * FROM pacotes WHERE (nome LIKE ? OR desc_rapida LIKE ?) ORDER BY id desc LIMIT 30");
+$query = $pdo->prepare("SELECT * FROM pacotes WHERE {$filtroPacotesVisiveis} AND (nome LIKE ? OR desc_rapida LIKE ?) ORDER BY id desc LIMIT 30");
 $query->execute([$buscar, $buscar]);
 
 $res = $query->fetchAll(PDO::FETCH_ASSOC);

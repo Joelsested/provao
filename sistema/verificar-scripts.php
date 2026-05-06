@@ -19,9 +19,12 @@ if($total_reg > 0){
 
 	$query2 = $pdo->prepare("SELECT * FROM usuarios where id = :id");
 	$query2->execute([':id' => $aluno]);
-	$res2 = $query2->fetchAll(PDO::FETCH_ASSOC);
-	$nome_aluno = $res2[0]['nome'];
-	$aluno_email = $res2[0]['usuario'];
+	$res2 = $query2->fetch(PDO::FETCH_ASSOC);
+	if(!$res2){
+		continue;
+	}
+	$nome_aluno = $res2['nome'];
+	$aluno_email = $res2['usuario'];
 
 	if($pacote != 'Sim'){
 		$tabela = 'cursos';	
@@ -33,9 +36,12 @@ if($total_reg > 0){
 
 		$query2 = $pdo->prepare("SELECT * FROM {$tabela} where id = :id");
 		$query2->execute([':id' => $id_curso]);
-		$res2 = $query2->fetchAll(PDO::FETCH_ASSOC);
-		$nome_curso = $res2[0]['nome'];
-		$url_curso = $res2[0]['nome_url'];
+		$res2 = $query2->fetch(PDO::FETCH_ASSOC);
+		if(!$res2){
+			continue;
+		}
+		$nome_curso = $res2['nome'];
+		$url_curso = $res2['nome_url'];
 		$url_pagamento = $url_sistema.$url_amig.$url_curso;
 		$url_cursos = $url_sistema.'cursos';
 		$url_painel_aluno = $url_sistema.'sistema/painel-aluno';

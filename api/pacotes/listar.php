@@ -8,8 +8,10 @@ $limite = (isset($_GET['limite'])) ? (int) $_GET['limite'] : 5;
 $pagina = (isset($_GET['pagina'])) ? (int) $_GET['pagina'] : 1; 
 
 $inicio = ($limite * $pagina) - $limite; 
+$nivel = @$_SESSION['nivel'];
+$filtroPacotesVisiveis = filtroPacotesVisiveisSql($pdo, $nivel);
 
-$query = $pdo->prepare("SELECT * FROM pacotes ORDER BY id DESC LIMIT :inicio, :limite");
+$query = $pdo->prepare("SELECT * FROM pacotes WHERE {$filtroPacotesVisiveis} ORDER BY id DESC LIMIT :inicio, :limite");
 $query->bindValue(":inicio", $inicio, PDO::PARAM_INT);
 $query->bindValue(":limite", $limite, PDO::PARAM_INT);
 $query->execute();

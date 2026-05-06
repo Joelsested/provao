@@ -20,6 +20,8 @@ $palavras = $_POST['palavras'];
 $desc_longa = $_POST['desc_longa'];
 $video = $_POST['video'];
 $comissao = $_POST['comissao'];
+$oculto_admin = (isset($_POST['oculto_admin']) && $_POST['oculto_admin'] === 'Sim') ? 'Sim' : 'Nao';
+ensurePacotesOcultoAdminColumn($pdo);
 
 $desc_longa = str_replace("'", " ", $desc_longa);
 $desc_longa = str_replace('"', ' ', $desc_longa);
@@ -85,9 +87,9 @@ if($id <= 0){
 	$resMax = $queryMax->fetch(PDO::FETCH_ASSOC);
 	$novo_id = (int)($resMax['max_id'] ?? 0) + 1;
 
-	$query = $pdo->prepare("INSERT INTO $tabela SET id = :id, nome = :nome, desc_rapida = :desc_rapida, desc_longa = :desc_longa, valor = :valor, professor = '$id_usuario', linguagem = '$linguagem', imagem = '$foto', ano = '$ano_atual', palavras = :palavras, grupo = '$grupo', nome_url = '$url', promocao = :promocao, video = :video, comissao = '$comissao'");
+	$query = $pdo->prepare("INSERT INTO $tabela SET id = :id, nome = :nome, desc_rapida = :desc_rapida, desc_longa = :desc_longa, valor = :valor, professor = '$id_usuario', linguagem = '$linguagem', imagem = '$foto', ano = '$ano_atual', palavras = :palavras, grupo = '$grupo', nome_url = '$url', promocao = :promocao, video = :video, comissao = '$comissao', oculto_admin = :oculto_admin");
 }else{
-	$query = $pdo->prepare("UPDATE $tabela SET nome = :nome, desc_rapida = :desc_rapida, desc_longa = :desc_longa, valor = :valor, professor = '$id_usuario', linguagem = '$linguagem', imagem = '$foto', palavras = :palavras, grupo = '$grupo', nome_url = '$url', promocao = :promocao, video = :video, comissao = '$comissao'  WHERE id = '$id'");
+	$query = $pdo->prepare("UPDATE $tabela SET nome = :nome, desc_rapida = :desc_rapida, desc_longa = :desc_longa, valor = :valor, professor = '$id_usuario', linguagem = '$linguagem', imagem = '$foto', palavras = :palavras, grupo = '$grupo', nome_url = '$url', promocao = :promocao, video = :video, comissao = '$comissao', oculto_admin = :oculto_admin WHERE id = '$id'");
 }
 
 if ($id <= 0) {
@@ -100,6 +102,7 @@ $query->bindValue(":valor", "$valor");
 $query->bindValue(":palavras", "$palavras");
 $query->bindValue(":promocao", "$promocao");
 $query->bindValue(":video", "$video");
+$query->bindValue(":oculto_admin", $oculto_admin);
 $query->execute();
 
 echo 'Salvo com Sucesso';

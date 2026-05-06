@@ -10,7 +10,9 @@ require_once("cabecalho.php");
 
 
 <?php 
-$query = $pdo->query("SELECT * FROM pacotes where nome LIKE '%Formação%' ORDER BY id desc");
+$nivel = @$_SESSION['nivel'];
+$filtroPacotesVisiveis = filtroPacotesVisiveisSql($pdo, $nivel);
+$query = $pdo->query("SELECT * FROM pacotes WHERE {$filtroPacotesVisiveis} AND nome LIKE '%Formação%' ORDER BY id desc");
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 $total_reg = @count($res);
 if($total_reg > 0){

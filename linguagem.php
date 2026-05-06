@@ -6,8 +6,10 @@ $query->execute([':url' => $url]);
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 $id_cat = $res[0]['id'];
 $nome_cat = $res[0]['nome'];
+$nivel = @$_SESSION['nivel'];
+$filtroPacotesVisiveis = filtroPacotesVisiveisSql($pdo, $nivel);
 
-$query = $pdo->prepare("SELECT * FROM pacotes where linguagem = :linguagem ORDER BY id desc");
+$query = $pdo->prepare("SELECT * FROM pacotes WHERE linguagem = :linguagem AND {$filtroPacotesVisiveis} ORDER BY id desc");
 $query->execute([':linguagem' => $id_cat]);
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 $total_reg = @count($res);

@@ -30,12 +30,13 @@ $url = $_GET['url'];
 
 
 $nivel = @$_SESSION['nivel'];
+$filtroPacotesVisiveis = filtroPacotesVisiveisSql($pdo, $nivel);
 
 if ($nivel == "Aluno") {
 
 	$modal = 'Pagamento';
 
-} else if ($nivel == "Administrador" || $nivel == "Professor") {
+} else if ($nivel == "Administrador" || $nivel == "Professor" || $nivel == "Secretario") {
 
 	$modal = 'Matricular';
 
@@ -57,7 +58,7 @@ $descontoPix = json_encode($resPix[0]['desconto_pix']);
 
 
 
-$query = $pdo->prepare("SELECT * FROM pacotes where nome_url = :url");
+$query = $pdo->prepare("SELECT * FROM pacotes WHERE nome_url = :url AND {$filtroPacotesVisiveis} LIMIT 1");
 $query->execute([':url' => $url]);
 
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
@@ -616,7 +617,7 @@ require_once("cabecalho.php");
 					<?php
 
 					$itens_rel = (int) $itens_rel;
-					$query = $pdo->prepare("SELECT * FROM pacotes where grupo = :grupo and id != :id ORDER BY id desc limit $itens_rel");
+					$query = $pdo->prepare("SELECT * FROM pacotes WHERE grupo = :grupo AND id != :id AND {$filtroPacotesVisiveis} ORDER BY id desc limit $itens_rel");
 					$query->execute([':grupo' => $grupo, ':id' => $id]);
 
 					$res = $query->fetchAll(PDO::FETCH_ASSOC);
@@ -1870,6 +1871,7 @@ require_once("cabecalho.php");
 
 const endpointResponsaveis = 'ajax/usuarios/responsaveis.php';
 let responsavelSelecionado = null;
+const perfilAluno = <?= ($nivel == "Aluno") ? 'true' : 'false' ?>;
 
 async function escolherResponsavel() {
 	try {
@@ -1950,25 +1952,26 @@ async function escolherResponsavel() {
     const csrfToken = getCsrfToken();
   	$.ajax({
  		url: "ajax/cursos/matricula.php",
-  		method: 'POST',
-  		data: {
-  			curso,
-  			pacote,
+   		method: 'POST',
+   		data: {
+   			curso,
+   			pacote,
 			responsavel,
+			modo_retorno: 'json',
 			csrf_token: csrfToken
-  		},
+   		},
         headers: {
           'X-CSRF-Token': csrfToken
         },
-  		dataType: "text",
-  		success: function (mensagem) {
-			if (mensagem.trim() == "Matriculado com Sucesso") {
+  		dataType: "json",
+  		success: function (resposta) {
+			if (resposta && resposta.success) {
 				window.location.href = '<?= $url_sistema ?>sistema/painel-aluno/index.php?pagina=pacotes';
 			} else {
 				Swal.fire({
 					title: 'Ops!',
 					icon: 'error',
-					text: mensagem,
+					text: (resposta && resposta.message) ? resposta.message : 'Nao foi possivel criar a matricula.',
 					showConfirmButton: true,
 					confirmButtonText: 'Fechar',
 					confirmButtonColor: '#3085d6',
@@ -1978,13 +1981,39 @@ async function escolherResponsavel() {
 				});
 			}
 		},
+		error: function () {
+			Swal.fire('Erro', 'Falha ao comunicar com o servidor.', 'error');
+		},
 	});
 }
 async function obterResponsaveis() {
+	const params = new URLSearchParams();
+	const emailField = document.querySelector('#email-matricula');
+	const emailValue = emailField ? emailField.value.trim() : '';
+	if (emailValue) {
+		params.append('email', emailValue);
+	}
 	const response = await fetch(endpointResponsaveis, {
-		method: 'POST'
+		method: 'POST',
+		body: params
 	});
 	return response.json();
+}
+
+async function obterResponsavelParaEnvio() {
+	if (!perfilAluno) {
+		return null;
+	}
+	if (responsavelSelecionado) {
+		return responsavelSelecionado;
+	}
+	const responsavelId = await escolherResponsavel();
+	if (!responsavelId) {
+		return null;
+	}
+	responsavelSelecionado = responsavelId;
+	await atualizarResponsavelResumo();
+	return responsavelSelecionado;
 }
 
 async function atualizarResponsavelResumo() {
@@ -2037,15 +2066,11 @@ async function abrirResponsavel() {
 async function realizarMatricula() {
 	var curso = '<?= $id_do_curso_pag ?>';
 	var pacote = 'Sim';
-	if (!responsavelSelecionado) {
-		const responsavelId = await escolherResponsavel();
-		if (!responsavelId) {
-			return;
-		}
-		responsavelSelecionado = responsavelId;
-		await atualizarResponsavelResumo();
+	const responsavelId = await obterResponsavelParaEnvio();
+	if (perfilAluno && !responsavelId) {
+		return;
 	}
-	enviarMatricula(curso, pacote, responsavelSelecionado);
+	enviarMatricula(curso, pacote, responsavelId);
 }
 
 document.getElementById("paymentForm").addEventListener("submit", function (e) {
@@ -2563,75 +2588,52 @@ $('.toggle-password').on('click', function () {
 
 <script type="text/javascript">
 
- 	$("#form-matricula").submit(function () {
-
-
-
- 		event.preventDefault();
+ 	$("#form-matricula").submit(async function () {
+		event.preventDefault();
  
- 		var formData = new FormData(this);
+		var formData = new FormData(this);
 		const csrfToken = getCsrfToken();
 		formData.append('csrf_token', csrfToken);
+		const responsavelId = await obterResponsavelParaEnvio();
+		if (perfilAluno && !responsavelId) {
+			return;
+		}
+		if (responsavelId) {
+			formData.append('responsavel', responsavelId);
+		}
+		formData.append('modo_retorno', 'json');
 
-
-
- 			$.ajax({
- 
- 				url: "ajax/cursos/matricula.php",
- 
- 				type: 'POST',
- 
- 				data: formData,
-				headers: {
-					'X-CSRF-Token': csrfToken
-				},
-
-
-
-			success: function (mensagem) {
-
-
-
-				$('#msg-matricula').text('');
-
-				$('#msg-matricula').removeClass()
-
-				if (mensagem.trim() == "Matriculado com Sucesso") {
-	window.location.href = '<?= $url_sistema ?>sistema/painel-aluno/index.php?pagina=pacotes';
-} else {
-	Swal.fire({
-		title: 'Ops!',
-		icon: 'error',
-		text: mensagem,
-		showConfirmButton: true,
-		confirmButtonText: 'Fechar',
-		confirmButtonColor: '#3085d6',
-		showCloseButton: true,
-		closeButtonColor: '#3085d6',
-		closeButtonAriaLabel: 'Fechar',
-	});
-}
-
-
-
-
-
+		$.ajax({
+			url: "ajax/cursos/matricula.php",
+			type: 'POST',
+			data: formData,
+			headers: {
+				'X-CSRF-Token': csrfToken
 			},
-
-
-
+			dataType: "json",
+			success: function (resposta) {
+				$('#msg-matricula').text('');
+				$('#msg-matricula').removeClass();
+				if (resposta && resposta.success) {
+					window.location.href = '<?= $url_sistema ?>sistema/painel-aluno/index.php?pagina=pacotes';
+					return;
+				}
+				Swal.fire({
+					title: 'Ops!',
+					icon: 'error',
+					text: (resposta && resposta.message) ? resposta.message : 'Nao foi possivel criar a matricula.',
+					showConfirmButton: true,
+					confirmButtonText: 'Fechar',
+					confirmButtonColor: '#3085d6',
+					showCloseButton: true,
+					closeButtonColor: '#3085d6',
+					closeButtonAriaLabel: 'Fechar',
+				});
+			},
 			cache: false,
-
 			contentType: false,
-
 			processData: false,
-
-
-
 		});
-
-
-
 	});
 
 </script>
@@ -2646,44 +2648,59 @@ $('.toggle-password').on('click', function () {
 
 
 
-	function matriculaAluno() {
+	async function matriculaAluno(paymentType) {
 
 		var curso = '<?= $id_do_curso_pag ?>';
 
 		var pacote = 'Sim';
 
+		const responsavelId = await obterResponsavelParaEnvio();
+		if (perfilAluno && !responsavelId) {
+			return;
+		}
 
-
- 			const csrfToken = getCsrfToken();
- 			$.ajax({
+		const csrfToken = getCsrfToken();
+		$.ajax({
  
- 				url: "ajax/cursos/matricula.php",
+			url: "ajax/cursos/matricula.php",
  
- 				method: 'POST',
+			method: 'POST',
  
-				data: { curso, pacote, csrf_token: csrfToken },
-				headers: {
-					'X-CSRF-Token': csrfToken
-				},
+			data: {
+				curso,
+				pacote,
+				responsavel: responsavelId,
+				modo_retorno: 'json',
+				paymentType,
+				csrf_token: csrfToken
+			},
+			headers: {
+				'X-CSRF-Token': csrfToken
+			},
  
- 				dataType: "text",
+			dataType: "json",
 
 
 
-			success: function (mensagem) {
-
-
-
-				if (mensagem.trim() == "Alterado com Sucesso") {
-
-
-
-				} else {
-
-
-
+			success: function (resposta) {
+				if (resposta && resposta.success) {
+					window.location.href = '<?= $url_sistema ?>sistema/painel-aluno/index.php?pagina=pacotes';
+					return;
 				}
-
+				Swal.fire({
+					title: 'Ops!',
+					icon: 'error',
+					text: (resposta && resposta.message) ? resposta.message : 'Nao foi possivel criar a matricula.',
+					showConfirmButton: true,
+					confirmButtonText: 'Fechar',
+					confirmButtonColor: '#3085d6',
+					showCloseButton: true,
+					closeButtonColor: '#3085d6',
+					closeButtonAriaLabel: 'Fechar',
+				});
+			},
+			error: function () {
+				Swal.fire('Erro', 'Falha ao comunicar com o servidor.', 'error');
 			},
 
 

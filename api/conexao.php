@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../config/env.php';
 require_once __DIR__ . '/../config/csrf.php';
+require_once __DIR__ . '/../helpers.php';
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 

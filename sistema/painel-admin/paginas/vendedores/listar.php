@@ -70,6 +70,22 @@ HTML;
         $classe_comissoes = $usuario_id ? '' : 'disabled';
         $textoPermissaoLoginAluno = $pode_login_como_aluno === 1 ? 'Ativado' : 'Desativado';
         $checkedLoginAluno = $pode_login_como_aluno === 1 ? 'checked' : '';
+        $acaoEntrarComoVendedor = '';
+        if (($_SESSION['nivel'] ?? '') === 'Administrador') {
+            $usuarioIdVendedor = (int) ($usuario_id ?? 0);
+            $disabledEntrarComoVendedor = $usuarioIdVendedor > 0 ? '' : 'disabled';
+            $acaoEntrarComoVendedor = '
+            <div class="col-md-4 text-center mb-3">
+              <form method="POST" action="entrar-como-vendedor-admin.php" style="margin:0;">
+                <input type="hidden" name="csrf_token" value="' . $csrfForm . '">
+                <input type="hidden" name="vendedor_usuario_id" value="' . $usuarioIdVendedor . '">
+                <button type="submit" class="btn btn-default btn-block" ' . $disabledEntrarComoVendedor . '>
+                  <i class="fa fa-sign-in text-primary"></i><br>
+                  Entrar como vendedor
+                </button>
+              </form>
+            </div>';
+        }
 
         $resProfessor = $professor ? 'Sim' : 'Não';
 
@@ -174,6 +190,7 @@ HTML;
                 {$titulo_link}
               </a>
             </div>
+            {$acaoEntrarComoVendedor}
             <div class="col-md-4 text-center mb-3">
               <form method="POST" action="paginas/vendedores/toggle-login-aluno.php" style="margin:0;">
                 <input type="hidden" name="csrf_token" value="{$csrfForm}">

@@ -291,6 +291,40 @@ if (!function_exists('tableExists')) {
     }
 }
 
+if (!function_exists('ensurePacotesOcultoAdminColumn')) {
+    function ensurePacotesOcultoAdminColumn(PDO $pdo): bool
+    {
+        if (!tableHasColumn($pdo, 'pacotes', 'oculto_admin')) {
+            try {
+                $pdo->exec("ALTER TABLE pacotes ADD COLUMN oculto_admin VARCHAR(3) NOT NULL DEFAULT 'Nao'");
+            } catch (Exception $e) {
+                return false;
+            }
+        }
+        return tableHasColumn($pdo, 'pacotes', 'oculto_admin');
+    }
+}
+
+if (!function_exists('nivelPodeVerPacoteOculto')) {
+    function nivelPodeVerPacoteOculto(?string $nivel): bool
+    {
+        $nivel = trim((string) $nivel);
+        return in_array($nivel, ['Administrador', 'Secretario'], true);
+    }
+}
+
+if (!function_exists('filtroPacotesVisiveisSql')) {
+    function filtroPacotesVisiveisSql(PDO $pdo, ?string $nivel, string $alias = ''): string
+    {
+        ensurePacotesOcultoAdminColumn($pdo);
+        if (nivelPodeVerPacoteOculto($nivel)) {
+            return '1=1';
+        }
+        $prefixo = $alias !== '' ? rtrim($alias, '.') . '.' : '';
+        return "COALESCE({$prefixo}oculto_admin, 'Nao') <> 'Sim'";
+    }
+}
+
 if (!function_exists('ensureAlunosResponsavelColumn')) {
     function ensureAlunosResponsavelColumn(PDO $pdo): bool
     {

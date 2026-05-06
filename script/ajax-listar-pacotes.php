@@ -2,6 +2,8 @@
 require_once("../sistema/conexao.php");
 
 $busca = '%'.$_POST['busca'].'%';
+$nivel = @$_SESSION['nivel'];
+$filtroPacotesVisiveis = filtroPacotesVisiveisSql($pdo, $nivel);
 
 // pegar a pagina atual
 if(@$_POST['pagina'] == ""){
@@ -11,7 +13,7 @@ $pagina = intval(@$_POST['pagina']);
 $limite = $pagina * $itens_pag;
 
 
-$query = $pdo->query("SELECT * FROM pacotes where nome LIKE '$busca' or desc_rapida LIKE '$busca' ORDER BY id desc LIMIT $limite, $itens_pag");
+$query = $pdo->query("SELECT * FROM pacotes WHERE {$filtroPacotesVisiveis} AND (nome LIKE '$busca' OR desc_rapida LIKE '$busca') ORDER BY id desc LIMIT $limite, $itens_pag");
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 $total_reg = @count($res);
 if($total_reg > 0){
@@ -47,7 +49,7 @@ for($i=0; $i < $total_reg; $i++){
 
    
 
-    $query2 = $pdo->query("SELECT * FROM pacotes where nome LIKE '$busca' or desc_rapida LIKE '$busca' ORDER BY id desc ");
+    $query2 = $pdo->query("SELECT * FROM pacotes WHERE {$filtroPacotesVisiveis} AND (nome LIKE '$busca' OR desc_rapida LIKE '$busca') ORDER BY id desc ");
     $res2 = $query2->fetchAll(PDO::FETCH_ASSOC);
     $total_reg2 = @count($res2);
 

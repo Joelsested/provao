@@ -21,6 +21,18 @@ function validarResponsavel(PDO $pdo, int $id, array $allowedLevels, string $pla
     return (int) $responsavel['id'];
 }
 
+function buscarUsuarioAtivoPorId(PDO $pdo, int $id): ?array
+{
+    if ($id <= 0) {
+        return null;
+    }
+
+    $stmt = $pdo->prepare("SELECT id, nivel, id_pessoa FROM usuarios WHERE id = :id AND ativo = 'Sim' LIMIT 1");
+    $stmt->execute([':id' => $id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row ?: null;
+}
+
 @session_start();
 $id_aluno = $_SESSION['id'] ?? null;
 $modoRetorno = strtolower((string) ($_POST['modo_retorno'] ?? 'texto'));
@@ -41,11 +53,17 @@ $responder = static function (string $mensagem, bool $sucesso = false, array $ex
 };
 
 if (!$id_aluno) {
-    $responder('Usuário não autenticado!');
+    $responder('Usuario nao autenticado!');
 }
 
 $allowedLevels = ['Administrador', 'Vendedor', 'Tutor', 'Secretario', 'Tesoureiro', 'Parceiro'];
 $levelPlaceholders = implode(',', array_fill(0, count($allowedLevels), '?'));
+
+$vendedorContextoId = (int) ($_SESSION['switch_vendedor_usuario_id'] ?? 0);
+$vendedorContexto = buscarUsuarioAtivoPorId($pdo, $vendedorContextoId);
+if ($vendedorContexto && ($vendedorContexto['nivel'] ?? '') !== 'Vendedor') {
+    $vendedorContexto = null;
+}
 
 $stmt = $pdo->prepare("SELECT id_pessoa FROM usuarios WHERE id = :id AND nivel = 'Aluno' LIMIT 1");
 $stmt->execute(['id' => $id_aluno]);
@@ -68,49 +86,60 @@ if ($alunoPessoaId > 0) {
     $aluno = $stmtAluno->fetch(PDO::FETCH_ASSOC) ?: [];
     $currentAtendente = (int) ($aluno['usuario'] ?? 0);
     $currentResponsavel = (int) ($aluno['responsavel_id'] ?? 0);
-    if ($currentResponsavel <= 0) {
-        $currentResponsavel = $currentAtendente;
-    }
     $dataCadastroAluno = normalizeDate((string) ($aluno['data'] ?? '')) ?: date('Y-m-d');
-    if (!$responsavelValido && $currentResponsavel > 0) {
-        $responsavelValido = validarResponsavel($pdo, $currentResponsavel, $allowedLevels, $levelPlaceholders);
-    }
 }
 
-if (!$responsavelValido && $alunoPessoaId > 0) {
-    $responder('Selecione um responsável válido!');
+$responsavelEfetivoId = (int) ($responsavelValido ?? 0);
+if ($vendedorContexto) {
+    // Regra: na pagina de vendedor, o vendedor sempre e o responsavel.
+    $responsavelEfetivoId = (int) $vendedorContexto['id'];
+} elseif ($responsavelEfetivoId <= 0 && $currentResponsavel > 0) {
+    $responsavelEfetivoId = (int) (validarResponsavel($pdo, $currentResponsavel, $allowedLevels, $levelPlaceholders) ?? 0);
 }
 
-if ($responsavelValido && $alunoPessoaId > 0) {
-    $responsavelSelecionado = buscarResponsavel($pdo, (int) $responsavelValido, $allowedLevels, $levelPlaceholders);
+if ($responsavelEfetivoId <= 0 && $alunoPessoaId > 0) {
+    $responder('Selecione um responsavel valido!');
+}
+
+if ($responsavelEfetivoId > 0 && $alunoPessoaId > 0) {
+    $responsavelSelecionado = buscarResponsavel($pdo, $responsavelEfetivoId, $allowedLevels, $levelPlaceholders);
     if (!$responsavelSelecionado) {
-        $responder('Responsável inválido!');
+        $responder('Responsavel invalido!');
+    }
+
+    $nivelResponsavel = (string) ($responsavelSelecionado['nivel'] ?? '');
+    if (!$vendedorContexto && in_array($nivelResponsavel, ['Tutor', 'Secretario'], true)) {
+        // Tutor/Secretario so podem ser responsaveis quando o aluno ja e deles.
+        if ($currentResponsavel <= 0 || (int) $responsavelSelecionado['id'] !== (int) $currentResponsavel) {
+            $responder('Tutor ou Secretario nao pode ser responsavel neste cadastro; use apenas como atendente.');
+        }
     }
 
     $responsavelProfessor = responsavelEhProfessor($pdo, $responsavelSelecionado);
     $novoAtendente = $responsavelProfessor
         ? resolveAtendenteId($pdo, $responsavelSelecionado, $dataCadastroAluno)
-        : (int) $responsavelValido;
+        : (int) $responsavelSelecionado['id'];
 
     if ($responsavelProfessor) {
         if ($novoAtendente <= 0) {
-            $responder('Responsável com Professor marcado exige atendente ativo (Tutor ou Secretário).');
+            $responder('Responsavel com Professor marcado exige atendente ativo (Tutor ou Secretario).');
         }
+
         $stmtNivelDest = $pdo->prepare("SELECT nivel FROM usuarios WHERE id = :id AND ativo = 'Sim' LIMIT 1");
         $stmtNivelDest->execute([':id' => (int) $novoAtendente]);
         $nivelDestino = (string) ($stmtNivelDest->fetchColumn() ?: '');
         if (!in_array($nivelDestino, ['Tutor', 'Secretario'], true)) {
-            $responder('Atendente inválido para responsável com Professor marcado.');
+            $responder('Atendente invalido para responsavel com Professor marcado.');
         }
     }
 
-    $responsavelMudou = (int) $responsavelValido !== (int) $currentResponsavel;
+    $responsavelMudou = (int) $responsavelSelecionado['id'] !== (int) $currentResponsavel;
     $atendenteMudou = $novoAtendente > 0 && $novoAtendente !== (int) $currentAtendente;
 
     if ($responsavelMudou || $atendenteMudou) {
         $bloqueioTroca = podeTrocarAtendente($pdo, (int) $alunoPessoaId, (int) $novoAtendente, date('Y-m-d'));
         if (!empty($bloqueioTroca['bloqueado'])) {
-            $responder((string) ($bloqueioTroca['mensagem'] ?? 'Troca bloqueada por regra de comissão.'));
+            $responder((string) ($bloqueioTroca['mensagem'] ?? 'Troca bloqueada por regra de comissao.'));
         }
     }
 
@@ -119,7 +148,7 @@ if ($responsavelValido && $alunoPessoaId > 0) {
 
     if (ensureAlunosResponsavelColumn($pdo) && ($responsavelMudou || $currentResponsavel <= 0)) {
         $updates[] = 'responsavel_id = :responsavel_id';
-        $paramsUpdate[':responsavel_id'] = (int) $responsavelValido;
+        $paramsUpdate[':responsavel_id'] = (int) $responsavelSelecionado['id'];
     }
 
     if ($novoAtendente > 0 && ($atendenteMudou || $currentAtendente <= 0)) {
@@ -155,7 +184,7 @@ if ($_SESSION['nivel'] == 'Aluno') {
 
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 if (@count($res) == 0) {
-    $responder('Aluno não cadastrado com este e-mail!');
+    $responder('Aluno nao cadastrado com este e-mail!');
 } else {
     $id_aluno = $res[0]['id'];
     $nome_aluno = $res[0]['nome'];
@@ -178,7 +207,7 @@ $stmtMat = $pdo->prepare("SELECT * FROM matriculas WHERE aluno = ? AND id_curso 
 $stmtMat->execute([(int) $id_aluno, $curso, $pacote]);
 $res = $stmtMat->fetchAll(PDO::FETCH_ASSOC);
 if (@count($res) > 0) {
-    $responder('Aluno já matriculado neste curso!');
+    $responder('Aluno ja matriculado neste curso!');
 } else {
     if ($valor == '0') {
         $status = 'Matriculado';
@@ -205,4 +234,3 @@ $responder('Matriculado com Sucesso', true, [
     'id_curso' => (int) $curso,
     'pacote' => $pacote,
 ]);
-
